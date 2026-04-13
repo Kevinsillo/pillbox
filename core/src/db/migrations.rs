@@ -4,7 +4,9 @@ use rusqlite::Connection;
 /// Última versión de schema conocida en tiempo de compilación.
 pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
-/// SQL de la migración inicial, embebido en el binario.
+/// DDL de la migración inicial embebido en el binario.
+/// Los PRAGMAs del archivo se filtran en `apply()` — no son transaccionables
+/// y ya se aplican en `configure()` al abrir la conexión.
 const MIGRATION_001: &str = include_str!("migrations/001_initial.sql");
 
 /// Aplica todas las migraciones pendientes en orden.
@@ -56,9 +58,17 @@ fn current_version(conn: &Connection) -> Result<i64> {
     Ok(version)
 }
 
-/// Ejecuta un bloque SQL de migración dentro de una transacción.
+/// Ejecuta un bloque SQL de migración dentro de una transacción explícita.
+/// Los PRAGMAs del archivo se omiten aquí — ya se aplicaron en `configure()`.
 fn apply(conn: &Connection, version: i64, sql: &str) -> Result<()> {
-    conn.execute_batch(sql)
+    // Filtra líneas de PRAGMA — no son transaccionables y ya se aplican en configure()
+    let ddl: String = sql
+        .lines()
+        .filter(|l| !l.trim_start().to_uppercase().starts_with("PRAGMA"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    conn.execute_batch(&format!("BEGIN;\n{}\nCOMMIT;", ddl))
         .with_context(|| format!("error al aplicar migración v{}", version))?;
     Ok(())
 }
