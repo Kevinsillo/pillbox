@@ -9,9 +9,9 @@ pub enum PillCompound {
     Architecture,
     Bugfix,
     Pattern,
-    Config,
     Discovery,
     Learning,
+    Feedback,
     PrescriptionSummary,
     Manual,
 }
@@ -23,9 +23,9 @@ impl PillCompound {
             Self::Architecture        => "architecture",
             Self::Bugfix              => "bugfix",
             Self::Pattern             => "pattern",
-            Self::Config              => "config",
             Self::Discovery           => "discovery",
             Self::Learning            => "learning",
+            Self::Feedback            => "feedback",
             Self::PrescriptionSummary => "prescription_summary",
             Self::Manual              => "manual",
         }
@@ -38,7 +38,7 @@ impl std::fmt::Display for PillCompound {
     }
 }
 
-/// Input para crear o actualizar una pill (validado antes de llegar al store).
+/// Input para crear una pill.
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct NewPill {
     #[validate(length(min = 1, max = 255))]
@@ -49,20 +49,15 @@ pub struct NewPill {
 
     pub compound: PillCompound,
 
-    /// Nombre del bottle — se normaliza antes de llegar aquí.
-    #[validate(length(min = 1, max = 255))]
-    pub bottle: String,
-
     /// ID de la prescription activa (UUID v7).
     #[validate(length(min = 1))]
     pub prescription_id: String,
 
-    /// Clave de identidad de la pill. Solo `[a-z0-9/-]`.
-    #[validate(length(max = 120), custom(function = "validate_formula"))]
-    pub formula: Option<String>,
-
     /// Quién dispensó la pill. FK a `dispenser_types.id`.
     pub dispenser: Option<String>,
+
+    pub author_name: Option<String>,
+    pub author_email: Option<String>,
 }
 
 /// Proyección reducida para listados y resultados de búsqueda.
@@ -72,9 +67,6 @@ pub struct PillSummary {
     pub sync_id: String,
     pub compound: String,
     pub title: String,
-    pub bottle: String,
-    pub formula: Option<String>,
-    pub dosage: i64,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -87,11 +79,8 @@ pub struct Pill {
     pub compound: String,
     pub title: String,
     pub content: String,
-    pub bottle: String,
     pub prescription_id: String,
     pub dispenser: Option<String>,
-    pub formula: Option<String>,
-    pub dosage: i64,
     pub author_name: Option<String>,
     pub author_email: Option<String>,
     pub created_at: String,
@@ -110,26 +99,14 @@ pub struct PillPatch {
     pub compound: Option<PillCompound>,
 }
 
-/// Valida que una formula use solo caracteres permitidos: `[a-z0-9/-]`.
-fn validate_formula(formula: &str) -> Result<(), validator::ValidationError> {
-    if formula
-        .chars()
-        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "/-".contains(c))
-    {
-        Ok(())
-    } else {
-        Err(validator::ValidationError::new("formula_invalid_chars"))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use validator::Validate;
 
     #[test]
     fn compound_as_str_roundtrip() {
         assert_eq!(PillCompound::Decision.as_str(), "decision");
+        assert_eq!(PillCompound::Feedback.as_str(), "feedback");
         assert_eq!(PillCompound::PrescriptionSummary.as_str(), "prescription_summary");
     }
 
@@ -139,55 +116,11 @@ mod tests {
             title: "Test pill".into(),
             content: "Contenido de prueba".into(),
             compound: PillCompound::Decision,
-            bottle: "my-project".into(),
             prescription_id: "01jq0000000000000000000000".into(),
-            formula: Some("architecture/auth-flow".into()),
             dispenser: None,
+            author_name: None,
+            author_email: None,
         };
         assert!(pill.validate().is_ok());
-    }
-
-    #[test]
-    fn formula_rejects_uppercase() {
-        let pill = NewPill {
-            title: "Test".into(),
-            content: "Content".into(),
-            compound: PillCompound::Manual,
-            bottle: "proj".into(),
-            prescription_id: "abc".into(),
-            formula: Some("Architecture/Auth".into()),
-            dispenser: None,
-        };
-        assert!(pill.validate().is_err());
-    }
-
-    #[test]
-    fn formula_rejects_spaces() {
-        let pill = NewPill {
-            title: "T".into(),
-            content: "C".into(),
-            compound: PillCompound::Manual,
-            bottle: "p".into(),
-            prescription_id: "x".into(),
-            formula: Some("has space".into()),
-            dispenser: None,
-        };
-        assert!(pill.validate().is_err());
-    }
-
-    #[test]
-    fn formula_rejects_underscore_and_dot() {
-        for f in &["auth_flow", "api.version"] {
-            let pill = NewPill {
-                title: "T".into(),
-                content: "C".into(),
-                compound: PillCompound::Manual,
-                bottle: "p".into(),
-                prescription_id: "x".into(),
-                formula: Some(f.to_string()),
-                dispenser: None,
-            };
-            assert!(pill.validate().is_err(), "debería rechazar: {}", f);
-        }
     }
 }

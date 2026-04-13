@@ -9,9 +9,6 @@ pub const CONTENT_MAX_LEN: usize = 5_000;
 /// Límite máximo de caracteres para el título.
 pub const TITLE_MAX_LEN: usize = 255;
 
-/// Límite máximo de caracteres para una formula.
-pub const FORMULA_MAX_LEN: usize = 120;
-
 /// Nombre del directorio local de la pillbox dentro de un proyecto.
 pub const LOCAL_DIR: &str = ".pillbox";
 

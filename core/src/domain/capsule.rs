@@ -5,27 +5,25 @@ use validator::Validate;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CapsuleCompound {
-    Preference,
     Convention,
     Workflow,
-    Skill,
+    Environment,
     Context,
     Goal,
-    Constraint,
+    Feedback,
     Manual,
 }
 
 impl CapsuleCompound {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Preference  => "preference",
-            Self::Convention  => "convention",
-            Self::Workflow    => "workflow",
-            Self::Skill       => "skill",
-            Self::Context     => "context",
-            Self::Goal        => "goal",
-            Self::Constraint  => "constraint",
-            Self::Manual      => "manual",
+            Self::Convention   => "convention",
+            Self::Workflow     => "workflow",
+            Self::Environment  => "environment",
+            Self::Context      => "context",
+            Self::Goal         => "goal",
+            Self::Feedback     => "feedback",
+            Self::Manual       => "manual",
         }
     }
 }
@@ -36,7 +34,7 @@ impl std::fmt::Display for CapsuleCompound {
     }
 }
 
-/// Input para crear o actualizar una capsule.
+/// Input para crear una capsule.
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct NewCapsule {
     #[validate(length(min = 1, max = 255))]
@@ -46,9 +44,6 @@ pub struct NewCapsule {
     pub content: String,
 
     pub compound: CapsuleCompound,
-
-    #[validate(length(max = 120), custom(function = "validate_formula"))]
-    pub formula: Option<String>,
 }
 
 /// Proyección reducida para listados.
@@ -58,8 +53,6 @@ pub struct CapsuleSummary {
     pub sync_id: String,
     pub compound: String,
     pub title: String,
-    pub formula: Option<String>,
-    pub dosage: i64,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -72,8 +65,6 @@ pub struct Capsule {
     pub compound: String,
     pub title: String,
     pub content: String,
-    pub formula: Option<String>,
-    pub dosage: i64,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -90,13 +81,14 @@ pub struct CapsulePatch {
     pub compound: Option<CapsuleCompound>,
 }
 
-fn validate_formula(formula: &str) -> Result<(), validator::ValidationError> {
-    if formula
-        .chars()
-        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "/-".contains(c))
-    {
-        Ok(())
-    } else {
-        Err(validator::ValidationError::new("formula_invalid_chars"))
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compound_as_str_roundtrip() {
+        assert_eq!(CapsuleCompound::Convention.as_str(), "convention");
+        assert_eq!(CapsuleCompound::Environment.as_str(), "environment");
+        assert_eq!(CapsuleCompound::Feedback.as_str(), "feedback");
     }
 }

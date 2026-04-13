@@ -8,14 +8,8 @@ pub struct PillRow {
     pub compound: String,
     pub title: String,
     pub content: String,
-    pub bottle: String,
     pub prescription_id: String,
     pub dispenser: Option<String>,
-    pub formula: Option<String>,
-    pub normalized_hash: String,
-    pub dosage: i64,
-    pub duplicate_count: i64,
-    pub last_seen_at: Option<String>,
     pub author_name: Option<String>,
     pub author_email: Option<String>,
     pub created_at: String,
@@ -30,9 +24,6 @@ pub struct CapsuleRow {
     pub compound: String,
     pub title: String,
     pub content: String,
-    pub formula: Option<String>,
-    pub normalized_hash: String,
-    pub dosage: i64,
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
@@ -41,11 +32,11 @@ pub struct CapsuleRow {
 #[derive(Debug, Clone)]
 pub struct PrescriptionRow {
     pub id: String,
-    pub bottle: String,
-    pub directory: String,
+    pub bottle_id: i64,
+    pub title: String,
     pub started_at: String,
     pub ended_at: Option<String>,
-    pub summary: Option<String>,
+    pub deleted_at: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +44,8 @@ pub struct BottleRow {
     pub id: i64,
     pub name: String,
     pub display_name: String,
-    pub db_scope: String,
+    pub directory: String,
+    pub scope: String,
     pub created_at: String,
     pub last_seen_at: String,
 }

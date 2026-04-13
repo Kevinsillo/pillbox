@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 pub struct SearchParams {
     pub query: String,
 
-    /// Filtrar por bottle (opcional).
-    pub bottle: Option<String>,
+    /// Filtrar por bottle (opcional). Útil en la DB global que agrega múltiples bottles.
+    pub bottle_id: Option<i64>,
 
     /// Filtrar por compound (opcional).
     pub compound: Option<String>,
@@ -24,8 +24,6 @@ pub struct SearchResult {
     pub title: String,
     /// Snippet del contenido con el match resaltado.
     pub snippet: String,
-    pub bottle: Option<String>,
-    pub formula: Option<String>,
     pub updated_at: String,
     /// Rank FTS5 (negativo — más cercano a 0 = más relevante).
     pub rank: f64,
