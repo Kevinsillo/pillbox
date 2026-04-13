@@ -274,6 +274,116 @@ EOF
   fi
 }
 
+# ─── Auto-start al arranque ──────────────────────────────────────────────────
+
+setup_autostart() {
+  local os="$1" install_dir="$2"
+
+  step "Auto-start al arranque (opcional)"
+  echo -e "  Inicia ${BOLD}pillbox serve${NC} automáticamente al encender el equipo."
+  echo -e -n "  ¿Configurar ahora? [s/N] "
+  read -r answer
+  [[ ! "$answer" =~ ^[Ss] ]] && return
+
+  case "$os" in
+    linux)  _autostart_linux  "$install_dir" ;;
+    darwin) _autostart_macos  "$install_dir" ;;
+  esac
+}
+
+_autostart_linux() {
+  local binary="${1}/pillbox"
+  local unit_dir="${HOME}/.config/systemd/user"
+  local unit_file="${unit_dir}/pillbox.service"
+
+  mkdir -p "$unit_dir"
+
+  cat > "$unit_file" <<EOF
+[Unit]
+Description=Pillbox — Persistent memory server
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=${binary} serve
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOF
+
+  if systemctl --user enable pillbox.service 2>/dev/null &&
+     systemctl --user start  pillbox.service 2>/dev/null; then
+    ok "Servicio systemd instalado y arrancado."
+    ok "Estado: systemctl --user status pillbox"
+  else
+    warn "No se pudo habilitar el servicio systemd."
+    warn "Actívalo manualmente:"
+    warn "  systemctl --user enable pillbox && systemctl --user start pillbox"
+  fi
+
+  # Sin lingering, el servicio no arranca si el usuario no tiene sesión activa
+  if ! loginctl show-user "$USER" 2>/dev/null | grep -q "Linger=yes"; then
+    warn "Para que arranque sin sesión abierta, habilita linger:"
+    warn "  loginctl enable-linger ${USER}"
+  fi
+}
+
+_autostart_macos() {
+  local binary="${1}/pillbox"
+  local plist_dir="${HOME}/Library/LaunchAgents"
+  local plist_file="${plist_dir}/sh.pillbox.server.plist"
+  local log_file="${HOME}/.pillbox/pillbox-serve.log"
+
+  mkdir -p "$plist_dir"
+
+  cat > "$plist_file" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>sh.pillbox.server</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>${binary}</string>
+    <string>serve</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>${log_file}</string>
+
+  <key>StandardErrorPath</key>
+  <string>${log_file}</string>
+</dict>
+</plist>
+EOF
+
+  # launchctl bootstrap (macOS ≥ 10.15) con fallback a load (versiones antiguas)
+  local plist_domain="gui/$(id -u)"
+  if launchctl bootstrap "$plist_domain" "$plist_file" 2>/dev/null; then
+    ok "LaunchAgent instalado y arrancado."
+  elif launchctl load -w "$plist_file" 2>/dev/null; then
+    ok "LaunchAgent instalado y arrancado (modo compatibilidad)."
+  else
+    warn "No se pudo cargar el LaunchAgent."
+    warn "Cárgalo manualmente:"
+    warn "  launchctl load -w ${plist_file}"
+  fi
+
+  ok "Logs en: ${log_file}"
+  ok "Estado:  launchctl list sh.pillbox.server"
+}
+
 # ─── Instrucciones de configuración del MCP ───────────────────────────────────
 
 print_mcp_config() {
@@ -321,7 +431,8 @@ main() {
   install_mcp    "$version"
   install_skill  "$version"
   init_db
-  setup_port_80  "${platform%%-*}" "$install_dir"
+  setup_port_80   "${platform%%-*}" "$install_dir"
+  setup_autostart "${platform%%-*}" "$install_dir"
   print_mcp_config
 }
 
