@@ -1,0 +1,26 @@
+# Rust
+target/
+Cargo.lock
+
+# Node
+node_modules/
+mcp/dist/
+
+# Web UI build
+webui/dist/*
+!webui/dist/.gitkeep
+
+# DB files
+*.db
+*.db-wal
+*.db-shm
+.pillbox/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,44 @@
+[package]
+name = "pillbox"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "pillbox"
+path = "src/main.rs"
+
+[dependencies]
+# DB
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Serialización
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# UUIDs v7 para sync_id
+uuid = { version = "1", features = ["v7"] }
+
+# Validaciones de structs
+validator = { version = "0.18", features = ["derive"] }
+
+# Hash SHA-256 para normalized_hash
+sha2 = "0.10"
+
+# Normalización unicode (NFD→NFC, acentos)
+unicode-normalization = "0.1"
+
+# Rutas multiplataforma (~/.pillbox)
+dirs = "5"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Error handling
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3"
