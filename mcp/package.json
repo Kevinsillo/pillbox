@@ -7,7 +7,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "node --watch dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "fmt": "prettier --write \"src/**/*.ts\"",
+    "fmt:check": "prettier --check \"src/**/*.ts\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
@@ -15,7 +17,8 @@
   },
   "devDependencies": {
     "typescript": "^5.8.3",
-    "@types/node": "^22.14.1"
+    "@types/node": "^22.14.1",
+    "prettier": "^3.5.3"
   },
   "engines": {
     "node": ">=20"

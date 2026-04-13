@@ -41,29 +41,34 @@ impl IntoResponse for ApiResponse {
 }
 
 fn ok(data: impl Serialize) -> ApiResponse {
-    ApiResponse(
-        StatusCode::OK,
-        json!({ "ok": true, "data": data }),
-    )
+    ApiResponse(StatusCode::OK, json!({ "ok": true, "data": data }))
 }
 
 fn ok_created(data: impl Serialize) -> ApiResponse {
-    ApiResponse(
-        StatusCode::CREATED,
-        json!({ "ok": true, "data": data }),
-    )
+    ApiResponse(StatusCode::CREATED, json!({ "ok": true, "data": data }))
 }
 
 fn err(status: StatusCode, error: &str, message: &str) -> ApiResponse {
-    ApiResponse(status, json!({ "ok": false, "error": error, "message": message }))
+    ApiResponse(
+        status,
+        json!({ "ok": false, "error": error, "message": message }),
+    )
 }
 
 fn err_422(e: impl ToString) -> ApiResponse {
-    err(StatusCode::UNPROCESSABLE_ENTITY, "validation_error", &e.to_string())
+    err(
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "validation_error",
+        &e.to_string(),
+    )
 }
 
 fn err_404(what: &str, id: impl std::fmt::Display) -> ApiResponse {
-    err(StatusCode::NOT_FOUND, "not_found", &format!("{} {} no encontrado", what, id))
+    err(
+        StatusCode::NOT_FOUND,
+        "not_found",
+        &format!("{} {} no encontrado", what, id),
+    )
 }
 
 fn err_500(e: anyhow::Error) -> ApiResponse {
@@ -83,27 +88,29 @@ fn open_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
 
-pub async fn pill_create(
-    State(s): State<AppState>,
-    Json(input): Json<NewPill>,
-) -> ApiResponse {
-    if let Err(e) = input.validate() { return err_422(e); }
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+pub async fn pill_create(State(s): State<AppState>, Json(input): Json<NewPill>) -> ApiResponse {
+    if let Err(e) = input.validate() {
+        return err_422(e);
+    }
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::pills::take(&mut conn, &input) {
-        Ok(r)  => ok_created(r),
+        Ok(r) => ok_created(r),
         Err(e) => err_500(e),
     }
 }
 
-pub async fn pill_get(
-    State(s): State<AppState>,
-    Path(id): Path<i64>,
-) -> ApiResponse {
-    let conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+pub async fn pill_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::pills::read(&conn, id) {
         Ok(Some(p)) => ok(p),
-        Ok(None)    => err_404("pill", id),
-        Err(e)      => err_500(e),
+        Ok(None) => err_404("pill", id),
+        Err(e) => err_500(e),
     }
 }
 
@@ -112,24 +119,29 @@ pub async fn pill_patch(
     Path(id): Path<i64>,
     Json(patch): Json<PillPatch>,
 ) -> ApiResponse {
-    if let Err(e) = patch.validate() { return err_422(e); }
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+    if let Err(e) = patch.validate() {
+        return err_422(e);
+    }
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::pills::revise(&mut conn, id, &patch) {
         Ok(Some(p)) => ok(p),
-        Ok(None)    => err_404("pill", id),
-        Err(e)      => err_500(e),
+        Ok(None) => err_404("pill", id),
+        Err(e) => err_500(e),
     }
 }
 
-pub async fn pill_delete(
-    State(s): State<AppState>,
-    Path(id): Path<i64>,
-) -> ApiResponse {
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+pub async fn pill_delete(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::pills::discard(&mut conn, id) {
         Ok(Some(r)) => ok(r),
-        Ok(None)    => err_404("pill", id),
-        Err(e)      => err_500(e),
+        Ok(None) => err_404("pill", id),
+        Err(e) => err_500(e),
     }
 }
 
@@ -137,10 +149,13 @@ pub async fn pill_search(
     State(s): State<AppState>,
     Query(params): Query<SearchParams>,
 ) -> ApiResponse {
-    let conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::search::pill_find(&conn, &params) {
         Ok(results) => ok(results),
-        Err(e)      => err_500(e),
+        Err(e) => err_500(e),
     }
 }
 
@@ -150,23 +165,28 @@ pub async fn capsule_create(
     State(s): State<AppState>,
     Json(input): Json<NewCapsule>,
 ) -> ApiResponse {
-    if let Err(e) = input.validate() { return err_422(e); }
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+    if let Err(e) = input.validate() {
+        return err_422(e);
+    }
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::capsules::take(&mut conn, &input) {
-        Ok(r)  => ok_created(r),
+        Ok(r) => ok_created(r),
         Err(e) => err_500(e),
     }
 }
 
-pub async fn capsule_get(
-    State(s): State<AppState>,
-    Path(id): Path<i64>,
-) -> ApiResponse {
-    let conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::capsules::read(&conn, id) {
         Ok(Some(c)) => ok(c),
-        Ok(None)    => err_404("capsule", id),
-        Err(e)      => err_500(e),
+        Ok(None) => err_404("capsule", id),
+        Err(e) => err_500(e),
     }
 }
 
@@ -175,24 +195,29 @@ pub async fn capsule_patch(
     Path(id): Path<i64>,
     Json(patch): Json<CapsulePatch>,
 ) -> ApiResponse {
-    if let Err(e) = patch.validate() { return err_422(e); }
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+    if let Err(e) = patch.validate() {
+        return err_422(e);
+    }
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::capsules::revise(&mut conn, id, &patch) {
         Ok(Some(c)) => ok(c),
-        Ok(None)    => err_404("capsule", id),
-        Err(e)      => err_500(e),
+        Ok(None) => err_404("capsule", id),
+        Err(e) => err_500(e),
     }
 }
 
-pub async fn capsule_delete(
-    State(s): State<AppState>,
-    Path(id): Path<i64>,
-) -> ApiResponse {
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::capsules::discard(&mut conn, id) {
         Ok(Some(r)) => ok(r),
-        Ok(None)    => err_404("capsule", id),
-        Err(e)      => err_500(e),
+        Ok(None) => err_404("capsule", id),
+        Err(e) => err_500(e),
     }
 }
 
@@ -207,10 +232,13 @@ pub async fn capsule_search(
     State(s): State<AppState>,
     Query(params): Query<CapsuleSearchParams>,
 ) -> ApiResponse {
-    let conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::search::capsule_find(&conn, &params.q, params.compound.as_deref(), params.limit) {
         Ok(results) => ok(results),
-        Err(e)      => err_500(e),
+        Err(e) => err_500(e),
     }
 }
 
@@ -220,8 +248,13 @@ pub async fn prescription_open(
     State(s): State<AppState>,
     Json(input): Json<NewPrescription>,
 ) -> ApiResponse {
-    if let Err(e) = input.validate() { return err_422(e); }
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+    if let Err(e) = input.validate() {
+        return err_422(e);
+    }
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::prescriptions::open(&mut conn, &input) {
         Ok(rx) => ok_created(rx),
         Err(e) => {
@@ -238,15 +271,15 @@ pub async fn prescription_open(
     }
 }
 
-pub async fn prescription_get(
-    State(s): State<AppState>,
-    Path(id): Path<String>,
-) -> ApiResponse {
-    let conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+pub async fn prescription_get(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::prescriptions::read(&conn, &id) {
         Ok(Some(rx)) => ok(rx),
-        Ok(None)     => err_404("prescription", &id),
-        Err(e)       => err_500(e),
+        Ok(None) => err_404("prescription", &id),
+        Err(e) => err_500(e),
     }
 }
 
@@ -262,18 +295,21 @@ pub async fn prescription_close(
     Path(id): Path<String>,
     Json(_body): Json<PrescriptionCloseBody>,
 ) -> ApiResponse {
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::prescriptions::close(&mut conn, &id) {
         Ok(rx) => ok(rx),
         Err(e) => err_500(e),
     }
 }
 
-pub async fn prescription_delete(
-    State(s): State<AppState>,
-    Path(id): Path<String>,
-) -> ApiResponse {
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+pub async fn prescription_delete(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::prescriptions::discard(&mut conn, &id) {
         Ok(()) => ok(json!({ "discarded": true })),
         Err(e) => err_500(e),
@@ -283,21 +319,26 @@ pub async fn prescription_delete(
 // ─── Bottles ──────────────────────────────────────────────────────────────────
 
 pub async fn bottle_list(State(s): State<AppState>) -> ApiResponse {
-    let conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::bottles::list(&conn) {
         Ok(bottles) => ok(bottles),
-        Err(e)      => err_500(e),
+        Err(e) => err_500(e),
     }
 }
 
-pub async fn bottle_create(
-    State(s): State<AppState>,
-    Json(input): Json<NewBottle>,
-) -> ApiResponse {
-    if let Err(e) = input.validate() { return err_422(e); }
-    let mut conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
+pub async fn bottle_create(State(s): State<AppState>, Json(input): Json<NewBottle>) -> ApiResponse {
+    if let Err(e) = input.validate() {
+        return err_422(e);
+    }
+    let mut conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
     match store::bottles::create(&mut conn, &input) {
-        Ok(b)  => ok_created(b),
+        Ok(b) => ok_created(b),
         Err(e) => err_500(e),
     }
 }
@@ -317,8 +358,16 @@ pub async fn context_get(
     State(s): State<AppState>,
     Query(params): Query<ContextParams>,
 ) -> ApiResponse {
-    let conn = match open_conn(&s) { Ok(c) => c, Err(r) => return r };
-    match store::search::pill_context(&conn, params.bottle_id, params.prescription_limit, params.pill_limit) {
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::search::pill_context(
+        &conn,
+        params.bottle_id,
+        params.prescription_limit,
+        params.pill_limit,
+    ) {
         Ok(ctx) => ok(json!({
             "context":            ctx.context,
             "prescription_count": ctx.prescription_count,
@@ -328,5 +377,9 @@ pub async fn context_get(
     }
 }
 
-fn default_5() -> u32 { 5 }
-fn default_30() -> u32 { 30 }
+fn default_5() -> u32 {
+    5
+}
+fn default_30() -> u32 {
+    30
+}

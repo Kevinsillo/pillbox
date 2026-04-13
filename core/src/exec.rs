@@ -98,8 +98,8 @@ pub fn run() -> Result<()> {
 }
 
 fn execute(raw: &str) -> Result<Response> {
-    let req: Request = serde_json::from_str(raw)
-        .map_err(|e| anyhow::anyhow!("request_parse_error: {}", e))?;
+    let req: Request =
+        serde_json::from_str(raw).map_err(|e| anyhow::anyhow!("request_parse_error: {}", e))?;
 
     let path = config::resolve_db_path()
         .ok_or_else(|| anyhow::anyhow!("no_db: no se encontró ninguna DB de Pillbox"))?;
@@ -114,53 +114,79 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
     match tool {
         // ── Pills ──────────────────────────────────────────────────────────────
         "pill_take" => {
-            let req: NewPill = match from_value(input) { Ok(v) => v, Err(r) => return r };
-            if let Err(r) = validate(&req) { return r; }
+            let req: NewPill = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
+            if let Err(r) = validate(&req) {
+                return r;
+            }
             match store::pills::take(conn, &req) {
-                Ok(r)  => Response::ok(r),
+                Ok(r) => Response::ok(r),
                 Err(e) => anyhow_to_response(e),
             }
         }
 
         "pill_read" => {
             #[derive(Deserialize)]
-            struct In { id: i64 }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
+            struct In {
+                id: i64,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
             match store::pills::read(conn, req.id) {
                 Ok(Some(p)) => Response::ok(p),
-                Ok(None)    => Response::err("not_found", format!("pill {} no encontrada", req.id)),
-                Err(e)      => anyhow_to_response(e),
+                Ok(None) => Response::err("not_found", format!("pill {} no encontrada", req.id)),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
         "pill_revise" => {
             #[derive(Deserialize)]
-            struct In { id: i64, patch: PillPatch }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
-            if let Err(r) = validate(&req.patch) { return r; }
+            struct In {
+                id: i64,
+                patch: PillPatch,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
+            if let Err(r) = validate(&req.patch) {
+                return r;
+            }
             match store::pills::revise(conn, req.id, &req.patch) {
                 Ok(Some(p)) => Response::ok(p),
-                Ok(None)    => Response::err("not_found", format!("pill {} no encontrada", req.id)),
-                Err(e)      => anyhow_to_response(e),
+                Ok(None) => Response::err("not_found", format!("pill {} no encontrada", req.id)),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
         "pill_discard" => {
             #[derive(Deserialize)]
-            struct In { id: i64 }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
+            struct In {
+                id: i64,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
             match store::pills::discard(conn, req.id) {
                 Ok(Some(r)) => Response::ok(r),
-                Ok(None)    => Response::err("not_found", format!("pill {} no encontrada", req.id)),
-                Err(e)      => anyhow_to_response(e),
+                Ok(None) => Response::err("not_found", format!("pill {} no encontrada", req.id)),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
         "pill_find" => {
-            let params: SearchParams = match from_value(input) { Ok(v) => v, Err(r) => return r };
+            let params: SearchParams = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
             match store::search::pill_find(conn, &params) {
                 Ok(results) => Response::ok(results),
-                Err(e)      => anyhow_to_response(e),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
@@ -173,8 +199,16 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
                 #[serde(default = "default_30")]
                 pill_limit: u32,
             }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
-            match store::search::pill_context(conn, req.bottle_id, req.prescription_limit, req.pill_limit) {
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
+            match store::search::pill_context(
+                conn,
+                req.bottle_id,
+                req.prescription_limit,
+                req.pill_limit,
+            ) {
                 Ok(ctx) => Response::ok(json!({
                     "context":             ctx.context,
                     "prescription_count":  ctx.prescription_count,
@@ -186,45 +220,68 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
 
         // ── Capsules ───────────────────────────────────────────────────────────
         "capsule_take" => {
-            let req: NewCapsule = match from_value(input) { Ok(v) => v, Err(r) => return r };
-            if let Err(r) = validate(&req) { return r; }
+            let req: NewCapsule = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
+            if let Err(r) = validate(&req) {
+                return r;
+            }
             match store::capsules::take(conn, &req) {
-                Ok(r)  => Response::ok(r),
+                Ok(r) => Response::ok(r),
                 Err(e) => anyhow_to_response(e),
             }
         }
 
         "capsule_read" => {
             #[derive(Deserialize)]
-            struct In { id: i64 }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
+            struct In {
+                id: i64,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
             match store::capsules::read(conn, req.id) {
                 Ok(Some(c)) => Response::ok(c),
-                Ok(None)    => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
-                Err(e)      => anyhow_to_response(e),
+                Ok(None) => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
         "capsule_revise" => {
             #[derive(Deserialize)]
-            struct In { id: i64, patch: CapsulePatch }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
-            if let Err(r) = validate(&req.patch) { return r; }
+            struct In {
+                id: i64,
+                patch: CapsulePatch,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
+            if let Err(r) = validate(&req.patch) {
+                return r;
+            }
             match store::capsules::revise(conn, req.id, &req.patch) {
                 Ok(Some(c)) => Response::ok(c),
-                Ok(None)    => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
-                Err(e)      => anyhow_to_response(e),
+                Ok(None) => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
         "capsule_discard" => {
             #[derive(Deserialize)]
-            struct In { id: i64 }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
+            struct In {
+                id: i64,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
             match store::capsules::discard(conn, req.id) {
                 Ok(Some(r)) => Response::ok(r),
-                Ok(None)    => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
-                Err(e)      => anyhow_to_response(e),
+                Ok(None) => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
@@ -235,17 +292,26 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
                 compound: Option<String>,
                 limit: Option<u32>,
             }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
-            match store::search::capsule_find(conn, &req.query, req.compound.as_deref(), req.limit) {
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
+            match store::search::capsule_find(conn, &req.query, req.compound.as_deref(), req.limit)
+            {
                 Ok(results) => Response::ok(results),
-                Err(e)      => anyhow_to_response(e),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
         // ── Prescriptions ──────────────────────────────────────────────────────
         "prescription_open" => {
-            let req: NewPrescription = match from_value(input) { Ok(v) => v, Err(r) => return r };
-            if let Err(r) = validate(&req) { return r; }
+            let req: NewPrescription = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
+            if let Err(r) = validate(&req) {
+                return r;
+            }
             match store::prescriptions::open(conn, &req) {
                 Ok(rx) => Response::ok(rx),
                 Err(e) => {
@@ -264,8 +330,13 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
 
         "prescription_close" => {
             #[derive(Deserialize)]
-            struct In { id: String }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
+            struct In {
+                id: String,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
             match store::prescriptions::close(conn, &req.id) {
                 Ok(rx) => Response::ok(rx),
                 Err(e) => anyhow_to_response(e),
@@ -274,41 +345,57 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
 
         "prescription_read" => {
             #[derive(Deserialize)]
-            struct In { id: String }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
+            struct In {
+                id: String,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
             match store::prescriptions::read(conn, &req.id) {
                 Ok(Some(rx)) => Response::ok(rx),
-                Ok(None)     => Response::err("not_found", format!("prescription {} no encontrada", req.id)),
-                Err(e)       => anyhow_to_response(e),
+                Ok(None) => Response::err(
+                    "not_found",
+                    format!("prescription {} no encontrada", req.id),
+                ),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
         "prescription_discard" => {
             #[derive(Deserialize)]
-            struct In { id: String }
-            let req: In = match from_value(input) { Ok(v) => v, Err(r) => return r };
+            struct In {
+                id: String,
+            }
+            let req: In = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
             match store::prescriptions::discard(conn, &req.id) {
-                Ok(())  => Response::ok(json!({ "discarded": true })),
-                Err(e)  => anyhow_to_response(e),
+                Ok(()) => Response::ok(json!({ "discarded": true })),
+                Err(e) => anyhow_to_response(e),
             }
         }
 
         // ── Bottles ────────────────────────────────────────────────────────────
         "bottle_create" => {
-            let req: NewBottle = match from_value(input) { Ok(v) => v, Err(r) => return r };
-            if let Err(r) = validate(&req) { return r; }
+            let req: NewBottle = match from_value(input) {
+                Ok(v) => v,
+                Err(r) => return r,
+            };
+            if let Err(r) = validate(&req) {
+                return r;
+            }
             match store::bottles::create(conn, &req) {
-                Ok(b)  => Response::ok(b),
+                Ok(b) => Response::ok(b),
                 Err(e) => anyhow_to_response(e),
             }
         }
 
-        "bottle_list" => {
-            match store::bottles::list(conn) {
-                Ok(bottles) => Response::ok(bottles),
-                Err(e)      => anyhow_to_response(e),
-            }
-        }
+        "bottle_list" => match store::bottles::list(conn) {
+            Ok(bottles) => Response::ok(bottles),
+            Err(e) => anyhow_to_response(e),
+        },
 
         // ── Desconocido ────────────────────────────────────────────────────────
         other => Response::err(
@@ -321,8 +408,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 fn from_value<T: for<'de> Deserialize<'de>>(v: Value) -> Result<T, Response> {
-    serde_json::from_value(v)
-        .map_err(|e| Response::err("invalid_input", e.to_string()))
+    serde_json::from_value(v).map_err(|e| Response::err("invalid_input", e.to_string()))
 }
 
 fn validate<T: Validate>(v: &T) -> Result<(), Response> {
@@ -344,5 +430,9 @@ fn anyhow_to_response(e: anyhow::Error) -> Response {
     Response::err("error", msg)
 }
 
-fn default_5() -> u32 { 5 }
-fn default_30() -> u32 { 30 }
+fn default_5() -> u32 {
+    5
+}
+fn default_30() -> u32 {
+    30
+}

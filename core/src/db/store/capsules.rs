@@ -42,7 +42,11 @@ pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleTakeResu
     )?;
 
     tx.commit()?;
-    Ok(CapsuleTakeResult { id, sync_id, action: "created" })
+    Ok(CapsuleTakeResult {
+        id,
+        sync_id,
+        action: "created",
+    })
 }
 
 /// Lee una capsule completa por ID (no descartada).
@@ -64,21 +68,22 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Capsule>> {
 pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Option<Capsule>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-    let affected = tx.execute(
-        "UPDATE capsules
+    let affected = tx
+        .execute(
+            "UPDATE capsules
          SET title    = COALESCE(?1, title),
              content  = COALESCE(?2, content),
              compound = COALESCE(?3, compound),
              updated_at = datetime('now')
          WHERE id = ?4 AND deleted_at IS NULL",
-        params![
-            patch.title.as_deref(),
-            patch.content.as_deref(),
-            patch.compound.as_ref().map(|c| c.as_str()),
-            id,
-        ],
-    )
-    .context("no se pudo actualizar la capsule")?;
+            params![
+                patch.title.as_deref(),
+                patch.content.as_deref(),
+                patch.compound.as_ref().map(|c| c.as_str()),
+                id,
+            ],
+        )
+        .context("no se pudo actualizar la capsule")?;
 
     if affected == 0 {
         return Ok(None);
@@ -107,12 +112,13 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Op
 pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<CapsuleDiscardResult>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-    let affected = tx.execute(
-        "UPDATE capsules SET deleted_at = datetime('now')
+    let affected = tx
+        .execute(
+            "UPDATE capsules SET deleted_at = datetime('now')
          WHERE id = ?1 AND deleted_at IS NULL",
-        params![id],
-    )
-    .context("no se pudo descartar la capsule")?;
+            params![id],
+        )
+        .context("no se pudo descartar la capsule")?;
 
     if affected == 0 {
         return Ok(None);

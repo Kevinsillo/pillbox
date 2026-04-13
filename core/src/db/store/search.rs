@@ -195,7 +195,11 @@ pub fn pill_context(
     if !prescriptions.is_empty() {
         md.push_str("## Recent Prescriptions\n\n");
         for rx in &prescriptions {
-            let status = if rx.ended_at.is_some() { "closed" } else { "open" };
+            let status = if rx.ended_at.is_some() {
+                "closed"
+            } else {
+                "open"
+            };
             let date = rx.started_at.get(..10).unwrap_or(&rx.started_at);
             md.push_str(&format!(
                 "- **{}** ({}, {}) [{} pills]\n",
@@ -273,9 +277,21 @@ mod tests {
         .unwrap();
 
         for (title, content, compound) in [
-            ("JWT tokens con refresh", "Implementamos stateless JWT con refresh tokens almacenados en SQLite.", PillCompound::Decision),
-            ("Race condition en dedup", "BEGIN IMMEDIATE previene race conditions en escrituras concurrentes.", PillCompound::Bugfix),
-            ("FTS5 tokenizer unicode61", "El tokenizer unicode61 normaliza acentos automáticamente.", PillCompound::Discovery),
+            (
+                "JWT tokens con refresh",
+                "Implementamos stateless JWT con refresh tokens almacenados en SQLite.",
+                PillCompound::Decision,
+            ),
+            (
+                "Race condition en dedup",
+                "BEGIN IMMEDIATE previene race conditions en escrituras concurrentes.",
+                PillCompound::Bugfix,
+            ),
+            (
+                "FTS5 tokenizer unicode61",
+                "El tokenizer unicode61 normaliza acentos automáticamente.",
+                PillCompound::Discovery,
+            ),
         ] {
             pills::take(
                 conn,
@@ -385,7 +401,10 @@ mod tests {
 
     #[test]
     fn sanitize_fts_query_wraps_terms() {
-        assert_eq!(sanitize_fts_query("fix auth bug"), "\"fix\" \"auth\" \"bug\"");
+        assert_eq!(
+            sanitize_fts_query("fix auth bug"),
+            "\"fix\" \"auth\" \"bug\""
+        );
         assert_eq!(sanitize_fts_query("AND OR NOT"), "\"AND\" \"OR\" \"NOT\"");
         assert_eq!(sanitize_fts_query(""), "");
     }

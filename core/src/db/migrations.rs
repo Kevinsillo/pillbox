@@ -84,11 +84,9 @@ mod tests {
         run(&conn).unwrap();
 
         let version: i64 = conn
-            .query_row(
-                "SELECT MAX(version) FROM schema_migrations",
-                [],
-                |r| r.get(0),
-            )
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |r| {
+                r.get(0)
+            })
             .unwrap();
 
         assert_eq!(version, CURRENT_SCHEMA_VERSION);

@@ -15,7 +15,6 @@ pub const LOCAL_DIR: &str = ".pillbox";
 /// Nombre del fichero de base de datos.
 pub const DB_FILENAME: &str = "pillbox.db";
 
-
 /// Resuelve la ruta de la DB según el contexto de ejecución.
 ///
 /// Orden de prioridad:
@@ -54,10 +53,7 @@ pub fn global_db_path() -> PathBuf {
 
 /// Indica si una ruta de DB corresponde a una pillbox local de proyecto.
 pub fn is_local_db(path: &Path) -> bool {
-    path.starts_with(LOCAL_DIR)
-        || path
-            .components()
-            .any(|c| c.as_os_str() == LOCAL_DIR)
+    path.starts_with(LOCAL_DIR) || path.components().any(|c| c.as_os_str() == LOCAL_DIR)
 }
 
 #[cfg(test)]

@@ -17,8 +17,8 @@ pub fn open(path: &Path) -> Result<Connection> {
         }
     }
 
-    let conn = Connection::open(path)
-        .with_context(|| format!("no se pudo abrir la DB en {:?}", path))?;
+    let conn =
+        Connection::open(path).with_context(|| format!("no se pudo abrir la DB en {:?}", path))?;
 
     configure(&conn)?;
     migrations::run(&conn)?;

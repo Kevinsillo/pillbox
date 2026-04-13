@@ -5,7 +5,11 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "pillbox", version, about = "Persistent knowledge memory for AI agents")]
+#[command(
+    name = "pillbox",
+    version,
+    about = "Persistent knowledge memory for AI agents"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -61,8 +65,8 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::Status      => cmd_status(),
-        Command::Exec        => exec::run(),
+        Command::Status => cmd_status(),
+        Command::Exec => exec::run(),
         Command::Serve { port } => cmd_serve(port).await,
         Command::Bottle { cmd } => match cmd {
             BottleCommand::Migrate { reverse, capsules } => cmd_bottle_migrate(reverse, capsules),
@@ -104,7 +108,7 @@ fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
     use pillbox::db::{connection, migrate};
 
     let global_path = pillbox::config::global_db_path();
-    let local_path  = pillbox::config::local_db_path();
+    let local_path = pillbox::config::local_db_path();
 
     if !global_path.exists() {
         anyhow::bail!("no se encontró la DB global ({})", global_path.display());
@@ -130,12 +134,19 @@ fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
             rusqlite::params![dir_str.as_ref()],
             |r| r.get(0),
         )
-        .map_err(|_| anyhow::anyhow!(
-            "no hay ningún bottle registrado para '{}' en {}",
-            dir_str, src_path.display()
-        ))?;
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "no hay ningún bottle registrado para '{}' en {}",
+                dir_str,
+                src_path.display()
+            )
+        })?;
 
-    let direction = if reverse { "global → local" } else { "local → global" };
+    let direction = if reverse {
+        "global → local"
+    } else {
+        "local → global"
+    };
     println!("Migrando bottle '{}' ({})...", bottle_name, direction);
 
     let mut dst_conn = connection::open(dst_path)?;

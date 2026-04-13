@@ -17,13 +17,13 @@ pub enum CapsuleCompound {
 impl CapsuleCompound {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Convention   => "convention",
-            Self::Workflow     => "workflow",
-            Self::Environment  => "environment",
-            Self::Context      => "context",
-            Self::Goal         => "goal",
-            Self::Feedback     => "feedback",
-            Self::Manual       => "manual",
+            Self::Convention => "convention",
+            Self::Workflow => "workflow",
+            Self::Environment => "environment",
+            Self::Context => "context",
+            Self::Goal => "goal",
+            Self::Feedback => "feedback",
+            Self::Manual => "manual",
         }
     }
 }

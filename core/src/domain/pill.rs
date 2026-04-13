@@ -19,15 +19,15 @@ pub enum PillCompound {
 impl PillCompound {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Decision            => "decision",
-            Self::Architecture        => "architecture",
-            Self::Bugfix              => "bugfix",
-            Self::Pattern             => "pattern",
-            Self::Discovery           => "discovery",
-            Self::Learning            => "learning",
-            Self::Feedback            => "feedback",
+            Self::Decision => "decision",
+            Self::Architecture => "architecture",
+            Self::Bugfix => "bugfix",
+            Self::Pattern => "pattern",
+            Self::Discovery => "discovery",
+            Self::Learning => "learning",
+            Self::Feedback => "feedback",
             Self::PrescriptionSummary => "prescription_summary",
-            Self::Manual              => "manual",
+            Self::Manual => "manual",
         }
     }
 }
@@ -107,7 +107,10 @@ mod tests {
     fn compound_as_str_roundtrip() {
         assert_eq!(PillCompound::Decision.as_str(), "decision");
         assert_eq!(PillCompound::Feedback.as_str(), "feedback");
-        assert_eq!(PillCompound::PrescriptionSummary.as_str(), "prescription_summary");
+        assert_eq!(
+            PillCompound::PrescriptionSummary.as_str(),
+            "prescription_summary"
+        );
     }
 
     #[test]

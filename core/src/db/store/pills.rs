@@ -28,15 +28,16 @@ pub struct PillDiscardResult {
 /// Falla con `prescription_required` si no se cumple.
 pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
     // Verificar que la prescription existe y está abierta (fuera de tx: lectura rápida)
-    let rx_open: bool = conn.query_row(
-        "SELECT EXISTS(
+    let rx_open: bool = conn
+        .query_row(
+            "SELECT EXISTS(
              SELECT 1 FROM prescriptions
              WHERE id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
          )",
-        params![input.prescription_id],
-        |row| row.get(0),
-    )
-    .context("error al verificar la prescription")?;
+            params![input.prescription_id],
+            |row| row.get(0),
+        )
+        .context("error al verificar la prescription")?;
 
     if !rx_open {
         anyhow::bail!(
@@ -74,7 +75,11 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
     )?;
 
     tx.commit()?;
-    Ok(PillTakeResult { id, sync_id, action: "created" })
+    Ok(PillTakeResult {
+        id,
+        sync_id,
+        action: "created",
+    })
 }
 
 /// Lee una pill completa por ID (no descartada).
@@ -97,21 +102,22 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
 pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Option<Pill>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-    let affected = tx.execute(
-        "UPDATE pills
+    let affected = tx
+        .execute(
+            "UPDATE pills
          SET title    = COALESCE(?1, title),
              content  = COALESCE(?2, content),
              compound = COALESCE(?3, compound),
              updated_at = datetime('now')
          WHERE id = ?4 AND deleted_at IS NULL",
-        params![
-            patch.title.as_deref(),
-            patch.content.as_deref(),
-            patch.compound.as_ref().map(|c| c.as_str()),
-            id,
-        ],
-    )
-    .context("no se pudo actualizar la pill")?;
+            params![
+                patch.title.as_deref(),
+                patch.content.as_deref(),
+                patch.compound.as_ref().map(|c| c.as_str()),
+                id,
+            ],
+        )
+        .context("no se pudo actualizar la pill")?;
 
     if affected == 0 {
         return Ok(None);
@@ -153,12 +159,13 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
 pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<PillDiscardResult>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-    let affected = tx.execute(
-        "UPDATE pills SET deleted_at = datetime('now')
+    let affected = tx
+        .execute(
+            "UPDATE pills SET deleted_at = datetime('now')
          WHERE id = ?1 AND deleted_at IS NULL",
-        params![id],
-    )
-    .context("no se pudo descartar la pill")?;
+            params![id],
+        )
+        .context("no se pudo descartar la pill")?;
 
     if affected == 0 {
         return Ok(None);

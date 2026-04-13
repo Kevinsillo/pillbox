@@ -30,7 +30,7 @@ pub enum BottleScope {
 impl BottleScope {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Local  => "local",
+            Self::Local => "local",
             Self::Global => "global",
         }
     }

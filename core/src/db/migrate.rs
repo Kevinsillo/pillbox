@@ -13,10 +13,10 @@ use rusqlite::{params, Connection};
 
 #[derive(Debug)]
 pub struct MigrateResult {
-    pub bottles:       usize,
+    pub bottles: usize,
     pub prescriptions: usize,
-    pub pills:         usize,
-    pub capsules:      usize,
+    pub pills: usize,
+    pub capsules: usize,
 }
 
 /// Migra un bottle completo (prescripciones + pills) de `src` a `dst`.
@@ -34,7 +34,14 @@ pub fn migrate_bottle(
         .query_row(
             "SELECT name, display_name, directory, scope FROM bottles WHERE name = ?1",
             params![bottle_name],
-            |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, String>(3)?)),
+            |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                ))
+            },
         )
         .with_context(|| format!("bottle '{}' no encontrado en origen", bottle_name))?;
 
@@ -109,16 +116,16 @@ pub fn migrate_bottle(
         let pills: Vec<_> = pill_stmt
             .query_map(params![rx_id], |r| {
                 Ok((
-                    r.get::<_, String>(0)?,   // sync_id
-                    r.get::<_, String>(1)?,   // compound
-                    r.get::<_, String>(2)?,   // title
-                    r.get::<_, String>(3)?,   // content
-                    r.get::<_, String>(4)?,   // prescription_id
-                    r.get::<_, Option<String>>(5)?, // dispenser
-                    r.get::<_, Option<String>>(6)?, // author_name
-                    r.get::<_, Option<String>>(7)?, // author_email
-                    r.get::<_, String>(8)?,   // created_at
-                    r.get::<_, String>(9)?,   // updated_at
+                    r.get::<_, String>(0)?,          // sync_id
+                    r.get::<_, String>(1)?,          // compound
+                    r.get::<_, String>(2)?,          // title
+                    r.get::<_, String>(3)?,          // content
+                    r.get::<_, String>(4)?,          // prescription_id
+                    r.get::<_, Option<String>>(5)?,  // dispenser
+                    r.get::<_, Option<String>>(6)?,  // author_name
+                    r.get::<_, Option<String>>(7)?,  // author_email
+                    r.get::<_, String>(8)?,          // created_at
+                    r.get::<_, String>(9)?,          // updated_at
                     r.get::<_, Option<String>>(10)?, // deleted_at
                 ))
             })?
@@ -189,9 +196,9 @@ pub fn migrate_bottle(
     tx.commit()?;
 
     Ok(MigrateResult {
-        bottles:       1,
+        bottles: 1,
         prescriptions: rx_count,
-        pills:         pill_count,
-        capsules:      capsule_count,
+        pills: pill_count,
+        capsules: capsule_count,
     })
 }

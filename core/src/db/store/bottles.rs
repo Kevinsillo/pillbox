@@ -10,19 +10,25 @@ pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
     tx.execute(
         "INSERT INTO bottles (name, display_name, directory, scope)
          VALUES (?1, ?2, ?3, ?4)",
-        params![input.name, input.display_name, input.directory, input.scope.as_str()],
+        params![
+            input.name,
+            input.display_name,
+            input.directory,
+            input.scope.as_str()
+        ],
     )
     .context("no se pudo crear el bottle")?;
 
     let id = tx.last_insert_rowid();
 
-    let bottle = tx.query_row(
-        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
+    let bottle = tx
+        .query_row(
+            "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
          FROM bottles WHERE id = ?1",
-        params![id],
-        row_to_bottle,
-    )
-    .context("no se pudo leer el bottle recién creado")?;
+            params![id],
+            row_to_bottle,
+        )
+        .context("no se pudo leer el bottle recién creado")?;
 
     tx.commit()?;
     Ok(bottle)

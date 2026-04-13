@@ -1,4 +1,4 @@
-.PHONY: dev dev-mcp build test lint check \
+.PHONY: dev dev-mcp build test lint check fmt fmt-check \
         build-linux build-mac build-win build-all \
         db-shell db-reset \
         mcp-build mcp-install mcp-dev \
@@ -38,8 +38,18 @@ lint:
 typecheck:
 	cd mcp && npm run typecheck
 
-## Ejecuta test + lint + typecheck
-check: test lint typecheck
+## Formatea todo el código: Rust (cargo fmt) + TypeScript (prettier)
+fmt:
+	cargo fmt --manifest-path core/Cargo.toml
+	cd mcp && npm run fmt
+
+## Verifica formato sin modificar (útil en CI)
+fmt-check:
+	cargo fmt --manifest-path core/Cargo.toml -- --check
+	cd mcp && npm run fmt:check
+
+## Ejecuta test + lint + typecheck + fmt-check
+check: test lint typecheck fmt-check
 
 # ─── Distribución ─────────────────────────────────────────────────────────────
 
