@@ -29,6 +29,8 @@ dirs = "5"
 
 # CLI
 clap = { version = "4", features = ["derive"] }
+inquire = "0.7"
+indicatif = "0.17"
 
 # Error handling
 anyhow = "1"

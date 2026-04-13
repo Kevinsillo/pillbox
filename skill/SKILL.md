@@ -1,149 +1,60 @@
-# Pillbox — Memoria persistente para agentes IA
-
-Pillbox guarda el conocimiento generado durante el trabajo en proyectos para que puedas recuperarlo en sesiones futuras. Piensa en él como un diario técnico estructurado que el agente escribe y lee.
-
+---
+name: pillbox
+description: >
+  Apoyo para las MCP tools de Pillbox — memoria persistente por proyectos para agentes IA.
+  Usar cuando las herramientas pill_take, pill_find, prescription_open o bottle_list están disponibles,
+  al empezar trabajo en un proyecto conocido, o cuando el usuario pide recordar o recuperar algo.
+metadata:
+  version: 2.0.0
 ---
 
-## Cuándo usar Pillbox
+# Pillbox — Referencia MCP
 
-**Al inicio de cada sesión** — recupera el contexto del proyecto:
-```
-pill_context(bottle_id: <id>)
-```
-Devuelve un resumen Markdown con prescripciones recientes y sus pills. Úsalo siempre antes de empezar a trabajar en un proyecto conocido.
+Pillbox guarda conocimiento generado durante el trabajo para recuperarlo en sesiones futuras.
 
-**Durante el trabajo** — guarda lo que descubres, decides o aprendes:
-```
-prescription_open → pill_take (varias veces) → prescription_close
-```
+## Flujo básico
 
-**Para buscar** — cuando necesitas recordar algo específico:
 ```
-pill_find(q: "auth middleware", bottle_id: <id>)
+bottle_list()                          → encontrar el bottle_id del proyecto actual
+pill_context(bottle_id)                → recuperar contexto antes de empezar
+prescription_open(bottle_id, title)    → abrir sesión con título descriptivo de la tarea
+  pill_take(prescription_id, ...)      → guardar decisiones, bugs, patrones durante el trabajo
+  pill_take(compound: "prescription_summary", ...)  → resumen antes de cerrar
+prescription_close(id)                 → cerrar al terminar
 ```
-
----
 
 ## Pills vs Capsules
 
 | | Pills | Capsules |
 |---|---|---|
-| **Scope** | Un proyecto (bottle) | Cross-proyecto (global) |
-| **Ciclo** | Dentro de una prescripción | Independiente |
-| **Qué guardar** | Decisiones, bugs, patrones del proyecto | Preferencias, workflow, entorno del usuario |
+| **Scope** | Un proyecto (dentro de una prescripción) | Cross-proyecto (globales) |
+| **Qué guardar** | Decisiones, bugs, patrones del código | Preferencias, workflow, entorno del usuario |
 
-**Usa pills para**: decisiones de arquitectura, bugs resueltos, patrones establecidos, descubrimientos sobre el código.
+## Compounds — Pills
 
-**Usa capsules para**: convenciones personales, forma de trabajar, entorno de desarrollo, objetivos.
-
----
-
-## Flujo de trabajo normal
-
-### 1. Inicio de sesión
-```
-bottle_list()                          → encontrar el bottle_id del proyecto
-pill_context(bottle_id: X)             → recuperar contexto reciente
-capsule_find(query: "convenciones")    → recordar preferencias personales relevantes
-```
-
-### 2. Durante el trabajo
-```
-prescription_open(bottle_id: X, title: "Implementar autenticación JWT")
-  → devuelve { id: "uuid-de-la-rx" }
-
-pill_take(prescription_id: "...", compound: "decision", title: "...", content: "...")
-pill_take(prescription_id: "...", compound: "bugfix", title: "...", content: "...")
-...
-
-prescription_close(id: "uuid-de-la-rx")
-```
-
-### 3. Resumen antes de cerrar
-Antes de `prescription_close`, guarda un resumen:
-```
-pill_take(
-  prescription_id: "...",
-  compound: "prescription_summary",
-  title: "Resumen: Implementar autenticación JWT",
-  content: "## Objetivo\n...\n## Logrado\n...\n## Próximos pasos\n..."
-)
-```
-
----
-
-## Compounds de pills
-
-| Compound | Cuándo usarlo |
+| Compound | Cuándo |
 |---|---|
-| `decision` | Elección técnica o de diseño: qué, por qué, qué se descartó |
-| `architecture` | Estructura, diseño de sistema o componentes |
-| `bugfix` | Bug resuelto: síntoma, causa raíz, fix aplicado |
-| `pattern` | Patrón o convención establecida en este proyecto |
+| `decision` | Elección técnica: qué, por qué, qué se descartó |
+| `architecture` | Estructura, diseño de sistema o módulos |
+| `bugfix` | Bug resuelto: síntoma, causa raíz, fix |
+| `pattern` | Convención establecida en este proyecto |
 | `discovery` | Algo no obvio encontrado en el código o dominio |
-| `learning` | Aprendizaje técnico (el modelo falló, reintentó, extrajo lección) |
-| `feedback` | Corrección o lección aprendida en este proyecto concreto |
-| `prescription_summary` | Resumen de la sesión — siempre al cerrar |
-| `manual` | Entrada libre sin categoría específica |
+| `learning` | El modelo falló y extrajo una lección |
+| `feedback` | El usuario corrigió el enfoque del modelo |
+| `prescription_summary` | Resumen de sesión — siempre antes de cerrar |
 
-## Compounds de capsules
+## Compounds — Capsules
 
-| Compound | Cuándo usarlo |
+| Compound | Cuándo |
 |---|---|
-| `convention` | Regla o preferencia de código del usuario |
-| `workflow` | Proceso o forma de trabajar |
+| `convention` | Preferencia de estilo o naming que aplica a todo |
+| `workflow` | Proceso preferido del usuario |
 | `environment` | OS, shell, herramientas, versiones |
-| `context` | Situación personal, restricciones, forma de trabajar |
-| `goal` | Objetivo personal o de largo plazo |
-| `feedback` | Lección aprendida de una experiencia concreta |
-| `manual` | Entrada libre |
+| `context` | Restricciones personales o situación del equipo |
+| `goal` | Objetivo de largo plazo del usuario |
 
----
+## Error: prescription_already_open
 
-## Gestión de prescripciones abiertas
-
-Si `prescription_open` devuelve error `prescription_already_open`, el campo `data` contiene la prescripción existente:
-```json
-{
-  "error": "prescription_already_open",
-  "data": { "id": "...", "title": "...", "started_at": "...", "pill_count": 3 }
-}
-```
-
-Opciones:
-- **Reutilizar**: pasa el `id` existente directamente a `pill_take`
-- **Cerrar y abrir nueva**: `prescription_close(id: "...")` → `prescription_open(...)`
-
----
-
-## Referencia rápida de tools
-
-```
-# Bottles
-bottle_list()
-bottle_create(name, display_name, directory, scope)
-
-# Prescriptions
-prescription_open(bottle_id, title)
-prescription_close(id)
-prescription_read(id)
-prescription_discard(id)
-
-# Pills
-pill_take(prescription_id, compound, title, content, [dispenser], [author_name], [author_email])
-pill_read(id)
-pill_revise(id, patch: {title?, content?})
-pill_discard(id)
-pill_find(q, [bottle_id], [compound], [limit])
-pill_context(bottle_id, [prescription_limit=5], [pill_limit=30])
-
-# Capsules
-capsule_take(compound, title, content, [dispenser])
-capsule_read(id)
-capsule_revise(id, patch: {title?, content?})
-capsule_discard(id)
-capsule_find(query, [compound], [limit])
-
-# Admin
-stats()
-```
+Si `prescription_open` devuelve este error, el campo `data` contiene la prescripción activa.
+- **Reutilizar**: pasar el `id` existente a `pill_take`
+- **Cerrar y nueva**: `prescription_close(id)` → `prescription_open(...)`
