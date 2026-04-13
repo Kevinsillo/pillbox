@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #111113;
+  --bg-surface: #18181b;
+  --border: #27272a;
+  --accent-bg: #27272a;
+  --code-bg: #1c1c1f;
+  --text: #a1a1aa;
+  --text-h: #e4e4e7;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Markdown rendered content */
+.markdown {
+  color: var(--text);
+  line-height: 1.6;
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-h);
+    font-weight: 600;
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+  }
+  p { margin-bottom: 0.75em; }
+  ul, ol { padding-left: 1.5em; margin-bottom: 0.75em; }
+  li { margin-bottom: 0.25em; }
+  strong { color: var(--text-h); }
+  a { color: var(--text-h); text-decoration: underline; }
+  hr { border-color: var(--border); margin: 1em 0; }
+  blockquote {
+    border-left: 3px solid var(--border);
+    padding-left: 1em;
+    color: var(--text);
+    margin: 0.75em 0;
+  }
+  code {
+    background: var(--border);
+    color: var(--text-h);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-size: 0.875em;
+  }
+  pre {
+    background: var(--bg);
+    color: var(--text-h);
+    padding: 1em;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin-bottom: 0.75em;
+
+    code { background: none; padding: 0; }
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
