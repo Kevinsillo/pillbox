@@ -4,7 +4,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { pillboxExec } from "../exec.js";
-import { fromExecResult, mcpOk } from "../response.js";
+import { fromExecResult } from "../response.js";
 import {
   PrescriptionOpenSchema,
   PrescriptionCloseSchema,
@@ -13,61 +13,32 @@ import {
 } from "../schemas.js";
 
 export function registerPrescriptionTools(server: McpServer): void {
-  // ── prescription_open ───────────────────────────────────────────────────────
-  server.tool(
-    "prescription_open",
-    "Abre una nueva prescripción (sesión de trabajo) para un bottle. " +
+  server.registerTool("prescription_open", {
+    description:
+      "Abre una nueva prescripción (sesión de trabajo) para un bottle. " +
       "Devuelve el ID de la prescripción creada. " +
       "Si ya hay una abierta, devuelve error `prescription_already_open` con sus datos.",
-    PrescriptionOpenSchema.shape,
-    async (input) => {
-      const result = pillboxExec("prescription_open", input);
-      // Error tipado: prescription_already_open incluye campo data con la existente
-      return fromExecResult(result);
-    },
-  );
+    inputSchema: PrescriptionOpenSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("prescription_open", input)));
 
-  // ── prescription_close ──────────────────────────────────────────────────────
-  server.tool(
-    "prescription_close",
-    "Cierra una prescripción abierta. Finaliza la sesión de trabajo.",
-    PrescriptionCloseSchema.shape,
-    async (input) => {
-      const result = pillboxExec("prescription_close", input);
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("prescription_close", {
+    description: "Cierra una prescripción abierta. Finaliza la sesión de trabajo.",
+    inputSchema: PrescriptionCloseSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("prescription_close", input)));
 
-  // ── prescription_read ───────────────────────────────────────────────────────
-  server.tool(
-    "prescription_read",
-    "Lee los detalles de una prescripción por su ID.",
-    PrescriptionReadSchema.shape,
-    async (input) => {
-      const result = pillboxExec("prescription_read", input);
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("prescription_read", {
+    description: "Lee los detalles de una prescripción por su ID.",
+    inputSchema: PrescriptionReadSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("prescription_read", input)));
 
-  // ── prescription_discard ────────────────────────────────────────────────────
-  server.tool(
-    "prescription_discard",
-    "Descarta una prescripción y hace soft-delete en cascada de todas sus pills.",
-    PrescriptionDiscardSchema.shape,
-    async (input) => {
-      const result = pillboxExec("prescription_discard", input);
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("prescription_discard", {
+    description:
+      "Descarta una prescripción y hace soft-delete en cascada de todas sus pills.",
+    inputSchema: PrescriptionDiscardSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("prescription_discard", input)));
 
-  // ── bottle_list ─────────────────────────────────────────────────────────────
-  server.tool(
-    "bottle_list",
-    "Lista todos los bottles (proyectos) registrados en Pillbox.",
-    {},
-    async () => {
-      const result = pillboxExec("bottle_list", {});
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("bottle_list", {
+    description: "Lista todos los bottles (proyectos) registrados en Pillbox.",
+    inputSchema: {},
+  }, async () => fromExecResult(pillboxExec("bottle_list", {})));
 }

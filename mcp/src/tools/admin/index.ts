@@ -8,27 +8,15 @@ import { fromExecResult } from "../../response.js";
 import { BottleCreateSchema } from "../../schemas.js";
 
 export function registerAdminTools(server: McpServer): void {
-  // ── bottle_create ───────────────────────────────────────────────────────────
-  server.tool(
-    "bottle_create",
-    "Registra un nuevo bottle (proyecto) en Pillbox. " +
+  server.registerTool("bottle_create", {
+    description:
+      "Registra un nuevo bottle (proyecto) en Pillbox. " +
       "Normalmente lo hace `pillbox bottle init`; esta tool existe para automatización.",
-    BottleCreateSchema.shape,
-    async (input) => {
-      const result = pillboxExec("bottle_create", input);
-      return fromExecResult(result);
-    },
-  );
+    inputSchema: BottleCreateSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("bottle_create", input)));
 
-  // ── stats ───────────────────────────────────────────────────────────────────
-  server.tool(
-    "stats",
-    "Devuelve el listado de bottles con conteo de prescripciones y pills activas.",
-    {},
-    async () => {
-      // Reutiliza bottle_list — el store ya devuelve los datos básicos
-      const result = pillboxExec("bottle_list", {});
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("stats", {
+    description: "Devuelve el listado de bottles con sus datos básicos.",
+    inputSchema: {},
+  }, async () => fromExecResult(pillboxExec("bottle_list", {})));
 }

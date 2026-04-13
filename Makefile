@@ -1,26 +1,55 @@
-.PHONY: dev build test lint build-linux build-mac build-win build-all migrate db-shell db-reset mcp-install mcp-dev
+.PHONY: dev dev-mcp build test lint check \
+        build-linux build-mac build-win build-all \
+        db-shell db-reset \
+        mcp-build mcp-install mcp-dev \
+        skill-install
 
-# Desarrollo
+# ─── Desarrollo ───────────────────────────────────────────────────────────────
+
+## Arranca el core Rust en modo watch (requiere cargo-watch)
 dev:
-	cargo watch -x run --manifest-path core/Cargo.toml
+	cargo watch -x 'build' --manifest-path core/Cargo.toml
 
+## Arranca el servidor MCP en modo watch (apunta al binario de debug)
+dev-mcp: mcp-build
+	cd mcp && PILLBOX_BIN=../core/target/debug/pillbox node --watch dist/index.js
+
+# ─── Build ────────────────────────────────────────────────────────────────────
+
+## Compila el binario Rust (release)
 build:
 	cargo build --release --manifest-path core/Cargo.toml
 
+## Compila el servidor MCP TypeScript
+mcp-build:
+	cd mcp && npm install && npm run build
+
+# ─── Tests y calidad ──────────────────────────────────────────────────────────
+
+## Ejecuta todos los tests del core Rust
 test:
 	cargo test --manifest-path core/Cargo.toml
 
+## Linter Rust (warnings → errores)
 lint:
 	cargo clippy --manifest-path core/Cargo.toml -- -D warnings
 
-# Distribución
+## Verifica tipos del MCP TypeScript sin compilar
+typecheck:
+	cd mcp && npm run typecheck
+
+## Ejecuta test + lint + typecheck
+check: test lint typecheck
+
+# ─── Distribución ─────────────────────────────────────────────────────────────
+
 build-linux:
 	cargo build --release --target x86_64-unknown-linux-musl --manifest-path core/Cargo.toml
 
 build-mac:
 	cargo build --release --target aarch64-apple-darwin --manifest-path core/Cargo.toml
 	cargo build --release --target x86_64-apple-darwin --manifest-path core/Cargo.toml
-	lipo -create -output target/pillbox-mac \
+	lipo -create -output core/target/pillbox-mac \
 		core/target/aarch64-apple-darwin/release/pillbox \
 		core/target/x86_64-apple-darwin/release/pillbox
 
@@ -29,21 +58,27 @@ build-win:
 
 build-all: build-linux build-mac build-win
 
-# DB
-migrate:
-	./target/release/pillbox migrate
+# ─── DB ───────────────────────────────────────────────────────────────────────
 
+## Abre la DB activa en sqlite3
 db-shell:
-	sqlite3 $${PILLBOX_DB:-$$HOME/.pillbox/pillbox.db}
+	sqlite3 $$([ -f .pillbox/pillbox.db ] && echo .pillbox/pillbox.db || echo $${HOME}/.pillbox/pillbox.db)
 
+## Elimina la DB local y global (desarrollo)
 db-reset:
-	rm -f .pillbox/pillbox.db $$HOME/.pillbox/pillbox.db
-	@echo "DB eliminada. Ejecuta 'pillbox init' para recrear."
+	rm -f .pillbox/pillbox.db $${HOME}/.pillbox/pillbox.db
+	@echo "DBs eliminadas."
 
-# MCP + Skill (desarrollo — instala desde source local)
-mcp-install: build
-	cd mcp && npm install && npm run build
-	cp -r skill ~/.claude/skills/pillbox
+# ─── Instalación (desarrollo local) ──────────────────────────────────────────
 
-mcp-dev:
-	cd mcp && PILLBOX_BIN=../core/target/debug/pillbox npm run dev
+## Instala el MCP y la skill desde el source local
+mcp-install: build mcp-build skill-install
+	@echo "Pillbox MCP instalado."
+	@echo "Añade esto a tu configuración de Claude Code:"
+	@echo '  { "mcpServers": { "pillbox": { "command": "node", "args": ["$(CURDIR)/mcp/dist/index.js"] } } }'
+
+## Copia la skill al directorio de skills de Claude Code
+skill-install:
+	mkdir -p $${HOME}/.claude/skills/pillbox
+	cp -r skill/* $${HOME}/.claude/skills/pillbox/
+	@echo "Skill instalada en ~/.claude/skills/pillbox/"

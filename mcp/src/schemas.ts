@@ -11,13 +11,14 @@ export const PillTakeSchema = z.object({
   prescription_id: z.string().uuid(),
   compound: z.enum([
     "decision",
-    "context",
-    "problem",
-    "solution",
+    "architecture",
+    "bugfix",
+    "pattern",
+    "discovery",
     "learning",
-    "reference",
-    "task",
+    "feedback",
     "prescription_summary",
+    "manual",
   ]),
   title: z.string().min(1).max(200),
   content: z.string().min(1),
@@ -48,13 +49,14 @@ export const PillFindSchema = z.object({
   compound: z
     .enum([
       "decision",
-      "context",
-      "problem",
-      "solution",
+      "architecture",
+      "bugfix",
+      "pattern",
+      "discovery",
       "learning",
-      "reference",
-      "task",
+      "feedback",
       "prescription_summary",
+      "manual",
     ])
     .optional(),
   limit: z.number().int().min(1).max(100).optional(),
@@ -75,6 +77,7 @@ export const CapsuleTakeSchema = z.object({
     "environment",
     "context",
     "goal",
+    "feedback",
     "manual",
   ]),
   title: z.string().min(1).max(200),
@@ -91,6 +94,9 @@ export const CapsuleReviseSchema = z.object({
   patch: z.object({
     title: z.string().min(1).max(200).optional(),
     content: z.string().min(1).optional(),
+    compound: z
+      .enum(["convention", "workflow", "environment", "context", "goal", "feedback", "manual"])
+      .optional(),
   }),
 });
 
@@ -101,7 +107,7 @@ export const CapsuleDiscardSchema = z.object({
 export const CapsuleFindSchema = z.object({
   query: z.string().min(1),
   compound: z
-    .enum(["convention", "workflow", "environment", "context", "goal", "manual"])
+    .enum(["convention", "workflow", "environment", "context", "goal", "feedback", "manual"])
     .optional(),
   limit: z.number().int().min(1).max(100).optional(),
 });

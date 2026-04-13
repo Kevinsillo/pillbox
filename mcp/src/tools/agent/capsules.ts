@@ -14,60 +14,32 @@ import {
 } from "../../schemas.js";
 
 export function registerCapsuleTools(server: McpServer): void {
-  // ── capsule_take ────────────────────────────────────────────────────────────
-  server.tool(
-    "capsule_take",
-    "Guarda una nueva capsule (conocimiento personal del usuario, cross-proyecto). " +
-      "Compounds disponibles: convention, workflow, environment, context, goal, manual.",
-    CapsuleTakeSchema.shape,
-    async (input) => {
-      const result = pillboxExec("capsule_take", input);
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("capsule_take", {
+    description:
+      "Guarda una nueva capsule (conocimiento personal del usuario, cross-proyecto). " +
+      "Compounds disponibles: convention, workflow, environment, context, goal, feedback, manual.",
+    inputSchema: CapsuleTakeSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("capsule_take", input)));
 
-  // ── capsule_read ────────────────────────────────────────────────────────────
-  server.tool(
-    "capsule_read",
-    "Lee el contenido completo de una capsule por su ID.",
-    CapsuleReadSchema.shape,
-    async (input) => {
-      const result = pillboxExec("capsule_read", input);
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("capsule_read", {
+    description: "Lee el contenido completo de una capsule por su ID.",
+    inputSchema: CapsuleReadSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("capsule_read", input)));
 
-  // ── capsule_revise ──────────────────────────────────────────────────────────
-  server.tool(
-    "capsule_revise",
-    "Actualiza el título y/o contenido de una capsule existente.",
-    CapsuleReviseSchema.shape,
-    async (input) => {
-      const result = pillboxExec("capsule_revise", input);
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("capsule_revise", {
+    description: "Actualiza el título y/o contenido de una capsule existente.",
+    inputSchema: CapsuleReviseSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("capsule_revise", input)));
 
-  // ── capsule_discard ─────────────────────────────────────────────────────────
-  server.tool(
-    "capsule_discard",
-    "Hace soft-delete de una capsule.",
-    CapsuleDiscardSchema.shape,
-    async (input) => {
-      const result = pillboxExec("capsule_discard", input);
-      return fromExecResult(result);
-    },
-  );
+  server.registerTool("capsule_discard", {
+    description: "Hace soft-delete de una capsule.",
+    inputSchema: CapsuleDiscardSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("capsule_discard", input)));
 
-  // ── capsule_find ────────────────────────────────────────────────────────────
-  server.tool(
-    "capsule_find",
-    "Busca capsules usando búsqueda full-text (FTS5). " +
+  server.registerTool("capsule_find", {
+    description:
+      "Busca capsules usando búsqueda full-text (FTS5). " +
       "Las capsules son globales — no se filtran por proyecto.",
-    CapsuleFindSchema.shape,
-    async (input) => {
-      const result = pillboxExec("capsule_find", input);
-      return fromExecResult(result);
-    },
-  );
+    inputSchema: CapsuleFindSchema.shape,
+  }, async (input) => fromExecResult(pillboxExec("capsule_find", input)));
 }
