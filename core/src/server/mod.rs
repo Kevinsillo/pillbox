@@ -2,6 +2,8 @@
 //!
 //! Expone la misma lógica que `pillbox exec` como una REST API en localhost:4242.
 //! Cada request abre una conexión SQLite nueva — WAL mode lo soporta sin pool.
+//! Al arrancar publica un servicio mDNS `pillbox._http._tcp.local.` para
+//! descubrimiento en la red local.
 
 mod handlers;
 
@@ -12,6 +14,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+use mdns_sd::{ServiceDaemon, ServiceInfo};
 use tower_http::cors::{Any, CorsLayer};
 
 /// Estado compartido entre todos los handlers.
@@ -57,9 +60,92 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    tracing::info!("pillbox serve escuchando en http://{}", addr);
+
+    // Publicar servicio mDNS (no fatal si falla)
+    let _mdns = register_mdns(port);
+
+    println!("pillbox serve en http://localhost:{}", port);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    // _mdns se dropea aquí → unregister automático del servicio mDNS
     Ok(())
+}
+
+/// Señal de apagado graceful: espera CTRL+C.
+async fn shutdown_signal() {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("failed to install CTRL+C handler");
+    println!("\npillbox serve detenido.");
+}
+
+/// Registra el servicio mDNS `pillbox._http._tcp.local.` en el puerto dado.
+///
+/// Devuelve el `ServiceDaemon` para mantenerlo vivo mientras dure el servidor.
+/// Si mDNS no está disponible (sin soporte de red, permisos, etc.) registra un
+/// warning y devuelve `None` — el servidor arranca igualmente.
+fn register_mdns(port: u16) -> Option<ServiceDaemon> {
+    let mdns = match ServiceDaemon::new() {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::warn!("mDNS: no se pudo crear el daemon: {}", e);
+            return None;
+        }
+    };
+
+    let hostname = system_hostname();
+    let host_fqdn = format!("{}.local.", hostname);
+    let local_ip = local_ipv4().unwrap_or_else(|| "127.0.0.1".to_string());
+
+    let info = match ServiceInfo::new(
+        "_http._tcp.local.",
+        "pillbox",
+        &host_fqdn,
+        local_ip.as_str(),
+        port,
+        None,
+    ) {
+        Ok(i) => i,
+        Err(e) => {
+            tracing::warn!("mDNS: no se pudo crear ServiceInfo: {}", e);
+            return None;
+        }
+    };
+
+    match mdns.register(info) {
+        Ok(_) => {
+            println!(
+                "mDNS:  pillbox._http._tcp.local. → {}:{}",
+                local_ip, port
+            );
+            Some(mdns)
+        }
+        Err(e) => {
+            tracing::warn!("mDNS: no se pudo registrar el servicio: {}", e);
+            None
+        }
+    }
+}
+
+/// Hostname del sistema sin dominio.
+fn system_hostname() -> String {
+    std::fs::read_to_string("/etc/hostname")
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| "pillbox".to_string())
+}
+
+/// IP local primaria del sistema (sin enviar tráfico real).
+///
+/// Abre un socket UDP hacia una IP pública y lee la dirección local que
+/// el SO eligió — truco estándar para obtener la IP de la interfaz activa.
+fn local_ipv4() -> Option<String> {
+    use std::net::UdpSocket;
+    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    let addr = socket.local_addr().ok()?;
+    Some(addr.ip().to_string())
 }
