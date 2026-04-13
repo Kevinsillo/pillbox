@@ -204,6 +204,76 @@ init_db() {
   fi
 }
 
+# ─── Privilegios de puerto 80 ────────────────────────────────────────────────
+
+setup_port_80() {
+  local os="$1" install_dir="$2"
+
+  step "Puerto 80 (opcional)"
+  echo -e "  Permite usar ${BOLD}pillbox serve --port 80${NC} y acceder como ${BOLD}http://pillbox.local${NC}."
+  echo -e -n "  ¿Configurar ahora? [s/N] "
+  read -r answer
+  [[ ! "$answer" =~ ^[Ss] ]] && return
+
+  case "$os" in
+    linux)  _port80_linux  "$install_dir" ;;
+    darwin) _port80_macos ;;
+  esac
+}
+
+_port80_linux() {
+  local binary="${1}/pillbox"
+
+  if ! command -v setcap &>/dev/null; then
+    warn "setcap no encontrado. Instala libcap2-bin y vuelve a ejecutar:"
+    warn "  sudo apt install libcap2-bin"
+    warn "  sudo setcap cap_net_bind_service=+ep ${binary}"
+    return
+  fi
+
+  if sudo setcap cap_net_bind_service=+ep "$binary" 2>/dev/null; then
+    ok "Capability cap_net_bind_service asignada al binario."
+    ok "Inicia el servidor con: pillbox serve --port 80"
+  else
+    warn "No se pudo ejecutar setcap. Intenta manualmente:"
+    warn "  sudo setcap cap_net_bind_service=+ep ${binary}"
+  fi
+}
+
+_port80_macos() {
+  local anchor_file="/etc/pf.anchors/pillbox"
+  local pf_conf="/etc/pf.conf"
+  local default_port="${PILLBOX_DEFAULT_PORT:-4242}"
+
+  # Crear el anchor de pf con la regla de redirección
+  sudo tee "$anchor_file" > /dev/null <<EOF
+# Pillbox — redirige el puerto 80 al servidor local en ${default_port}
+rdr pass on lo0 inet proto tcp from any to 127.0.0.1 port 80 -> 127.0.0.1 port ${default_port}
+rdr pass on en0 inet proto tcp from any to any       port 80 -> 127.0.0.1 port ${default_port}
+EOF
+
+  # Añadir referencia al anchor en pf.conf si no existe
+  if ! sudo grep -q 'anchor "pillbox"' "$pf_conf" 2>/dev/null; then
+    sudo tee -a "$pf_conf" > /dev/null <<'EOF'
+
+# Pillbox — redirección de puerto 80
+rdr-anchor "pillbox"
+anchor "pillbox"
+load anchor "pillbox" from "/etc/pf.anchors/pillbox"
+EOF
+  fi
+
+  # Activar pf y cargar las reglas
+  if sudo pfctl -f "$pf_conf" -e 2>/dev/null; then
+    ok "pf activado con regla de redirección 80 → ${default_port}."
+    ok "El puerto 80 volverá al estado anterior al reiniciar."
+    ok "Usa 'pillbox autostart' para hacerlo permanente (paso siguiente)."
+  else
+    warn "No se pudo cargar pf. Actívalo manualmente:"
+    warn "  sudo pfctl -f ${pf_conf} -e"
+  fi
+}
+
 # ─── Instrucciones de configuración del MCP ───────────────────────────────────
 
 print_mcp_config() {
@@ -251,6 +321,7 @@ main() {
   install_mcp    "$version"
   install_skill  "$version"
   init_db
+  setup_port_80  "${platform%%-*}" "$install_dir"
   print_mcp_config
 }
 
