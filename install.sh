@@ -5,18 +5,15 @@ set -euo pipefail
 # Pillbox — Script de instalación
 #
 # Uso:
-#   curl -fsSL https://get.pillbox.sh | bash
-#   curl -fsSL https://get.pillbox.sh | bash -s -- --version 0.2.0
+#   curl -fsSL https://get.pillbox.dev | bash
+#   curl -fsSL https://get.pillbox.dev | bash -s -- --version 0.2.0
 #
 # Variables de entorno opcionales:
 #   PILLBOX_VERSION     — versión a instalar (default: latest)
 #   PILLBOX_INSTALL_DIR — directorio del binario (default: auto)
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# TODO: actualizar cuando el repo público esté creado
-GITHUB_REPO="OWNER/pillbox-releases"
-# -----------------------------------------------------------------------------
+GITHUB_REPO="kevinsillo/pillbox"
 
 VERSION="${PILLBOX_VERSION:-latest}"
 MCP_DIR="${HOME}/.pillbox/mcp"
@@ -162,7 +159,7 @@ install_mcp() {
   if ! command -v node &>/dev/null; then
     warn "Node.js no está instalado. El servidor MCP requiere Node.js ≥ 18."
     warn "Instálalo desde https://nodejs.org y luego ejecuta:"
-    warn "  curl -fsSL https://get.pillbox.sh | bash"
+    warn "  curl -fsSL https://get.pillbox.dev | bash"
     return
   fi
 
