@@ -83,7 +83,7 @@ fn err_409(error: &str, message: &str, data: Value) -> ApiResponse {
 }
 
 fn open_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {
-    db::connection::open(&state.db_path).map_err(|e| err_500(e))
+    db::connection::open(&state.db_path).map_err(err_500)
 }
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
@@ -283,17 +283,9 @@ pub async fn prescription_get(State(s): State<AppState>, Path(id): Path<String>)
     }
 }
 
-#[derive(Deserialize)]
-pub struct PrescriptionCloseBody {
-    // Por ahora solo soporta cerrar; en el futuro podría incluir metadatos
-    #[allow(dead_code)]
-    ended_at: Option<String>,
-}
-
 pub async fn prescription_close(
     State(s): State<AppState>,
     Path(id): Path<String>,
-    Json(_body): Json<PrescriptionCloseBody>,
 ) -> ApiResponse {
     let mut conn = match open_conn(&s) {
         Ok(c) => c,

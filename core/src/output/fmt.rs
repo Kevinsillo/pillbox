@@ -57,12 +57,10 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
 
 pub struct StatusDb {
     pub path: String,
-    pub result: Option<Result<(i64, i64, i64, i64), String>>,
+    pub result: Option<Result<(i64, i64, i64, i64, i64), String>>,
 }
 
 pub struct StatusBottle {
-    pub name: String,
-    pub display_name: String,
     pub open_rx: Option<String>,
 }
 
@@ -77,31 +75,32 @@ pub fn status(
 ) {
     println!("{}\n", "Pillbox Status".bold());
 
-    let db_val = |s: StatusDb, bottle: Option<StatusBottle>| -> String {
+    let db_val = |s: StatusDb, bottle: Option<StatusBottle>, is_local: bool| -> String {
         let mut val = match s.result {
             None => return format!("{}\n{}", s.path, "(no existe)".dimmed()),
-            Some(Ok((v, btl, pills, caps))) => format!(
-                "{}\n{}  {}{}  {}{}  {}{}  {}{}",
+            Some(Ok((_v, _btl, pills, _caps, rxs))) if is_local => format!(
+                "{}\n{}  {}{}  {}{}",
                 s.path,
-                "✓".green(),
+                "●".green(),
+                "Pills: ".bold(),
+                pills.to_string().green(),
+                "Prescriptions: ".bold(),
+                rxs.to_string().green(),
+            ),
+            Some(Ok((v, btl, _pills, caps, _rxs))) => format!(
+                "{}\n{}  {}{}  {}{}  {}{}",
+                s.path,
+                "●".green(),
                 "Schema: ".bold(),
                 format!("v{}", v).green(),
                 "Bottles: ".bold(),
                 btl.to_string().green(),
-                "Pills: ".bold(),
-                pills.to_string().green(),
                 "Capsules: ".bold(),
                 caps.to_string().green(),
             ),
-            Some(Err(e)) => format!("{}\n{} {}", s.path, "✗".red(), e),
+            Some(Err(e)) => format!("{}\n{} {}", s.path, "●".red(), e),
         };
         if let Some(b) = bottle {
-            val.push_str(&format!(
-                "\n{}  {} — \"{}\"",
-                "Bottle: ".bold(),
-                b.name,
-                b.display_name
-            ));
             if let Some(title) = b.open_rx {
                 val.push_str(&format!("\n{}  \"{}\"", "Rx: ".bold(), title.green()));
             }
@@ -110,30 +109,69 @@ pub fn status(
     };
 
     let server_val = match server_port {
-        Some(port) => format!("{} http://localhost:{}", "✓".green(), port),
-        None => format!("{} no está en ejecución", "✗".red()),
+        Some(port) => format!("{} http://localhost:{}", "●".green(), port),
+        None => format!("{} no está en ejecución", "●".red()),
     };
 
     let mcp_val = if mcp_path.exists() {
-        format!("{} {}", "✓".green(), mcp_path.display())
+        format!("{} {}", "●".green(), mcp_path.display())
     } else {
-        format!("{} no instalado", "✗".red())
+        format!("{} no instalado", "●".red())
     };
 
     let skill_val = if skill_path.exists() {
-        format!("{} {}", "✓".green(), skill_path.display())
+        format!("{} {}", "●".green(), skill_path.display())
     } else {
-        format!("{} no instalada", "✗".red())
+        format!("{} no instalada", "●".red())
     };
 
     let rows = vec![
         [format!("{}", "Binario".bold()), bin_path.to_string()],
-        [format!("{}", "Global Bottle".bold()), db_val(global, None)],
-        [format!("{}", "Local Bottle".bold()), db_val(local, bottle)],
+        [
+            format!("{}", "Global Bottle".bold()),
+            db_val(global, None, false),
+        ],
+        [
+            format!("{}", "Local Bottle".bold()),
+            db_val(local, bottle, true),
+        ],
         [format!("{}", "Servidor Web".bold()), server_val],
         [format!("{}", "MCP".bold()), mcp_val],
         [format!("{}", "Skill".bold()), skill_val],
     ];
+    println!("{}\n", table::dict(rows));
+}
+
+pub fn serve_status(running: bool, pid: Option<u32>, port: u16) {
+    println!("{}\n", "Servidor Web".bold());
+    let estado = if running {
+        format!("{} en ejecución", "●".green())
+    } else {
+        format!("{} detenido", "●".red())
+    };
+    let mut rows = vec![
+        ["Estado".bold().to_string(), estado],
+        [
+            "URL".bold().to_string(),
+            format!("http://localhost:{}", port),
+        ],
+    ];
+    if let Some(p) = pid {
+        rows.push(["PID".bold().to_string(), p.to_string()]);
+    }
+    println!("{}\n", table::dict(rows));
+}
+
+pub fn component_status_with_help(path: &std::path::Path, help: &str) {
+    let status = if path.exists() {
+        format!("{} {}", "●".green(), path.display())
+    } else {
+        format!("{} no instalado", "●".red())
+    };
+    let split = help.find("\n\n").unwrap_or(help.len());
+    let (title, rest) = help.split_at(split);
+    let content = format!("{}\n\n{}: {}{}", title, "Estado".bold(), status, rest);
+    let rows = vec![["".to_string(), content]];
     println!("{}\n", table::dict(rows));
 }
 
@@ -143,26 +181,23 @@ pub fn db_not_found() {
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
 
-pub fn pills_list(bottle_name: &str, pills: &[(i64, String, String, String)], limit: u32) {
-    println!(
-        "{}\n",
-        format!("Pills de '{}' (últimas {})", bottle_name, limit).bold()
-    );
-    if pills.is_empty() {
-        println!("  {}\n", "(ninguna)".dimmed());
-        return;
-    }
-    let rows = pills
-        .iter()
-        .enumerate()
-        .map(|(i, (_, compound, title, _))| {
-            vec![
-                (i + 1).to_string(),
-                truncate(compound, 16),
-                truncate(title, 50),
-            ]
-        })
-        .collect();
+pub fn pills_list(bottle_name: &str, pills: &[(i64, String, String, String)]) {
+    println!("{}\n", format!("Pills de '{}'", bottle_name).bold());
+    let rows = if pills.is_empty() {
+        vec![vec!["".into(), "(ninguna)".dimmed().to_string(), "".into()]]
+    } else {
+        pills
+            .iter()
+            .enumerate()
+            .map(|(i, (_, compound, title, _))| {
+                vec![
+                    (i + 1).to_string(),
+                    truncate(compound, 16),
+                    truncate(title, 50),
+                ]
+            })
+            .collect()
+    };
     println!("{}\n", table::list(&["#", "Compound", "Título"], rows));
 }
 
@@ -193,14 +228,14 @@ pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], limit: u32) {
 }
 
 pub fn prescription_opened(id: &str, title: &str) {
-    println!("{} Prescripción abierta: \"{}\"", "✓".green().bold(), title);
+    println!("{} Prescripción abierta: \"{}\"", "●".green().bold(), title);
     println!("  ID: {}\n", id.dimmed());
 }
 
 pub fn prescription_closed(title: &str) {
     println!(
         "{} Prescripción cerrada: \"{}\"\n",
-        "✓".green().bold(),
+        "●".green().bold(),
         title
     );
 }
@@ -212,7 +247,7 @@ pub fn bottle_init_start(dir: &str) {
 }
 
 pub fn bottle_init_created(name: &str, display_name: &str, db_path: &std::path::Path) {
-    println!("{} Bottle '{}' creado.\n", "✓".green().bold(), name);
+    println!("{} Bottle '{}' creado.\n", "●".green().bold(), name);
     let rows = vec![
         ["Slug".bold().to_string(), name.to_string()],
         ["Display".bold().to_string(), display_name.to_string()],
@@ -222,7 +257,7 @@ pub fn bottle_init_created(name: &str, display_name: &str, db_path: &std::path::
 }
 
 pub fn bottle_init_gitignore() {
-    println!("{} .gitignore actualizado.", "✓".green().bold());
+    println!("{} .gitignore actualizado.", "●".green().bold());
 }
 
 pub fn bottle_init_done() {

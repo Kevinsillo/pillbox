@@ -138,7 +138,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             };
             match store::pills::read(conn, req.id) {
                 Ok(Some(p)) => Response::ok(p),
-                Ok(None) => Response::err("not_found", format!("pill {} no encontrada", req.id)),
+                Ok(None) => not_found("pill", req.id),
                 Err(e) => anyhow_to_response(e),
             }
         }
@@ -158,7 +158,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             }
             match store::pills::revise(conn, req.id, &req.patch) {
                 Ok(Some(p)) => Response::ok(p),
-                Ok(None) => Response::err("not_found", format!("pill {} no encontrada", req.id)),
+                Ok(None) => not_found("pill", req.id),
                 Err(e) => anyhow_to_response(e),
             }
         }
@@ -174,7 +174,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             };
             match store::pills::discard(conn, req.id) {
                 Ok(Some(r)) => Response::ok(r),
-                Ok(None) => Response::err("not_found", format!("pill {} no encontrada", req.id)),
+                Ok(None) => not_found("pill", req.id),
                 Err(e) => anyhow_to_response(e),
             }
         }
@@ -244,7 +244,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             };
             match store::capsules::read(conn, req.id) {
                 Ok(Some(c)) => Response::ok(c),
-                Ok(None) => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
+                Ok(None) => not_found("capsule", req.id),
                 Err(e) => anyhow_to_response(e),
             }
         }
@@ -264,7 +264,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             }
             match store::capsules::revise(conn, req.id, &req.patch) {
                 Ok(Some(c)) => Response::ok(c),
-                Ok(None) => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
+                Ok(None) => not_found("capsule", req.id),
                 Err(e) => anyhow_to_response(e),
             }
         }
@@ -280,7 +280,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             };
             match store::capsules::discard(conn, req.id) {
                 Ok(Some(r)) => Response::ok(r),
-                Ok(None) => Response::err("not_found", format!("capsule {} no encontrada", req.id)),
+                Ok(None) => not_found("capsule", req.id),
                 Err(e) => anyhow_to_response(e),
             }
         }
@@ -354,10 +354,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             };
             match store::prescriptions::read(conn, &req.id) {
                 Ok(Some(rx)) => Response::ok(rx),
-                Ok(None) => Response::err(
-                    "not_found",
-                    format!("prescription {} no encontrada", req.id),
-                ),
+                Ok(None) => not_found("prescription", &req.id),
                 Err(e) => anyhow_to_response(e),
             }
         }
@@ -406,6 +403,10 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+fn not_found(entity: &str, id: impl std::fmt::Display) -> Response {
+    Response::err("not_found", format!("{} {} no encontrada", entity, id))
+}
 
 fn from_value<T: for<'de> Deserialize<'de>>(v: Value) -> Result<T, Response> {
     serde_json::from_value(v).map_err(|e| Response::err("invalid_input", e.to_string()))

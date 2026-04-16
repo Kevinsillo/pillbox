@@ -76,6 +76,14 @@ pub fn skill_path() -> PathBuf {
         .join("SKILL.md")
 }
 
+/// Ruta del PID del servidor daemon: `~/.pillbox/pillbox.pid`
+pub fn pid_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("no se pudo resolver el directorio home")
+        .join(format!(".{}", env!("CARGO_PKG_NAME")))
+        .join("pillbox.pid")
+}
+
 /// Indica si una ruta de DB corresponde a una pillbox local de proyecto.
 pub fn is_local_db(path: &Path) -> bool {
     path.starts_with(LOCAL_DIR) || path.components().any(|c| c.as_os_str() == LOCAL_DIR)

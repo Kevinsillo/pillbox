@@ -1,4 +1,4 @@
-mod table;
+pub(crate) mod table;
 pub mod fmt;
 
 pub(crate) fn truncate(s: &str, max: usize) -> String {
