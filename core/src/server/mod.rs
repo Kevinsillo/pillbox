@@ -128,10 +128,7 @@ fn register_mdns(port: u16) -> Option<ServiceDaemon> {
 
     match mdns.register(info) {
         Ok(_) => {
-            println!(
-                "mDNS:  pillbox._http._tcp.local. → {}:{}",
-                local_ip, port
-            );
+            println!("mDNS:  pillbox._http._tcp.local. → {}:{}", local_ip, port);
             Some(mdns)
         }
         Err(e) => {

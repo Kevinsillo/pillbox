@@ -283,10 +283,7 @@ pub async fn prescription_get(State(s): State<AppState>, Path(id): Path<String>)
     }
 }
 
-pub async fn prescription_close(
-    State(s): State<AppState>,
-    Path(id): Path<String>,
-) -> ApiResponse {
+pub async fn prescription_close(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
     let mut conn = match open_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,

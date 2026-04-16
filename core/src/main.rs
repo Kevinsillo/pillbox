@@ -187,7 +187,9 @@ async fn main() -> Result<()> {
             Some(BottleCommand::Init) => cmd_bottle_init(),
             Some(BottleCommand::Status) => cmd_bottle_status(),
             Some(BottleCommand::List) => cmd_bottle_list(),
-            Some(BottleCommand::Migrate { reverse, capsules }) => cmd_bottle_migrate(reverse, capsules),
+            Some(BottleCommand::Migrate { reverse, capsules }) => {
+                cmd_bottle_migrate(reverse, capsules)
+            }
             None => cmd_sub_help("bottle"),
         },
         Some(Command::Pills { cmd }) => match cmd {
@@ -785,14 +787,28 @@ fn render_help_cmd(cmd: &mut clap::Command, name: &str) -> String {
     if let Some(about) = cmd.get_about() {
         out.push_str(&format!("{}\n\n", about.to_string().bold()));
     }
-    out.push_str(&format!("{} {} {}\n", "Usage:".bold(), name, "[COMMAND]".dimmed()));
+    out.push_str(&format!(
+        "{} {} {}\n",
+        "Usage:".bold(),
+        name,
+        "[COMMAND]".dimmed()
+    ));
     let subcmds: Vec<_> = cmd.get_subcommands().filter(|s| !s.is_hide_set()).collect();
     if !subcmds.is_empty() {
         out.push_str(&format!("\n{}:\n", "Commands".bold()));
-        let max = subcmds.iter().map(|s| s.get_name().len()).max().unwrap_or(0);
+        let max = subcmds
+            .iter()
+            .map(|s| s.get_name().len())
+            .max()
+            .unwrap_or(0);
         for s in &subcmds {
             let about = s.get_about().map(|a| a.to_string()).unwrap_or_default();
-            out.push_str(&format!("  {:<width$}  {}\n", s.get_name().green(), about, width = max));
+            out.push_str(&format!(
+                "  {:<width$}  {}\n",
+                s.get_name().green(),
+                about,
+                width = max
+            ));
         }
     }
     out
@@ -838,7 +854,12 @@ fn cmd_serve_info() -> Result<()> {
     let running = pid.map(process_alive).unwrap_or(false);
     let port = pillbox::config::DEFAULT_PORT;
     let status = if running {
-        format!("{} en ejecución — http://localhost:{}  (PID {})", "●".green(), port, pid.unwrap())
+        format!(
+            "{} en ejecución — http://localhost:{}  (PID {})",
+            "●".green(),
+            port,
+            pid.unwrap()
+        )
     } else {
         format!("{} detenido — http://localhost:{}", "●".red(), port)
     };
@@ -867,7 +888,14 @@ fn cmd_mcp_install() -> Result<()> {
         .output()
         .ok()
         .and_then(|o| String::from_utf8(o.stdout).ok())
-        .and_then(|v| v.trim().trim_start_matches('v').split('.').next()?.parse::<u32>().ok())
+        .and_then(|v| {
+            v.trim()
+                .trim_start_matches('v')
+                .split('.')
+                .next()?
+                .parse::<u32>()
+                .ok()
+        })
         .map(|maj| maj >= 18)
         .unwrap_or(false);
 
@@ -885,13 +913,23 @@ fn cmd_mcp_install() -> Result<()> {
         anyhow::bail!("Error al descargar el MCP desde {}", url);
     }
     let status = std::process::Command::new("tar")
-        .args(["-xzf", "/tmp/pillbox-mcp.tar.gz", "-C", mcp_dir.to_str().unwrap(), "--strip-components=1"])
+        .args([
+            "-xzf",
+            "/tmp/pillbox-mcp.tar.gz",
+            "-C",
+            mcp_dir.to_str().unwrap(),
+            "--strip-components=1",
+        ])
         .status()?;
     pb.finish_and_clear();
     if !status.success() {
         anyhow::bail!("Error al extraer el MCP.");
     }
-    println!("{} MCP instalado en {}\n", "●".green().bold(), mcp_dir.display());
+    println!(
+        "{} MCP instalado en {}\n",
+        "●".green().bold(),
+        mcp_dir.display()
+    );
     println!("Añade esto a tu ~/.claude.json:\n");
     println!("  \"mcpServers\": {{");
     println!("    \"pillbox\": {{");
@@ -937,7 +975,11 @@ fn cmd_skill_install() -> Result<()> {
     if !status.success() {
         anyhow::bail!("Error al descargar la skill desde {}", url);
     }
-    println!("{} Skill instalada en {}\n", "●".green().bold(), skill_path.display());
+    println!(
+        "{} Skill instalada en {}\n",
+        "●".green().bold(),
+        skill_path.display()
+    );
     Ok(())
 }
 
@@ -945,7 +987,10 @@ fn cmd_skill_install() -> Result<()> {
 
 fn cmd_skill_uninstall() -> Result<()> {
     use owo_colors::OwoColorize;
-    let skill_dir = pillbox::config::skill_path().parent().unwrap().to_path_buf();
+    let skill_dir = pillbox::config::skill_path()
+        .parent()
+        .unwrap()
+        .to_path_buf();
     if !skill_dir.exists() {
         println!("La skill no está instalada.\n");
         return Ok(());
@@ -965,15 +1010,24 @@ fn cmd_uninstall() -> Result<()> {
 
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
     if mcp_dir.exists() {
-        if Confirm::new("¿Eliminar el servidor MCP?").with_default(false).prompt()? {
+        if Confirm::new("¿Eliminar el servidor MCP?")
+            .with_default(false)
+            .prompt()?
+        {
             std::fs::remove_dir_all(&mcp_dir)?;
             println!("{} MCP eliminado.", "●".green().bold());
         }
     }
 
-    let skill_dir = pillbox::config::skill_path().parent().unwrap().to_path_buf();
+    let skill_dir = pillbox::config::skill_path()
+        .parent()
+        .unwrap()
+        .to_path_buf();
     if skill_dir.exists() {
-        if Confirm::new("¿Eliminar la skill de Claude Code?").with_default(false).prompt()? {
+        if Confirm::new("¿Eliminar la skill de Claude Code?")
+            .with_default(false)
+            .prompt()?
+        {
             std::fs::remove_dir_all(&skill_dir)?;
             println!("{} Skill eliminada.", "●".green().bold());
         }
@@ -991,7 +1045,7 @@ fn cmd_uninstall() -> Result<()> {
     }
 
     let bin_path = std::env::current_exe()?;
-    if Confirm::new(&format!("¿Eliminar el binario ({})?" , bin_path.display()))
+    if Confirm::new(&format!("¿Eliminar el binario ({})?", bin_path.display()))
         .with_default(false)
         .prompt()?
     {
