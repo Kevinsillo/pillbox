@@ -57,6 +57,25 @@ pub fn global_db_path() -> PathBuf {
         .join(DB_FILENAME)
 }
 
+/// Ruta del servidor MCP: `~/.pillbox/mcp/index.js`
+pub fn mcp_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("no se pudo resolver el directorio home")
+        .join(format!(".{}", env!("CARGO_PKG_NAME")))
+        .join("mcp")
+        .join("index.js")
+}
+
+/// Ruta de la skill de Claude Code: `~/.claude/skills/pillbox/SKILL.md`
+pub fn skill_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("no se pudo resolver el directorio home")
+        .join(".claude")
+        .join("skills")
+        .join(env!("CARGO_PKG_NAME"))
+        .join("SKILL.md")
+}
+
 /// Indica si una ruta de DB corresponde a una pillbox local de proyecto.
 pub fn is_local_db(path: &Path) -> bool {
     path.starts_with(LOCAL_DIR) || path.components().any(|c| c.as_os_str() == LOCAL_DIR)

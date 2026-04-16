@@ -31,6 +31,8 @@ dirs = "5"
 clap = { version = "4", features = ["derive"] }
 inquire = "0.7"
 indicatif = "0.17"
+tabled = { version = "0.17", features = ["ansi"] }
+owo-colors = "4"
 
 # Error handling
 anyhow = "1"
