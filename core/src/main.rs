@@ -180,6 +180,7 @@ fn cmd_list() -> Result<()> {
         );
     }
     println!("{}", "─".repeat(72));
+    println!();
     Ok(())
 }
 
@@ -204,6 +205,7 @@ fn cmd_status() -> Result<()> {
         }
         None => println!("No se encontró ninguna Pillbox. Ejecuta el script de instalación."),
     }
+    println!();
     Ok(())
 }
 
@@ -403,8 +405,8 @@ fn cmd_bottle_init() -> Result<()> {
         }
     }
 
-    println!();
     println!("Listo. Usa 'pillbox bottle status' para ver el estado.");
+    println!();
     Ok(())
 }
 
@@ -487,6 +489,7 @@ fn cmd_bottle_status() -> Result<()> {
     } else {
         println!("Rx:      ninguna abierta");
     }
+    println!();
     Ok(())
 }
 
@@ -529,6 +532,7 @@ fn cmd_bottle_list(limit: u32) -> Result<()> {
         );
     }
     println!("{}", "─".repeat(68));
+    println!();
     Ok(())
 }
 
@@ -545,6 +549,7 @@ fn cmd_prescription_open(title: String) -> Result<()> {
         Ok(rx) => {
             println!("✓ Prescripción abierta: \"{}\"", rx.title);
             println!("  ID: {}", rx.id);
+            println!();
         }
         Err(e) => {
             if let Some(already) = e.downcast_ref::<PrescriptionAlreadyOpen>() {
@@ -585,6 +590,7 @@ fn cmd_prescription_list(limit: u32) -> Result<()> {
         println!("{:<10} {:<40} {}", short_id, truncate(&rx.title, 38), estado);
     }
     println!("{}", "─".repeat(68));
+    println!();
     Ok(())
 }
 
@@ -615,6 +621,7 @@ fn cmd_prescription_close() -> Result<()> {
 
     prescriptions::close(&mut conn, &rx_id)?;
     println!("✓ Prescripción cerrada: \"{}\"", rx_title);
+    println!();
     Ok(())
 }
 
@@ -677,6 +684,7 @@ fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
     if include_capsules {
         println!("✓ Capsules:       {}", result.capsules);
     }
+    println!();
     Ok(())
 }
 

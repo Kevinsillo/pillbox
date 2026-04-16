@@ -26,11 +26,17 @@ pub const DB_FILENAME: &str = "pillbox.db";
 /// No se crea ninguna DB silenciosamente fuera del instalador (`install.sh`).
 pub fn resolve_db_path() -> Option<PathBuf> {
     let local = local_db_path();
+    let global = global_db_path();
+
     if local.exists() {
-        return Some(local);
+        // Si cwd == $HOME, la ruta local y la global apuntan al mismo archivo.
+        // En ese caso, tratar como global para no confundir al caller.
+        let abs_local = std::env::current_dir().ok()?.join(&local);
+        if abs_local != global {
+            return Some(local);
+        }
     }
 
-    let global = global_db_path();
     if global.exists() {
         return Some(global);
     }

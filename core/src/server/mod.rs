@@ -34,6 +34,7 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
         .allow_headers(Any);
 
     let app = Router::new()
+        .route("/", get(root))
         // Pills
         .route("/pills", post(handlers::pill_create))
         .route("/pills/search", get(handlers::pill_search))
@@ -73,6 +74,15 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
 
     // _mdns se dropea aquí → unregister automático del servicio mDNS
     Ok(())
+}
+
+async fn root() -> axum::Json<serde_json::Value> {
+    axum::Json(serde_json::json!({
+        "name": "pillbox",
+        "version": env!("CARGO_PKG_VERSION"),
+        "status": "ok",
+        "docs": "https://pillbox.dev/docs/api"
+    }))
 }
 
 /// Señal de apagado graceful: espera CTRL+C.
