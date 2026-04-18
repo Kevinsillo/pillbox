@@ -1,0 +1,189 @@
+bottles:
+  none: "No hay bottles registrados."
+  list:
+    title: "Bottles registrados (%{count})"
+    col:
+      num: "#"
+      name: "Nombre"
+      display: "Display"
+      dir: "Directorio"
+
+bottle:
+  status:
+    labels:
+      bottle: "Bottle"
+      scope: "Scope"
+      dir: "Directorio"
+      pills: "Pills"
+      rx: "Rx"
+    rx_none: "ninguna abierta"
+    rx_open: "\"%{title}\" (abierta, id=%{id})"
+  init:
+    start: "Inicializando bottle en %{dir}..."
+    name_prompt: "¿Cómo quieres llamar a este proyecto?"
+    scope:
+      prompt: "¿Dónde guardar las memories?"
+      local: "local  — .pillbox/pillbox.db (solo este proyecto)"
+      global: "global — ~/.pillbox/pillbox.db (compartido)"
+    creating: "Creando DB..."
+    exists: "Ya existe un bottle registrado para este directorio en %{path}"
+    created: "Bottle '%{name}' creado."
+    col:
+      slug: "Slug"
+      display: "Display"
+      db: "DB"
+    gitignore:
+      prompt: "¿Añadir .pillbox/ a .gitignore?"
+      done: ".gitignore actualizado."
+    registering: "Registrando en DB global..."
+    registered_ok: "✓ Registrado en DB global."
+    register_err: "⚠  No se pudo registrar en DB global: %{err}"
+    done: "Listo. Usa 'pillbox bottle status' para ver el estado."
+  error:
+    not_found: "No hay ningún bottle para este directorio.\nEjecuta 'pillbox bottle init' para crear uno."
+    not_found_short: "No hay ningún bottle para este directorio."
+
+status:
+  title: "Pillbox Status"
+  bin_unknown: "(desconocido)"
+  labels:
+    bin: "Binario"
+    global: "Global Bottle"
+    local: "Local Bottle"
+    web: "Servidor Web"
+    mcp: "MCP"
+    skill: "Skill"
+  db:
+    none: "(no existe)"
+    schema: "Schema: "
+    bottles: "Bottles: "
+    capsules: "Capsules: "
+    pills: "Pills: "
+    prescriptions: "Prescriptions: "
+    rx: "Rx: "
+  server:
+    running: "en ejecución — http://localhost:%{port}"
+    stopped: "no está en ejecución"
+  component:
+    missing: "no instalado"
+    estado: "Estado"
+
+serve:
+  title: "Servidor Web"
+  running: "en ejecución"
+  stopped: "detenido"
+  daemon_started: "Servidor iniciado en segundo plano (PID %{pid}, puerto %{port})."
+  labels:
+    url: "URL"
+    pid: "PID"
+    estado: "Estado"
+  inline:
+    running: "en ejecución — http://localhost:%{port}  (PID %{pid})"
+    stopped: "detenido — http://localhost:%{port}"
+  error:
+    already_running: "El servidor ya está en ejecución (PID %{pid})."
+    no_db: "no se encontró ninguna DB de Pillbox"
+  stop:
+    none: "No hay ningún servidor en ejecución."
+    dead: "No hay ningún servidor en ejecución (PID %{pid} no existe)."
+    done: "Servidor detenido (PID %{pid})."
+
+db:
+  not_found: "No se encontró ninguna Pillbox. Ejecuta el script de instalación."
+  open_not_found: "No se encontró ninguna DB de Pillbox.\nEjecuta 'pillbox bottle init' para crear una."
+
+pills:
+  none: "(ninguna)"
+  list:
+    title: "Pills de '%{bottle}'"
+    col:
+      num: "#"
+      compound: "Compound"
+      title: "Título"
+
+prescriptions:
+  none: "(ninguna)"
+  state:
+    open: "abierta"
+    closed: "cerrada"
+  list:
+    title: "Prescriptions de '%{bottle}' (últimas %{limit})"
+    col:
+      id: "ID"
+      title: "Título"
+      state: "Estado"
+  msg:
+    opened: "Prescripción abierta: \"%{title}\""
+    opened_id: "ID: "
+    closed: "Prescripción cerrada: \"%{title}\""
+  error:
+    already_open: "Ya hay una prescripción abierta: \"%{title}\" (%{pills} pills, id=%{id}).\nCiérrala con 'pillbox prescription close' antes de abrir una nueva."
+    none_open: "No hay ninguna prescripción abierta para el bottle '%{name}'."
+
+migrate:
+  title: "Migrando bottle '%{name}' (%{direction})..."
+  dir:
+    to_global: "local → global"
+    to_local: "global → local"
+  col:
+    bottles: "Bottles"
+    prescriptions: "Prescripciones"
+    pills: "Pills"
+    capsules: "Capsules"
+  error:
+    no_global: "no se encontró la DB global (%{path})"
+    no_local: "no se encontró la DB local (.pillbox/pillbox.db) en el directorio actual"
+    no_bottle: "no hay ningún bottle registrado para '%{dir}' en %{path}"
+
+mcp:
+  node_required: "Node.js ≥ 18 es necesario para el servidor MCP."
+  downloading: "Descargando MCP..."
+  installed: "MCP instalado en %{path}"
+  claude_json: "Añade esto a tu ~/.claude.json:"
+  not_installed: "El MCP no está instalado."
+  uninstalled: "MCP desinstalado."
+  error:
+    download: "Error al descargar el MCP desde %{url}"
+    extract: "Error al extraer el MCP."
+
+skill:
+  downloading: "Descargando skill..."
+  installed: "Skill instalada en %{path}"
+  not_installed: "La skill no está instalada."
+  uninstalled: "Skill desinstalada."
+  error:
+    download: "Error al descargar la skill desde %{url}"
+
+uninstall:
+  title: "Desinstalar Pillbox"
+  mcp:
+    prompt: "¿Eliminar el servidor MCP?"
+    done: "MCP eliminado."
+  skill:
+    prompt: "¿Eliminar la skill de Claude Code?"
+    done: "Skill eliminada."
+  db:
+    prompt: "¿Eliminar la DB global? (se perderán todas las memories)"
+    done: "DB global eliminada."
+  bin:
+    prompt: "¿Eliminar el binario (%{path})?"
+    manual: "Ejecuta manualmente: rm %{path}"
+
+help:
+  usage: "Usage:"
+  commands: "Commands"
+
+lang:
+  current: "Idioma actual"
+  available: "Disponibles"
+  active: "● activo"
+  set:
+    ok: "Idioma cambiado a: %{lang}"
+    invalid: "Idioma no soportado: '%{lang}'. Disponibles: %{available}"
+  name:
+    es: "Español"
+    en: "English"
+    de: "Deutsch"
+    it: "Italiano"
+    pt: "Português"
+    fr: "Français"

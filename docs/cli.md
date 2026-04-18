@@ -4,72 +4,47 @@ The `pillbox` CLI is designed primarily for human operators and for setup tasks.
 
 ---
 
-## Global commands
+## `pillbox status`
 
-### `pillbox list`
-
-Lists all bottles registered in the global database.
+Shows global status: binary path, global and local databases, active bottle, HTTP server, MCP server, and skill.
 
 ```
-Bottles registrados (2)
-────────────────────────────────────────────────────────────────────────
-#    Nombre                 Display                Directorio
-────────────────────────────────────────────────────────────────────────
-1    my-project             My Project             /home/you/my-project
-2    api-server             API Server             /home/you/api-server
-────────────────────────────────────────────────────────────────────────
-```
+Pillbox Status
 
----
-
-### `pillbox status`
-
-Shows the active database status: schema version, pill count, and capsule count.
-
-```
-DB: /home/you/.pillbox/pillbox.db
-Schema:   v1
-Pills:    47
-Capsules: 12
-```
-
-Resolves the active database in this order:
-1. `.pillbox/pillbox.db` in the current directory (local)
-2. `~/.pillbox/pillbox.db` (global)
-
----
-
-### `pillbox doctor`
-
-System diagnostics. Checks the binary, global DB, local DB, and current bottle.
-
-```
-Pillbox Doctor
-════════════════════════════════════════════════════════════════════════
-
-Binario      /home/you/.local/bin/pillbox
-
-DB global    /home/you/.pillbox/pillbox.db
-             ✓ Schema v1  —  2 bottles  —  47 pills  —  12 capsules
-
-DB local     .pillbox/pillbox.db  (no existe en este directorio)
-
-Bottle       my-project — "My Project" — global
-             Prescripción abierta: "Implement OAuth login"
+Binario        /home/you/.local/bin/pillbox
+Global Bottle  /home/you/.pillbox/pillbox.db
+               ● Schema: v1  Bottles: 2  Capsules: 12
+Local Bottle   /home/you/my-project/.pillbox/pillbox.db
+               ● Pills: 23  Prescriptions: 5
+               Rx:  "Implement OAuth login"
+Servidor Web   ● en ejecución — http://localhost:4242
+MCP            ● /home/you/.pillbox/mcp/dist/index.js
+Skill          ● /home/you/.claude/skills/pillbox/SKILL.md
 ```
 
 ---
 
-### `pillbox serve [--port PORT]`
+## Serve commands
+
+### `pillbox serve start [--port N] [--daemon]`
 
 Starts the HTTP server. Default port: 4242.
 
 ```bash
-pillbox serve
-pillbox serve --port 8080
+pillbox serve start
+pillbox serve start --port 8080
+pillbox serve start --daemon       # background process
 ```
 
-Publishes `pillbox._http._tcp.local.` via mDNS. Stops gracefully on Ctrl+C.
+Publishes `pillbox._http._tcp.local.` via mDNS for local network discovery. The web UI is available at `http://localhost:<port>`.
+
+### `pillbox serve stop`
+
+Stops the background server.
+
+### `pillbox serve status`
+
+Shows whether the server is running and on which port.
 
 ---
 
@@ -84,15 +59,15 @@ Inicializando bottle en /home/you/my-project...
 
 ? ¿Cómo quieres llamar a este proyecto? › my-project
 ? ¿Dónde guardar las memories? › local  — .pillbox/pillbox.db (solo este proyecto)
-? ¿Añadir .pillbox/ a .gitignore? › Yes
+? ¿Añadir .pillbox/ a .gitignore? › No
 
-✓ Bottle 'my-project' creado.
+● Bottle 'my-project' creado.
 
   Slug:    my-project
   Display: My Project
   DB:      /home/you/my-project/.pillbox/pillbox.db
 
-✓ Registrado en DB global.
+● Registrado en DB global.
 
 Listo. Usa 'pillbox bottle status' para ver el estado.
 ```
@@ -101,8 +76,8 @@ Listo. Usa 'pillbox bottle status' para ver el estado.
 1. Prompts for a display name (default: directory name)
 2. Prompts for scope: `local` or `global`
 3. Creates the database and runs migrations
-4. If local and in a git repo: offers to add `.pillbox/` to `.gitignore`
-5. If local: registers the bottle in the global DB (fire-and-forget)
+4. If local and in a git repo: offers to add `.pillbox/` to `.gitignore` (default: No)
+5. If local: registers the bottle in the global DB
 
 ---
 
@@ -120,32 +95,18 @@ Rx:      "Implement OAuth login" (abierta, id=a1b2c3d4)
 
 ---
 
-### `pillbox bottle list [-l N]`
+### `pillbox bottle list`
 
-Lists the most recent pills in the current bottle.
-
-```bash
-pillbox bottle list
-pillbox bottle list -l 50
-```
+Lists all bottles registered in the global database.
 
 ```
-Pills de 'my-project' (últimas 20)
-────────────────────────────────────────────────────────────────────────
-#     Compound         Título
-────────────────────────────────────────────────────────────────────────
-1     decision         Use JWT for session tokens
-2     bugfix           Fix token expiry not checked on refresh
-3     architecture     Auth module structure
-...
-────────────────────────────────────────────────────────────────────────
+Bottles registrados (2)
+
+#    Nombre          Display         Directorio
+──────────────────────────────────────────────────────
+1    my-project      My Project      /home/you/my-project
+2    api-server      API Server      /home/you/api-server
 ```
-
-**Options:**
-
-| Flag | Default | Description |
-|---|---|---|
-| `-l, --limit N` | 20 | Maximum pills to show |
 
 ---
 
@@ -154,24 +115,30 @@ Pills de 'my-project' (últimas 20)
 Migrates a bottle between the local and global databases using upsert by `sync_id`.
 
 ```bash
-# local → global (default)
-pillbox bottle migrate
-
-# global → local
-pillbox bottle migrate --reverse
-
-# include capsules in the migration
-pillbox bottle migrate --capsules
-```
-
-```
-Migrando bottle 'my-project' (local → global)...
-✓ Bottles:        1
-✓ Prescripciones: 5
-✓ Pills:          23
+pillbox bottle migrate              # local → global
+pillbox bottle migrate --reverse    # global → local
+pillbox bottle migrate --capsules   # include global capsules
 ```
 
 See [docs/migration.md](migration.md) for details.
+
+---
+
+## Pills commands
+
+### `pillbox pills list`
+
+Lists all pills in the current bottle, ordered by creation date (newest first).
+
+```
+Pills de 'my-project'
+
+#    Compound        Título
+──────────────────────────────────────────────────────────────────
+1    decision        Use JWT for session tokens
+2    bugfix          Fix token expiry not checked on refresh
+3    architecture    Auth module structure
+```
 
 ---
 
@@ -186,11 +153,11 @@ pillbox prescription open "Implement OAuth login"
 ```
 
 ```
-✓ Prescripción abierta: "Implement OAuth login"
+● Prescripción abierta: "Implement OAuth login"
   ID: a1b2c3d4-...
 ```
 
-**Error if already open:**
+Error if already open:
 
 ```
 Error: Ya hay una prescripción abierta: "Previous task" (3 pills, id=deadbeef).
@@ -203,18 +170,10 @@ Ciérrala con 'pillbox prescription close' antes de abrir una nueva.
 
 Lists the most recent prescriptions for the current bottle.
 
+```bash
+pillbox prescription list
+pillbox prescription list -l 25
 ```
-Prescriptions de 'my-project' (últimas 10)
-────────────────────────────────────────────────────────────────────────
-ID         Título                                   Estado
-────────────────────────────────────────────────────────────────────────
-a1b2c3d4   Implement OAuth login                    abierta
-e5f6a7b8   Fix token expiry bug                     cerrada
-...
-────────────────────────────────────────────────────────────────────────
-```
-
-**Options:**
 
 | Flag | Default | Description |
 |---|---|---|
@@ -227,14 +186,79 @@ e5f6a7b8   Fix token expiry bug                     cerrada
 Closes the open prescription for the current bottle.
 
 ```
-✓ Prescripción cerrada: "Implement OAuth login"
+● Prescripción cerrada: "Implement OAuth login"
 ```
 
-**Error if none open:**
+---
+
+## MCP commands
+
+### `pillbox mcp install`
+
+Downloads and installs the MCP server to `~/.pillbox/mcp/`. Requires Node.js ≥ 18.
+
+### `pillbox mcp uninstall`
+
+Removes the MCP server directory.
+
+---
+
+## Skill commands
+
+### `pillbox skill install`
+
+Downloads and installs the Claude Code skill to `~/.claude/skills/pillbox/SKILL.md`.
+
+### `pillbox skill uninstall`
+
+Removes the skill.
+
+---
+
+## Language commands
+
+### `pillbox lang`
+
+Shows the current language and available options.
 
 ```
-Error: No hay ninguna prescripción abierta para el bottle 'my-project'.
+Idioma actual: Español (es)
+
+es    Español  ● activo
+en    English
+de    Deutsch
+it    Italiano
+pt    Português
+fr    Français
 ```
+
+### `pillbox lang set <code>`
+
+Sets the CLI language. Persisted to `~/.pillbox/lang`.
+
+```bash
+pillbox lang set en
+pillbox lang set de
+```
+
+Supported codes: `es`, `en`, `de`, `it`, `pt`, `fr`.
+
+Language detection order:
+1. `~/.pillbox/lang` (set by `pillbox lang set`)
+2. `PILLBOX_LANG` environment variable
+3. System locale (native detection on Windows, macOS, and Linux)
+4. Fallback: `es`
+
+---
+
+## `pillbox uninstall`
+
+Interactive removal of Pillbox components. Prompts before each step:
+
+- Remove the MCP server
+- Remove the Claude Code skill
+- Remove the global database (all memories lost)
+- Remove the binary
 
 ---
 
@@ -242,9 +266,10 @@ Error: No hay ninguna prescripción abierta para el bottle 'my-project'.
 
 | Variable | Description |
 |---|---|
+| `PILLBOX_LANG` | Override language detection (e.g. `PILLBOX_LANG=en`) |
 | `PILLBOX_VERSION` | Version to install (used by `install.sh`) |
 | `PILLBOX_INSTALL_DIR` | Install directory for the binary |
-| `RUST_LOG` | Log level for the server (e.g. `RUST_LOG=info pillbox serve`) |
+| `RUST_LOG` | Log level for the server (e.g. `RUST_LOG=info pillbox serve start`) |
 
 ---
 

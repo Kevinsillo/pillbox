@@ -83,19 +83,32 @@ Once the MCP is connected, the agent will open prescriptions, save pills, and re
 ## CLI reference
 
 ```
-pillbox list                       List all registered bottles
-pillbox status                     Active DB status
-pillbox doctor                     System diagnostics
-pillbox serve [--port 4242]        Start the HTTP server
+pillbox status                         Global status: DBs, active bottle, server, MCP, skill
+pillbox serve start [--port N] [-d]    Start the HTTP server (--daemon for background)
+pillbox serve stop                     Stop the background server
+pillbox serve status                   Show server status
 
-pillbox bottle init                Initialize a bottle (interactive wizard)
-pillbox bottle status              Status of the current bottle
-pillbox bottle list [-l N]         Recent pills of the current bottle
-pillbox bottle migrate [--reverse] Migrate local ↔ global
+pillbox bottle init                    Initialize a bottle (interactive wizard)
+pillbox bottle status                  Status of the current bottle
+pillbox bottle list                    List all registered bottles
+pillbox bottle migrate [--reverse]     Migrate local ↔ global
 
-pillbox prescription open <title>  Open a work session
-pillbox prescription list [-l N]   List prescriptions
-pillbox prescription close         Close the open prescription
+pillbox pills list                     List pills in the current bottle
+
+pillbox prescription open <title>      Open a work session
+pillbox prescription list [-l N]       List prescriptions
+pillbox prescription close             Close the open prescription
+
+pillbox mcp install                    Install the MCP server
+pillbox mcp uninstall                  Remove the MCP server
+
+pillbox skill install                  Install the Claude Code skill
+pillbox skill uninstall                Remove the Claude Code skill
+
+pillbox lang                           Show current language and available options
+pillbox lang set <code>                Set CLI language (es, en, de, it, pt, fr)
+
+pillbox uninstall                      Remove Pillbox components
 ```
 
 See [docs/cli.md](docs/cli.md) for the full CLI reference.
@@ -136,7 +149,8 @@ See [docs/api.md](docs/api.md) for the HTTP API and [docs/mcp-setup.md](docs/mcp
 
 ```
 pillbox/
-├── core/          Rust binary + library (SQLite, CLI, HTTP server)
+├── core/          Rust binary + library (SQLite, CLI, HTTP server, embedded WebUI)
+├── webui/         Vue 3 web interface (built and embedded into the binary)
 ├── mcp/           TypeScript MCP server (bridges Claude ↔ core via exec)
 ├── docs/          Extended documentation
 └── install.sh     One-line installer
@@ -144,11 +158,54 @@ pillbox/
 
 The MCP server communicates with the Rust binary via `pillbox exec` — a JSON stdin/stdout dispatcher. This means the MCP layer has no database dependency; all persistence lives in the Rust core.
 
+The web interface is built with Vite and embedded into the binary at compile time via `rust-embed`. In production it is served at `http://localhost:4242` with no external dependencies.
+
 ---
 
 ## Inspiration
 
 Pillbox is inspired by the idea that AI agents should accumulate knowledge the same way experienced engineers do — by writing things down, organizing them, and referencing them later. The pharmaceutical metaphor (bottles, pills, prescriptions) reflects a deliberate, measured approach to knowledge management: you don't dump everything at once, you prescribe exactly what's needed.
+
+---
+
+## Built with
+
+**Rust core**
+
+| Crate | Purpose |
+|---|---|
+| [rusqlite](https://github.com/rusqlite/rusqlite) | SQLite (bundled), FTS5 full-text search |
+| [axum](https://github.com/tokio-rs/axum) | HTTP server |
+| [tokio](https://tokio.rs) | Async runtime |
+| [clap](https://github.com/clap-rs/clap) | CLI argument parsing |
+| [inquire](https://github.com/mikaelmello/inquire) | Interactive prompts |
+| [indicatif](https://github.com/console-rs/indicatif) | Progress spinners |
+| [tabled](https://github.com/zhiburt/tabled) | Terminal tables |
+| [owo-colors](https://github.com/jam1garner/owo-colors) | Terminal colors |
+| [rust-embed](https://github.com/pyrossh/rust-embed) | Embed WebUI into binary |
+| [rust-i18n](https://github.com/longbridgeapp/rust-i18n) | Internationalization (6 languages) |
+| [sys-locale](https://github.com/1Password/sys-locale) | Native locale detection (Windows/macOS/Linux) |
+| [mdns-sd](https://github.com/keepsimple1/mdns-sd) | mDNS local network discovery |
+| [serde](https://serde.rs) | Serialization |
+| [anyhow](https://github.com/dtolnay/anyhow) | Error handling |
+
+**Web UI**
+
+| Package | Purpose |
+|---|---|
+| [Vue 3](https://vuejs.org) | UI framework (Composition API) |
+| [Vite](https://vitejs.dev) | Build tool |
+| [Tailwind CSS](https://tailwindcss.com) | Styling |
+| [Pinia](https://pinia.vuejs.org) | State management |
+| [Vue Router](https://router.vuejs.org) | Client-side routing |
+| [marked](https://marked.js.org) | Markdown rendering |
+
+**MCP server**
+
+| Package | Purpose |
+|---|---|
+| [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk) | MCP protocol |
+| [zod](https://zod.dev) | Schema validation |
 
 ---
 

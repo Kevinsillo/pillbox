@@ -1,11 +1,16 @@
 mod exec;
+mod i18n;
 mod output;
 mod server;
 
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
+use owo_colors::OwoColorize;
+use rust_i18n::t;
 use std::time::Duration;
+
+rust_i18n::i18n!("locales", fallback = "es");
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
 
@@ -72,6 +77,12 @@ enum Command {
 
     /// Desinstala componentes de Pillbox.
     Uninstall,
+
+    /// Cambia o muestra el idioma del CLI.
+    Lang {
+        #[command(subcommand)]
+        cmd: Option<LangCommand>,
+    },
 
     /// Muestra esta ayuda.
     #[command(hide = true)]
@@ -156,6 +167,15 @@ enum SkillCommand {
     Uninstall,
 }
 
+#[derive(Subcommand)]
+enum LangCommand {
+    /// Cambia el idioma del CLI (es, en, de, it, pt, fr).
+    Set {
+        /// Código de idioma.
+        code: String,
+    },
+}
+
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
 #[tokio::main]
@@ -166,6 +186,8 @@ async fn main() -> Result<()> {
                 .add_directive(tracing::Level::WARN.into()),
         )
         .init();
+
+    rust_i18n::set_locale(&i18n::detect());
 
     let cli = Cli::parse();
 
@@ -213,6 +235,10 @@ async fn main() -> Result<()> {
             None => cmd_skill_status(),
         },
         Some(Command::Uninstall) => cmd_uninstall(),
+        Some(Command::Lang { cmd }) => match cmd {
+            Some(LangCommand::Set { code }) => cmd_lang_set(code),
+            None => cmd_lang_show(),
+        },
         Some(Command::Help) => cmd_root_help(),
     }
 }
@@ -249,7 +275,7 @@ fn cmd_status() -> Result<()> {
 
     let bin_path = std::env::current_exe()
         .map(|p| p.display().to_string())
-        .unwrap_or_else(|_| "(desconocido)".into());
+        .unwrap_or_else(|_| t!("status.bin_unknown").to_string());
 
     let query_db = |path: &std::path::Path| -> Option<Result<(i64, i64, i64, i64, i64), String>> {
         if !path.exists() {
@@ -345,19 +371,18 @@ fn cmd_bottle_init() -> Result<()> {
 
     output::fmt::bottle_init_start(&dir_str);
 
-    // Display name
-    let display_name = Text::new("¿Cómo quieres llamar a este proyecto?")
+    let display_name = Text::new(&t!("bottle.init.name_prompt"))
         .with_default(&dir_basename)
         .prompt()?;
 
     let name = pillbox::normalize::bottle_name(&display_name);
 
-    // Scope
     let scope_options = vec![
-        "local  — .pillbox/pillbox.db (solo este proyecto)",
-        "global — ~/.pillbox/pillbox.db (compartido)",
+        t!("bottle.init.scope.local").to_string(),
+        t!("bottle.init.scope.global").to_string(),
     ];
-    let scope_choice = Select::new("¿Dónde guardar las memories?", scope_options).prompt()?;
+    let scope_choice =
+        Select::new(&t!("bottle.init.scope.prompt"), scope_options).prompt()?;
     let scope = if scope_choice.starts_with("local") {
         BottleScope::Local
     } else {
@@ -369,17 +394,12 @@ fn cmd_bottle_init() -> Result<()> {
         BottleScope::Global => pillbox::config::global_db_path(),
     };
 
-    // Crear DB (connection::open crea el directorio y corre migraciones)
-    let pb = spinner("Creando DB...");
+    let pb = spinner(t!("bottle.init.creating"));
     let mut conn = connection::open(&db_path)?;
 
-    // Verificar que no existe ya un bottle para este directorio
     if bottles::find_by_directory(&conn, &dir_str)?.is_some() {
         pb.finish_and_clear();
-        anyhow::bail!(
-            "Ya existe un bottle registrado para este directorio en {}",
-            db_path.display()
-        );
+        anyhow::bail!("{}", t!("bottle.init.exists", path = db_path.display()));
     }
 
     let bottle = bottles::create(
@@ -395,11 +415,10 @@ fn cmd_bottle_init() -> Result<()> {
 
     output::fmt::bottle_init_created(&bottle.name, &bottle.display_name, &db_path);
 
-    // Si es local: preguntar gitignore y registrar en global
     if scope == BottleScope::Local {
         if current_dir.join(".git").exists() {
-            let add_gi = Confirm::new("¿Añadir .pillbox/ a .gitignore?")
-                .with_default(true)
+            let add_gi = Confirm::new(&t!("bottle.init.gitignore.prompt"))
+                .with_default(false)
                 .prompt()
                 .unwrap_or(false);
             if add_gi {
@@ -410,12 +429,12 @@ fn cmd_bottle_init() -> Result<()> {
 
         let global_path = pillbox::config::global_db_path();
         if global_path.exists() {
-            let pb2 = spinner("Registrando en DB global...");
+            let pb2 = spinner(t!("bottle.init.registering"));
             match register_in_global(&global_path, &name, &display_name, &dir_str, &scope) {
-                Ok(_) => pb2.finish_with_message("✓ Registrado en DB global."),
+                Ok(_) => pb2.finish_with_message(t!("bottle.init.registered_ok").to_string()),
                 Err(e) => {
                     pb2.finish_and_clear();
-                    eprintln!("⚠  No se pudo registrar en DB global: {}", e);
+                    eprintln!("{}", t!("bottle.init.register_err", err = e));
                 }
             }
         }
@@ -517,7 +536,7 @@ fn cmd_pills_list() -> Result<()> {
     let bottle = match find_current_bottle() {
         Ok(b) => b,
         Err(_) => {
-            println!("No hay ningún bottle para este directorio.\n");
+            println!("{}\n", t!("bottle.error.not_found_short"));
             let all = bottles::list(&global_conn)?;
             output::fmt::bottles_list(&all);
             return Ok(());
@@ -566,11 +585,13 @@ fn cmd_prescription_open(title: String) -> Result<()> {
         Err(e) => {
             if let Some(already) = e.downcast_ref::<PrescriptionAlreadyOpen>() {
                 anyhow::bail!(
-                    "Ya hay una prescripción abierta: \"{}\" ({} pills, id={}).\n\
-                     Ciérrala con 'pillbox prescription close' antes de abrir una nueva.",
-                    already.title,
-                    already.pill_count,
-                    &already.id[..already.id.len().min(8)],
+                    "{}",
+                    t!(
+                        "prescriptions.error.already_open",
+                        title = already.title,
+                        pills = already.pill_count,
+                        id = &already.id[..already.id.len().min(8)]
+                    )
                 );
             }
             return Err(e);
@@ -611,10 +632,7 @@ fn cmd_prescription_close() -> Result<()> {
         .ok();
 
     let (rx_id, rx_title) = open_rx.ok_or_else(|| {
-        anyhow::anyhow!(
-            "No hay ninguna prescripción abierta para el bottle '{}'.",
-            bottle.name
-        )
+        anyhow::anyhow!("{}", t!("prescriptions.error.none_open", name = bottle.name))
     })?;
 
     prescriptions::close(&mut conn, &rx_id)?;
@@ -627,16 +645,15 @@ fn cmd_prescription_close() -> Result<()> {
 async fn cmd_serve_start(port: u16, daemon: bool) -> Result<()> {
     let pid_path = pillbox::config::pid_path();
 
-    // Comprobar si ya hay un servidor corriendo
     if let Some(pid) = read_pid(&pid_path) {
         if process_alive(pid) {
-            anyhow::bail!("El servidor ya está en ejecución (PID {}).", pid);
+            anyhow::bail!("{}", t!("serve.error.already_running", pid = pid));
         }
         let _ = std::fs::remove_file(&pid_path);
     }
 
     let db_path = pillbox::config::resolve_db_path()
-        .ok_or_else(|| anyhow::anyhow!("no se encontró ninguna DB de Pillbox"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t!("serve.error.no_db")))?;
 
     if daemon {
         let exe = std::env::current_exe()?;
@@ -647,12 +664,10 @@ async fn cmd_serve_start(port: u16, daemon: bool) -> Result<()> {
             .stderr(std::process::Stdio::null())
             .spawn()?;
         std::fs::write(&pid_path, child.id().to_string())?;
-        use owo_colors::OwoColorize;
         println!(
-            "{} Servidor iniciado en segundo plano (PID {}, puerto {}).\n",
+            "{} {}\n",
             "●".green().bold(),
-            child.id(),
-            port
+            t!("serve.daemon_started", pid = child.id(), port = port)
         );
     } else {
         std::fs::write(&pid_path, std::process::id().to_string())?;
@@ -668,14 +683,11 @@ async fn cmd_serve_start(port: u16, daemon: bool) -> Result<()> {
 fn cmd_serve_stop() -> Result<()> {
     let pid_path = pillbox::config::pid_path();
     let pid = read_pid(&pid_path)
-        .ok_or_else(|| anyhow::anyhow!("No hay ningún servidor en ejecución."))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t!("serve.stop.none")))?;
 
     if !process_alive(pid) {
         let _ = std::fs::remove_file(&pid_path);
-        anyhow::bail!(
-            "No hay ningún servidor en ejecución (PID {} no existe).",
-            pid
-        );
+        anyhow::bail!("{}", t!("serve.stop.dead", pid = pid));
     }
 
     #[cfg(unix)]
@@ -685,8 +697,7 @@ fn cmd_serve_stop() -> Result<()> {
     }
 
     let _ = std::fs::remove_file(&pid_path);
-    use owo_colors::OwoColorize;
-    println!("{} Servidor detenido (PID {}).\n", "●".green().bold(), pid);
+    println!("{} {}\n", "●".green().bold(), t!("serve.stop.done", pid = pid));
     Ok(())
 }
 
@@ -731,10 +742,10 @@ fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
     let local_path = pillbox::config::local_db_path();
 
     if !global_path.exists() {
-        anyhow::bail!("no se encontró la DB global ({})", global_path.display());
+        anyhow::bail!("{}", t!("migrate.error.no_global", path = global_path.display()));
     }
     if !local_path.exists() {
-        anyhow::bail!("no se encontró la DB local (.pillbox/pillbox.db) en el directorio actual");
+        anyhow::bail!("{}", t!("migrate.error.no_local"));
     }
 
     let (src_path, dst_path) = if reverse {
@@ -755,21 +766,20 @@ fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
         )
         .map_err(|_| {
             anyhow::anyhow!(
-                "no hay ningún bottle registrado para '{}' en {}",
-                dir_str,
-                src_path.display()
+                "{}",
+                t!("migrate.error.no_bottle", dir = dir_str, path = src_path.display())
             )
         })?;
 
     let direction = if reverse {
-        "global → local"
+        t!("migrate.dir.to_local").to_string()
     } else {
-        "local → global"
+        t!("migrate.dir.to_global").to_string()
     };
     let mut dst_conn = connection::open(dst_path)?;
     let result = migrate::migrate_bottle(&src_conn, &mut dst_conn, &bottle_name, include_capsules)?;
     output::fmt::migrate_result(
-        direction,
+        &direction,
         &bottle_name,
         result.bottles,
         result.prescriptions,
@@ -782,20 +792,19 @@ fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
 // ─── cmd_mcp_status / cmd_skill_status ───────────────────────────────────────
 
 fn render_help_cmd(cmd: &mut clap::Command, name: &str) -> String {
-    use owo_colors::OwoColorize;
     let mut out = String::new();
     if let Some(about) = cmd.get_about() {
         out.push_str(&format!("{}\n\n", about.to_string().bold()));
     }
     out.push_str(&format!(
         "{} {} {}\n",
-        "Usage:".bold(),
+        t!("help.usage").bold(),
         name,
         "[COMMAND]".dimmed()
     ));
     let subcmds: Vec<_> = cmd.get_subcommands().filter(|s| !s.is_hide_set()).collect();
     if !subcmds.is_empty() {
-        out.push_str(&format!("\n{}:\n", "Commands".bold()));
+        out.push_str(&format!("\n{}:\n", t!("help.commands").bold()));
         let max = subcmds
             .iter()
             .map(|s| s.get_name().len())
@@ -848,23 +857,21 @@ fn cmd_skill_status() -> Result<()> {
 }
 
 fn cmd_serve_info() -> Result<()> {
-    use owo_colors::OwoColorize;
     let pid_path = pillbox::config::pid_path();
     let pid = read_pid(&pid_path);
     let running = pid.map(process_alive).unwrap_or(false);
     let port = pillbox::config::DEFAULT_PORT;
     let status = if running {
         format!(
-            "{} en ejecución — http://localhost:{}  (PID {})",
+            "{} {}",
             "●".green(),
-            port,
-            pid.unwrap()
+            t!("serve.inline.running", port = port, pid = pid.unwrap())
         )
     } else {
-        format!("{} detenido — http://localhost:{}", "●".red(), port)
+        format!("{} {}", "●".red(), t!("serve.inline.stopped", port = port))
     };
     let rows = vec![
-        [format!("{}", "Servidor Web".bold()), status],
+        [t!("serve.title").bold().to_string(), status],
         ["".to_string(), render_help("serve")],
     ];
     println!("{}\n", output::table::dict(rows));
@@ -874,7 +881,6 @@ fn cmd_serve_info() -> Result<()> {
 // ─── cmd_mcp_install ─────────────────────────────────────────────────────────
 
 fn cmd_mcp_install() -> Result<()> {
-    use owo_colors::OwoColorize;
     let version = env!("CARGO_PKG_VERSION");
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
     let url = format!(
@@ -882,7 +888,6 @@ fn cmd_mcp_install() -> Result<()> {
         version
     );
 
-    // Comprobar Node.js ≥ 18
     let node_ok = std::process::Command::new("node")
         .arg("--version")
         .output()
@@ -900,17 +905,17 @@ fn cmd_mcp_install() -> Result<()> {
         .unwrap_or(false);
 
     if !node_ok {
-        anyhow::bail!("Node.js ≥ 18 es necesario para el servidor MCP.");
+        anyhow::bail!("{}", t!("mcp.node_required"));
     }
 
     std::fs::create_dir_all(&mcp_dir)?;
-    let pb = spinner("Descargando MCP...");
+    let pb = spinner(t!("mcp.downloading"));
     let status = std::process::Command::new("curl")
         .args(["-fsSL", &url, "--output", "/tmp/pillbox-mcp.tar.gz"])
         .status()?;
     if !status.success() {
         pb.finish_and_clear();
-        anyhow::bail!("Error al descargar el MCP desde {}", url);
+        anyhow::bail!("{}", t!("mcp.error.download", url = url));
     }
     let status = std::process::Command::new("tar")
         .args([
@@ -923,14 +928,10 @@ fn cmd_mcp_install() -> Result<()> {
         .status()?;
     pb.finish_and_clear();
     if !status.success() {
-        anyhow::bail!("Error al extraer el MCP.");
+        anyhow::bail!("{}", t!("mcp.error.extract"));
     }
-    println!(
-        "{} MCP instalado en {}\n",
-        "●".green().bold(),
-        mcp_dir.display()
-    );
-    println!("Añade esto a tu ~/.claude.json:\n");
+    println!("{} {}\n", "●".green().bold(), t!("mcp.installed", path = mcp_dir.display()));
+    println!("{}\n", t!("mcp.claude_json"));
     println!("  \"mcpServers\": {{");
     println!("    \"pillbox\": {{");
     println!("      \"command\": \"node\",");
@@ -943,21 +944,19 @@ fn cmd_mcp_install() -> Result<()> {
 // ─── cmd_mcp_uninstall ───────────────────────────────────────────────────────
 
 fn cmd_mcp_uninstall() -> Result<()> {
-    use owo_colors::OwoColorize;
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
     if !mcp_dir.exists() {
-        println!("El MCP no está instalado.\n");
+        println!("{}\n", t!("mcp.not_installed"));
         return Ok(());
     }
     std::fs::remove_dir_all(&mcp_dir)?;
-    println!("{} MCP desinstalado.\n", "●".green().bold());
+    println!("{} {}\n", "●".green().bold(), t!("mcp.uninstalled"));
     Ok(())
 }
 
 // ─── cmd_skill_install ───────────────────────────────────────────────────────
 
 fn cmd_skill_install() -> Result<()> {
-    use owo_colors::OwoColorize;
     let version = env!("CARGO_PKG_VERSION");
     let skill_path = pillbox::config::skill_path();
     let skill_dir = skill_path.parent().unwrap().to_path_buf();
@@ -967,36 +966,31 @@ fn cmd_skill_install() -> Result<()> {
     );
 
     std::fs::create_dir_all(&skill_dir)?;
-    let pb = spinner("Descargando skill...");
+    let pb = spinner(t!("skill.downloading"));
     let status = std::process::Command::new("curl")
         .args(["-fsSL", &url, "--output", skill_path.to_str().unwrap()])
         .status()?;
     pb.finish_and_clear();
     if !status.success() {
-        anyhow::bail!("Error al descargar la skill desde {}", url);
+        anyhow::bail!("{}", t!("skill.error.download", url = url));
     }
-    println!(
-        "{} Skill instalada en {}\n",
-        "●".green().bold(),
-        skill_path.display()
-    );
+    println!("{} {}\n", "●".green().bold(), t!("skill.installed", path = skill_path.display()));
     Ok(())
 }
 
 // ─── cmd_skill_uninstall ─────────────────────────────────────────────────────
 
 fn cmd_skill_uninstall() -> Result<()> {
-    use owo_colors::OwoColorize;
     let skill_dir = pillbox::config::skill_path()
         .parent()
         .unwrap()
         .to_path_buf();
     if !skill_dir.exists() {
-        println!("La skill no está instalada.\n");
+        println!("{}\n", t!("skill.not_installed"));
         return Ok(());
     }
     std::fs::remove_dir_all(&skill_dir)?;
-    println!("{} Skill desinstalada.\n", "●".green().bold());
+    println!("{} {}\n", "●".green().bold(), t!("skill.uninstalled"));
     Ok(())
 }
 
@@ -1004,18 +998,17 @@ fn cmd_skill_uninstall() -> Result<()> {
 
 fn cmd_uninstall() -> Result<()> {
     use inquire::Confirm;
-    use owo_colors::OwoColorize;
 
-    println!("{}\n", "Desinstalar Pillbox".bold());
+    println!("{}\n", t!("uninstall.title").bold());
 
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
     if mcp_dir.exists() {
-        if Confirm::new("¿Eliminar el servidor MCP?")
+        if Confirm::new(&t!("uninstall.mcp.prompt"))
             .with_default(false)
             .prompt()?
         {
             std::fs::remove_dir_all(&mcp_dir)?;
-            println!("{} MCP eliminado.", "●".green().bold());
+            println!("{} {}", "●".green().bold(), t!("uninstall.mcp.done"));
         }
     }
 
@@ -1024,35 +1017,83 @@ fn cmd_uninstall() -> Result<()> {
         .unwrap()
         .to_path_buf();
     if skill_dir.exists() {
-        if Confirm::new("¿Eliminar la skill de Claude Code?")
+        if Confirm::new(&t!("uninstall.skill.prompt"))
             .with_default(false)
             .prompt()?
         {
             std::fs::remove_dir_all(&skill_dir)?;
-            println!("{} Skill eliminada.", "●".green().bold());
+            println!("{} {}", "●".green().bold(), t!("uninstall.skill.done"));
         }
     }
 
     let global_db = pillbox::config::global_db_path();
     if global_db.exists() {
-        if Confirm::new("¿Eliminar la DB global? (se perderán todas las memories)")
+        if Confirm::new(&t!("uninstall.db.prompt"))
             .with_default(false)
             .prompt()?
         {
             std::fs::remove_file(&global_db)?;
-            println!("{} DB global eliminada.", "●".green().bold());
+            println!("{} {}", "●".green().bold(), t!("uninstall.db.done"));
         }
     }
 
     let bin_path = std::env::current_exe()?;
-    if Confirm::new(&format!("¿Eliminar el binario ({})?", bin_path.display()))
+    if Confirm::new(&t!("uninstall.bin.prompt", path = bin_path.display()))
         .with_default(false)
         .prompt()?
     {
-        println!("Ejecuta manualmente: rm {:?}\n", bin_path);
+        println!("{}\n", t!("uninstall.bin.manual", path = bin_path.display()));
     }
 
     println!();
+    Ok(())
+}
+
+// ─── cmd_lang ────────────────────────────────────────────────────────────────
+
+fn cmd_lang_show() -> Result<()> {
+    let current = rust_i18n::locale().to_string();
+    let rows: Vec<[String; 2]> = i18n::SUPPORTED
+        .iter()
+        .map(|(code, name)| {
+            let label = if *code == current.as_str() {
+                format!("{} {} {}", name, "●".green(), t!("lang.active").green())
+            } else {
+                name.to_string()
+            };
+            [code.to_string(), label]
+        })
+        .collect();
+
+    let current_name = i18n::SUPPORTED
+        .iter()
+        .find(|(c, _)| *c == current.as_str())
+        .map(|(_, n)| *n)
+        .unwrap_or(&current);
+
+    println!(
+        "{}: {} ({})\n",
+        t!("lang.current").bold(),
+        current_name,
+        current
+    );
+    println!("{}\n", output::table::dict(rows));
+    Ok(())
+}
+
+fn cmd_lang_set(code: String) -> Result<()> {
+    let code = code.to_lowercase();
+    if !i18n::is_supported(&code) {
+        let available = i18n::SUPPORTED
+            .iter()
+            .map(|(c, _)| *c)
+            .collect::<Vec<_>>()
+            .join(", ");
+        anyhow::bail!("{}", t!("lang.set.invalid", lang = code, available = available));
+    }
+    i18n::save(&code)?;
+    rust_i18n::set_locale(&code);
+    println!("{} {}\n", "●".green().bold(), t!("lang.set.ok", lang = code));
     Ok(())
 }
 
@@ -1060,10 +1101,7 @@ fn cmd_uninstall() -> Result<()> {
 
 fn open_resolved_db() -> Result<(rusqlite::Connection, std::path::PathBuf)> {
     let path = pillbox::config::resolve_db_path().ok_or_else(|| {
-        anyhow::anyhow!(
-            "No se encontró ninguna DB de Pillbox.\n\
-             Ejecuta 'pillbox bottle init' para crear una."
-        )
+        anyhow::anyhow!("{}", t!("db.open_not_found"))
     })?;
     let conn = pillbox::db::connection::open(&path)?;
     Ok((conn, path))
@@ -1078,15 +1116,10 @@ fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
         .into_iter()
         .filter(|b| current.starts_with(&b.directory))
         .max_by_key(|b| b.directory.len())
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "No hay ningún bottle para este directorio.\n\
-                 Ejecuta 'pillbox bottle init' para crear uno."
-            )
-        })
+        .ok_or_else(|| anyhow::anyhow!("{}", t!("bottle.error.not_found")))
 }
 
-fn spinner(msg: &'static str) -> ProgressBar {
+fn spinner(msg: impl Into<std::borrow::Cow<'static, str>>) -> ProgressBar {
     let pb = ProgressBar::new_spinner();
     pb.enable_steady_tick(Duration::from_millis(80));
     pb.set_style(
