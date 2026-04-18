@@ -198,6 +198,8 @@ Pillbox is inspired by the idea that AI agents should accumulate knowledge the s
 | [Tailwind CSS](https://tailwindcss.com) | Styling |
 | [Pinia](https://pinia.vuejs.org) | State management |
 | [Vue Router](https://router.vuejs.org) | Client-side routing |
+| [vue-i18n](https://vue-i18n.intlify.dev) | Internationalization |
+| [unplugin-icons](https://github.com/unplugin/unplugin-icons) | Bundled icon components (Lucide, flag icons) |
 | [marked](https://marked.js.org) | Markdown rendering |
 
 **MCP server**

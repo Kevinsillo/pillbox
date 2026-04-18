@@ -122,7 +122,7 @@ Saves a piece of project knowledge within an open prescription.
   "compound": "decision",
   "title": "Use JWT for session tokens",
   "content": "We use JWT (HS256) for stateless session management. Tokens expire in 24h. Refresh tokens are stored in an httpOnly cookie.",
-  "dispenser": "claude-sonnet-4-6"
+  "dispenser": "your-agent"
 }
 ```
 
@@ -192,7 +192,7 @@ Saves personal, cross-project knowledge.
   "compound": "convention",
   "title": "Always use conventional commits",
   "content": "All commits follow Conventional Commits spec. Format: type(scope): description. Types: feat, fix, chore, docs, refactor, test.",
-  "dispenser": "claude-sonnet-4-6"
+  "dispenser": "your-agent"
 }
 ```
 

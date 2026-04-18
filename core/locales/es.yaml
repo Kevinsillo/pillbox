@@ -121,15 +121,46 @@ prescriptions:
     none_open: "No hay ninguna prescripción abierta para el bottle '%{name}'."
 
 migrate:
-  title: "Migrando bottle '%{name}' (%{direction})..."
+  help:
+    title: "Migración de bottles"
+    bottle: "Bottle"
+    local: "Local"
+    global: "Global"
+    cmd_global: "Mueve el bottle de este directorio → global"
+    cmd_local: "Elige un bottle global y muévelo aquí"
+    no_bottle: "—"
+  global:
+    title: "Mover bottle a global"
+    bottle: "Bottle"
+    origin: "Origen"
+    dest: "Destino"
+    prescriptions: "Prescriptions"
+    pills: "Pills"
+    warning: "El archivo .pillbox/pillbox.db se eliminará tras la migración."
+  local:
+    title: "Mover bottle a local"
+    select: "Selecciona el bottle a mover aquí:"
+    bottle: "Bottle"
+    origin: "Origen"
+    dest: "Destino"
+    dest_new: "(se creará)"
+    prescriptions: "Prescriptions"
+    pills: "Pills"
+    warning: "El bottle se eliminará de la DB global tras la migración."
+    error:
+      already_local: "Ya hay un bottle local. Muévelo primero con 'pillbox bottle migrate global'."
+      no_bottles: "No hay bottles en la DB global."
+  confirm:
+    prompt: "¿Continuar?"
+  result:
+    done: "Migración completada"
+    prescriptions: "Prescriptions"
+    pills: "Pills"
+    removed_local: "DB local eliminada"
+    removed_global: "Bottle eliminado de la DB global"
   dir:
     to_global: "local → global"
     to_local: "global → local"
-  col:
-    bottles: "Bottles"
-    prescriptions: "Prescripciones"
-    pills: "Pills"
-    capsules: "Capsules"
   error:
     no_global: "no se encontró la DB global (%{path})"
     no_local: "no se encontró la DB local (.pillbox/pillbox.db) en el directorio actual"

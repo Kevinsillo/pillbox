@@ -1,4 +1,4 @@
-//! Migración de pills/capsules entre dos bases de datos.
+//! Migración de un bottle entre dos bases de datos (operación de corte, no copia).
 //!
 //! Usado por `pillbox bottle migrate` para mover el conocimiento de un
 //! bottle entre la DB local (`.pillbox/pillbox.db`) y la global (`~/.pillbox/pillbox.db`).
@@ -7,6 +7,8 @@
 //!   - Si el registro ya existe en destino, se actualiza solo si `updated_at` es más reciente.
 //!   - Si no existe, se inserta.
 //!   - Los registros descartados (`deleted_at IS NOT NULL`) se migran tal cual.
+//!
+//! Tras la migración, el origen debe eliminarse (ver `delete_bottle`).
 
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
@@ -16,18 +18,15 @@ pub struct MigrateResult {
     pub bottles: usize,
     pub prescriptions: usize,
     pub pills: usize,
-    pub capsules: usize,
 }
 
 /// Migra un bottle completo (prescripciones + pills) de `src` a `dst`.
 ///
 /// `bottle_name` es el slug del bottle (columna `bottles.name`).
-/// Las capsules son globales — no tienen bottle, se pasan separadas con `include_capsules`.
 pub fn migrate_bottle(
     src: &Connection,
     dst: &mut Connection,
     bottle_name: &str,
-    include_capsules: bool,
 ) -> Result<MigrateResult> {
     // ── 1. Bottle ─────────────────────────────────────────────────────────────
     let bottle = src
@@ -151,54 +150,88 @@ pub fn migrate_bottle(
         }
     }
 
-    // ── 4. Capsules (opcionales — son globales) ───────────────────────────────
-    let capsule_count = if include_capsules {
-        let mut cap_stmt = src.prepare(
-            "SELECT sync_id, compound, title, content, created_at, updated_at, deleted_at
-             FROM capsules",
-        )?;
-
-        let capsules: Vec<_> = cap_stmt
-            .query_map([], |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, String>(2)?,
-                    r.get::<_, String>(3)?,
-                    r.get::<_, String>(4)?,
-                    r.get::<_, String>(5)?,
-                    r.get::<_, Option<String>>(6)?,
-                ))
-            })?
-            .collect::<rusqlite::Result<_>>()?;
-
-        let n = capsules.len();
-        for c in capsules {
-            tx.execute(
-                "INSERT INTO capsules
-                     (sync_id, compound, title, content, created_at, updated_at, deleted_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-                 ON CONFLICT(sync_id) DO UPDATE SET
-                     title      = excluded.title,
-                     content    = excluded.content,
-                     compound   = excluded.compound,
-                     updated_at = excluded.updated_at,
-                     deleted_at = excluded.deleted_at
-                 WHERE excluded.updated_at > capsules.updated_at",
-                params![c.0, c.1, c.2, c.3, c.4, c.5, c.6],
-            )?;
-        }
-        n
-    } else {
-        0
-    };
-
     tx.commit()?;
 
     Ok(MigrateResult {
         bottles: 1,
         prescriptions: rx_count,
         pills: pill_count,
-        capsules: capsule_count,
     })
+}
+
+/// Cuenta los contenidos de un bottle: (prescriptions activas, pills activas).
+pub fn count_bottle_contents(conn: &Connection, bottle_name: &str) -> Result<(usize, usize)> {
+    let bottle_id: i64 = conn.query_row(
+        "SELECT id FROM bottles WHERE name = ?1",
+        params![bottle_name],
+        |r| r.get(0),
+    )?;
+
+    let prescriptions: usize = conn.query_row(
+        "SELECT COUNT(*) FROM prescriptions WHERE bottle_id = ?1 AND deleted_at IS NULL",
+        params![bottle_id],
+        |r| r.get(0),
+    )?;
+
+    let pills: usize = conn.query_row(
+        "SELECT COUNT(*) FROM pills p
+         JOIN prescriptions rx ON p.prescription_id = rx.id
+         WHERE rx.bottle_id = ?1 AND p.deleted_at IS NULL",
+        params![bottle_id],
+        |r| r.get(0),
+    )?;
+
+    Ok((prescriptions, pills))
+}
+
+/// Lista todos los bottles de una DB con sus conteos: Vec<(name, directory, pill_count)>.
+pub fn list_bottles_with_counts(conn: &Connection) -> Result<Vec<(String, String, usize)>> {
+    let mut stmt = conn.prepare(
+        "SELECT b.name, b.directory,
+                (SELECT COUNT(*) FROM pills p
+                 JOIN prescriptions rx ON p.prescription_id = rx.id
+                 WHERE rx.bottle_id = b.id AND p.deleted_at IS NULL)
+         FROM bottles b
+         ORDER BY b.name",
+    )?;
+
+    let rows = stmt
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, usize>(2)?,
+            ))
+        })?
+        .collect::<rusqlite::Result<_>>()?;
+
+    Ok(rows)
+}
+
+/// Elimina un bottle y todos sus datos de una DB (prescripciones + pills + bottle).
+///
+/// Usado tras `migrate_bottle` para completar el corte en la DB origen.
+pub fn delete_bottle(conn: &mut Connection, bottle_name: &str) -> Result<()> {
+    let tx = conn.transaction()?;
+
+    let bottle_id: i64 = tx
+        .query_row(
+            "SELECT id FROM bottles WHERE name = ?1",
+            params![bottle_name],
+            |r| r.get(0),
+        )
+        .with_context(|| format!("bottle '{}' no encontrado al eliminar", bottle_name))?;
+
+    tx.execute(
+        "DELETE FROM pills WHERE prescription_id IN (
+             SELECT id FROM prescriptions WHERE bottle_id = ?1
+         )",
+        params![bottle_id],
+    )?;
+
+    tx.execute("DELETE FROM prescriptions WHERE bottle_id = ?1", params![bottle_id])?;
+    tx.execute("DELETE FROM bottles WHERE id = ?1", params![bottle_id])?;
+
+    tx.commit()?;
+    Ok(())
 }

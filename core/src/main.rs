@@ -3,7 +3,7 @@ mod i18n;
 mod output;
 mod server;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
@@ -116,15 +116,19 @@ enum BottleCommand {
     /// Lista los bottles registrados en la DB global.
     List,
 
-    /// Migra el bottle entre DB local y global (upsert por sync_id).
+    /// Migra el bottle entre DB local y global.
     Migrate {
-        /// Invierte la dirección: global → local.
-        #[arg(long)]
-        reverse: bool,
-        /// Incluye capsules globales en la migración.
-        #[arg(long)]
-        capsules: bool,
+        #[command(subcommand)]
+        subcommand: Option<MigrateCommand>,
     },
+}
+
+#[derive(Subcommand)]
+enum MigrateCommand {
+    /// Mueve el bottle de este directorio a la DB global.
+    Global,
+    /// Elige un bottle de la DB global y muévelo aquí.
+    Local,
 }
 
 #[derive(Subcommand)]
@@ -209,9 +213,11 @@ async fn main() -> Result<()> {
             Some(BottleCommand::Init) => cmd_bottle_init(),
             Some(BottleCommand::Status) => cmd_bottle_status(),
             Some(BottleCommand::List) => cmd_bottle_list(),
-            Some(BottleCommand::Migrate { reverse, capsules }) => {
-                cmd_bottle_migrate(reverse, capsules)
-            }
+            Some(BottleCommand::Migrate { subcommand }) => match subcommand {
+                None => cmd_migrate_help(),
+                Some(MigrateCommand::Global) => cmd_migrate_global(),
+                Some(MigrateCommand::Local) => cmd_migrate_local(),
+            },
             None => cmd_sub_help("bottle"),
         },
         Some(Command::Pills { cmd }) => match cmd {
@@ -733,9 +739,37 @@ fn process_alive(pid: u32) -> bool {
     }
 }
 
-// ─── cmd_bottle_migrate ──────────────────────────────────────────────────────
+// ─── cmd_migrate_help ────────────────────────────────────────────────────────
 
-fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
+fn cmd_migrate_help() -> Result<()> {
+    use pillbox::db::{connection, store::bottles};
+
+    let global_path = pillbox::config::global_db_path();
+    let local_path = pillbox::config::local_db_path();
+
+    // Intentar detectar bottle local del directorio actual
+    let bottle_name: Option<String> = if global_path.exists() {
+        let conn = connection::open(&global_path).ok();
+        conn.and_then(|c| {
+            let dir = std::env::current_dir().ok()?.to_string_lossy().to_string();
+            bottles::find_by_directory(&c, &dir).ok().flatten().map(|b| b.name)
+        })
+    } else {
+        None
+    };
+
+    output::fmt::migrate_help(
+        bottle_name.as_deref(),
+        &local_path.display().to_string(),
+        &global_path.display().to_string(),
+    );
+    Ok(())
+}
+
+// ─── cmd_migrate_global ──────────────────────────────────────────────────────
+
+fn cmd_migrate_global() -> Result<()> {
+    use inquire::Confirm;
     use pillbox::db::{connection, migrate};
 
     let global_path = pillbox::config::global_db_path();
@@ -748,13 +782,8 @@ fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
         anyhow::bail!("{}", t!("migrate.error.no_local"));
     }
 
-    let (src_path, dst_path) = if reverse {
-        (&global_path, &local_path)
-    } else {
-        (&local_path, &global_path)
-    };
-
-    let src_conn = connection::open(src_path)?;
+    // Leer bottle del directorio actual desde DB local
+    let src_conn = connection::open(&local_path)?;
     let current_dir = std::env::current_dir()?;
     let dir_str = current_dir.to_string_lossy();
 
@@ -767,25 +796,115 @@ fn cmd_bottle_migrate(reverse: bool, include_capsules: bool) -> Result<()> {
         .map_err(|_| {
             anyhow::anyhow!(
                 "{}",
-                t!("migrate.error.no_bottle", dir = dir_str, path = src_path.display())
+                t!("migrate.error.no_bottle", dir = dir_str, path = local_path.display())
             )
         })?;
 
-    let direction = if reverse {
-        t!("migrate.dir.to_local").to_string()
-    } else {
-        t!("migrate.dir.to_global").to_string()
-    };
-    let mut dst_conn = connection::open(dst_path)?;
-    let result = migrate::migrate_bottle(&src_conn, &mut dst_conn, &bottle_name, include_capsules)?;
-    output::fmt::migrate_result(
-        &direction,
+    let (prescriptions, pills) = migrate::count_bottle_contents(&src_conn, &bottle_name)?;
+
+    output::fmt::migrate_confirm_global(
         &bottle_name,
-        result.bottles,
-        result.prescriptions,
-        result.pills,
-        include_capsules.then_some(result.capsules),
+        &local_path.display().to_string(),
+        &global_path.display().to_string(),
+        prescriptions,
+        pills,
     );
+
+    let confirmed = Confirm::new(&t!("migrate.confirm.prompt"))
+        .with_default(false)
+        .prompt()?;
+
+    if !confirmed {
+        return Ok(());
+    }
+
+    let mut dst_conn = connection::open(&global_path)?;
+    let result = migrate::migrate_bottle(&src_conn, &mut dst_conn, &bottle_name)?;
+    drop(src_conn);
+
+    std::fs::remove_file(&local_path)
+        .with_context(|| "no se pudo eliminar la DB local tras la migración")?;
+
+    output::fmt::migrate_result_global(result.prescriptions, result.pills);
+    Ok(())
+}
+
+// ─── cmd_migrate_local ───────────────────────────────────────────────────────
+
+fn cmd_migrate_local() -> Result<()> {
+    use inquire::{Confirm, Select};
+    use pillbox::db::{connection, migrate, store::bottles};
+
+    let global_path = pillbox::config::global_db_path();
+    let local_path = pillbox::config::local_db_path();
+
+    if !global_path.exists() {
+        anyhow::bail!("{}", t!("migrate.error.no_global", path = global_path.display()));
+    }
+
+    // Si existe DB local con un bottle → error
+    if local_path.exists() {
+        let local_conn = connection::open(&local_path).ok();
+        let has_bottle = local_conn.and_then(|c| {
+            let dir = std::env::current_dir().ok()?.to_string_lossy().to_string();
+            bottles::find_by_directory(&c, &dir).ok().flatten()
+        });
+        if has_bottle.is_some() {
+            anyhow::bail!("{}", t!("migrate.local.error.already_local"));
+        }
+    }
+
+    let global_conn = connection::open(&global_path)?;
+    let bottle_list = migrate::list_bottles_with_counts(&global_conn)?;
+
+    if bottle_list.is_empty() {
+        anyhow::bail!("{}", t!("migrate.local.error.no_bottles"));
+    }
+
+    // Construir opciones de Select
+    let options: Vec<String> = bottle_list
+        .iter()
+        .map(|(name, dir, pill_count)| {
+            format!("{}  —  {}  ({} pills)", name, dir, pill_count)
+        })
+        .collect();
+
+    let selection = Select::new(&t!("migrate.local.select"), options.clone()).prompt()?;
+
+    // Encontrar el bottle seleccionado por índice
+    let idx = options.iter().position(|o| o == &selection).unwrap_or(0);
+    let (bottle_name, _bottle_dir, _) = &bottle_list[idx];
+    let bottle_name = bottle_name.clone();
+
+    let (prescriptions, pills) = migrate::count_bottle_contents(&global_conn, &bottle_name)?;
+
+    let will_create = !local_path.exists();
+
+    output::fmt::migrate_confirm_local(
+        &bottle_name,
+        &local_path.display().to_string(),
+        &global_path.display().to_string(),
+        prescriptions,
+        pills,
+        will_create,
+    );
+
+    let confirmed = Confirm::new(&t!("migrate.confirm.prompt"))
+        .with_default(false)
+        .prompt()?;
+
+    if !confirmed {
+        return Ok(());
+    }
+
+    let mut dst_conn = connection::open(&local_path)?;
+    let result = migrate::migrate_bottle(&global_conn, &mut dst_conn, &bottle_name)?;
+    drop(global_conn);
+
+    let mut global_conn_mut = connection::open(&global_path)?;
+    migrate::delete_bottle(&mut global_conn_mut, &bottle_name)?;
+
+    output::fmt::migrate_result_local(result.prescriptions, result.pills);
     Ok(())
 }
 

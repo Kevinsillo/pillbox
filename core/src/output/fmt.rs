@@ -278,22 +278,89 @@ pub fn bottle_init_done() {
 
 // ─── Migrate ──────────────────────────────────────────────────────────────────
 
-pub fn migrate_result(
-    direction: &str,
-    bottle_name: &str,
-    bottles: usize,
-    prescriptions: usize,
-    pills: usize,
-    capsules: Option<usize>,
-) {
-    println!("{}\n", t!("migrate.title", name = bottle_name, direction = direction).bold());
-    let mut rows = vec![
-        [t!("migrate.col.bottles").bold().to_string(), bottles.to_string()],
-        [t!("migrate.col.prescriptions").bold().to_string(), prescriptions.to_string()],
-        [t!("migrate.col.pills").bold().to_string(), pills.to_string()],
+pub fn migrate_help(bottle_name: Option<&str>, local_path: &str, global_path: &str) {
+    println!("{}\n", t!("migrate.help.title").bold());
+    let bottle_val = bottle_name
+        .map(|n| n.to_string())
+        .unwrap_or_else(|| t!("migrate.help.no_bottle").to_string());
+    let rows = vec![
+        [t!("migrate.help.bottle").bold().to_string(), bottle_val],
+        [t!("migrate.help.local").bold().to_string(), local_path.to_string()],
+        [t!("migrate.help.global").bold().to_string(), global_path.to_string()],
+        ["".to_string(), "".to_string()],
+        [
+            "migrate global".green().to_string(),
+            t!("migrate.help.cmd_global").to_string(),
+        ],
+        [
+            "migrate local".green().to_string(),
+            t!("migrate.help.cmd_local").to_string(),
+        ],
     ];
-    if let Some(c) = capsules {
-        rows.push([t!("migrate.col.capsules").bold().to_string(), c.to_string()]);
-    }
     println!("{}\n", table::dict(rows));
 }
+
+pub fn migrate_confirm_global(
+    bottle_name: &str,
+    local_path: &str,
+    global_path: &str,
+    prescriptions: usize,
+    pills: usize,
+) {
+    println!("{}\n", t!("migrate.global.title").bold());
+    let rows = vec![
+        [t!("migrate.global.bottle").bold().to_string(), bottle_name.to_string()],
+        [t!("migrate.global.origin").bold().to_string(), local_path.to_string()],
+        [t!("migrate.global.dest").bold().to_string(), global_path.to_string()],
+        [t!("migrate.global.prescriptions").bold().to_string(), prescriptions.to_string()],
+        [t!("migrate.global.pills").bold().to_string(), pills.to_string()],
+    ];
+    println!("{}\n", table::dict(rows));
+    println!("  {}\n", t!("migrate.global.warning").dimmed());
+}
+
+pub fn migrate_confirm_local(
+    bottle_name: &str,
+    local_path: &str,
+    global_path: &str,
+    prescriptions: usize,
+    pills: usize,
+    will_create: bool,
+) {
+    println!("{}\n", t!("migrate.local.title").bold());
+    let dest_val = if will_create {
+        format!("{}  {}", local_path, t!("migrate.local.dest_new").dimmed())
+    } else {
+        local_path.to_string()
+    };
+    let rows = vec![
+        [t!("migrate.local.bottle").bold().to_string(), bottle_name.to_string()],
+        [t!("migrate.local.origin").bold().to_string(), global_path.to_string()],
+        [t!("migrate.local.dest").bold().to_string(), dest_val],
+        [t!("migrate.local.prescriptions").bold().to_string(), prescriptions.to_string()],
+        [t!("migrate.local.pills").bold().to_string(), pills.to_string()],
+    ];
+    println!("{}\n", table::dict(rows));
+    println!("  {}\n", t!("migrate.local.warning").dimmed());
+}
+
+pub fn migrate_result_global(prescriptions: usize, pills: usize) {
+    println!("{} {}\n", "●".green().bold(), t!("migrate.result.done"));
+    let rows = vec![
+        [t!("migrate.result.prescriptions").bold().to_string(), prescriptions.to_string()],
+        [t!("migrate.result.pills").bold().to_string(), pills.to_string()],
+    ];
+    println!("{}\n", table::dict(rows));
+    println!("{} {}\n", "●".green().bold(), t!("migrate.result.removed_local"));
+}
+
+pub fn migrate_result_local(prescriptions: usize, pills: usize) {
+    println!("{} {}\n", "●".green().bold(), t!("migrate.result.done"));
+    let rows = vec![
+        [t!("migrate.result.prescriptions").bold().to_string(), prescriptions.to_string()],
+        [t!("migrate.result.pills").bold().to_string(), pills.to_string()],
+    ];
+    println!("{}\n", table::dict(rows));
+    println!("{} {}\n", "●".green().bold(), t!("migrate.result.removed_global"));
+}
+

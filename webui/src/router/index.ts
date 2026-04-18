@@ -5,22 +5,14 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/',
         component: () => import('@/layouts/MainLayout.vue'),
-        redirect: '/sessions',
         children: [
-            {
-                path: 'sessions',
-                component: () => import('@/views/SessionsListView.vue'),
-            },
-            {
-                path: 'session/:id',
-                component: () => import('@/views/SessionDetailView.vue'),
-                props: true,
-            },
-            {
-                path: 'session/:sessionId/observation/:id',
-                component: () => import('@/views/ObservationDetailView.vue'),
-                props: true,
-            },
+            { path: '', component: () => import('@/views/DashboardView.vue') },
+            { path: 'bottles', component: () => import('@/views/BottlesView.vue') },
+            { path: 'bottles/:id', component: () => import('@/views/BottleDetailView.vue'), props: true },
+            { path: 'prescriptions/:id', component: () => import('@/views/PrescriptionDetailView.vue'), props: true },
+            { path: 'capsules', component: () => import('@/views/CapsulesView.vue') },
+            { path: 'capsules/:id', component: () => import('@/views/CapsuleDetailView.vue'), props: true },
+            { path: 'search', component: () => import('@/views/SearchView.vue') },
         ],
     },
     {

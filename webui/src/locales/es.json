@@ -14,5 +14,122 @@
   },
   "locale": {
     "es": "Español"
+  },
+  "common": {
+    "loading": "Cargando",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saving": "Guardando",
+    "create": "Crear",
+    "creating": "Creando",
+    "edit": "Editar",
+    "delete": "Borrar",
+    "back": "Atrás",
+    "open": "Abrir",
+    "opening": "Abriendo",
+    "title": "Título",
+    "compound": "Compound",
+    "content_md": "Contenido (Markdown)"
+  },
+  "confirm": {
+    "delete_capsule_title": "Borrar cápsula",
+    "delete_capsule_msg": "Se eliminará «{title}» de forma permanente. Esta acción no se puede deshacer.",
+    "delete_prescription_title": "Borrar prescription",
+    "delete_prescription_msg": "Se eliminarán la prescription y todas sus pills de forma permanente. Esta acción no se puede deshacer.",
+    "delete_pill_title": "Borrar pill",
+    "delete_pill_msg": "Se eliminará «{title}» de forma permanente. Esta acción no se puede deshacer.",
+    "close_prescription_title": "Cerrar prescription",
+    "close_prescription_msg": "La prescription quedará cerrada y no se podrán añadir más pills."
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "no_bottle_hint": "Selecciona un bottle en el sidebar para ver su contexto",
+    "manage_bottles": "Gestionar bottles",
+    "stat_pills": "Pills totales",
+    "stat_prescriptions": "Prescriptions",
+    "stat_rx_open": "Abierta",
+    "stat_rx_closed": "Cerrada",
+    "stat_rx_label": "Prescription activa",
+    "stat_context": "Pills en contexto",
+    "open_rx_label": "Prescription abierta",
+    "view_link": "Ver",
+    "last_prescriptions": "Últimas prescriptions",
+    "view_all": "Ver todas",
+    "recent_context": "Contexto reciente",
+    "error_loading": "Error cargando contexto"
+  },
+  "bottles": {
+    "heading": "Bottles",
+    "new_btn": "Nuevo",
+    "empty": "No hay bottles todavía",
+    "active_badge": "activo",
+    "activate_btn": "Activar",
+    "modal_title": "Nuevo bottle",
+    "field_name": "Nombre (slug)",
+    "field_name_placeholder": "mi-proyecto",
+    "field_display_name": "Nombre para mostrar",
+    "field_display_name_placeholder": "Mi Proyecto",
+    "field_directory": "Directorio (ruta absoluta)",
+    "field_directory_placeholder": "/home/user/proyecto",
+    "field_scope": "Scope"
+  },
+  "bottle_detail": {
+    "back": "Bottles",
+    "new_rx_btn": "Prescription",
+    "prescriptions_heading": "Prescriptions",
+    "empty": "Sin prescriptions todavía",
+    "status_open": "abierta",
+    "status_deleted": "borrada",
+    "status_closed": "cerrada",
+    "modal_title": "Nueva prescription",
+    "field_title_placeholder": "Implementar feature X"
+  },
+  "prescription_detail": {
+    "status_open": "abierta",
+    "status_closed": "cerrada",
+    "started_at": "Iniciada",
+    "closed_at": "Cerrada",
+    "add_pill_btn": "Pill",
+    "close_btn": "Cerrar",
+    "pills_heading": "Pills",
+    "empty": "Sin pills todavía",
+    "modal_edit_title": "Editar pill",
+    "modal_new_title": "Nueva pill",
+    "confirm_close": "¿Cerrar esta prescription?",
+    "confirm_delete_rx": "¿Borrar esta prescription y todas sus pills?",
+    "confirm_delete_pill": "¿Borrar pill \"{title}\"?"
+  },
+  "capsules": {
+    "heading": "Capsules",
+    "new_btn": "Nueva",
+    "search_placeholder": "Buscar capsules",
+    "filter_all": "Todos",
+    "empty_search": "Sin capsules para esa búsqueda",
+    "empty": "Sin capsules",
+    "modal_title": "Nueva capsule"
+  },
+  "capsule_detail": {
+    "back": "Capsules",
+    "updated_at": "Actualizada",
+    "edit_heading": "Editando capsule",
+    "confirm_delete": "¿Borrar capsule \"{title}\"?"
+  },
+  "search": {
+    "heading": "Buscar",
+    "placeholder": "Buscar en pills y capsules",
+    "searching": "Buscando",
+    "pills_heading": "Pills",
+    "capsules_heading": "Capsules",
+    "no_results": "Sin resultados para \"{query}\"",
+    "hint": "Escribe algo para buscar en pills y capsules"
+  },
+  "not_found": {
+    "code": "404",
+    "message": "Página no encontrada",
+    "back_link": "Volver al dashboard"
+  },
+  "pill_card": {
+    "edit": "Editar",
+    "delete": "Borrar"
   }
 }

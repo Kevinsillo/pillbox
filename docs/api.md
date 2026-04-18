@@ -56,7 +56,7 @@ Create a new pill within an open prescription.
   "compound": "decision",
   "title": "Use JWT for session tokens",
   "content": "Full content here...",
-  "dispenser": "claude-sonnet-4-6",
+  "dispenser": "your-agent",
   "author_name": "Ada Lovelace",
   "author_email": "ada@example.com"
 }
@@ -117,7 +117,7 @@ Get a pill by its integer ID.
     "compound": "decision",
     "title": "Use JWT for session tokens",
     "content": "Full content...",
-    "dispenser": "claude-sonnet-4-6",
+    "dispenser": "your-agent",
     "author_name": null,
     "author_email": null,
     "created_at": "2026-04-14T10:00:00Z",
@@ -166,7 +166,7 @@ Create a new capsule.
   "compound": "convention",
   "title": "Always use conventional commits",
   "content": "All commits follow...",
-  "dispenser": "claude-sonnet-4-6"
+  "dispenser": "your-agent"
 }
 ```
 

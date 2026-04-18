@@ -1,6 +1,6 @@
 # Migration
 
-Pillbox supports two database scopes: **local** (`.pillbox/pillbox.db` in the project directory) and **global** (`~/.pillbox/pillbox.db`). Migration moves a bottle's knowledge between them.
+Pillbox supports two database scopes: **local** (`.pillbox/pillbox.db` in the project directory) and **global** (`~/.pillbox/pillbox.db`). Migration **cuts** a bottle from one database to the other — the source is removed after a successful transfer.
 
 ---
 
@@ -14,18 +14,19 @@ Pillbox supports two database scopes: **local** (`.pillbox/pillbox.db` in the pr
 
 ## How it works
 
-Migration uses **upsert by `sync_id`** — a UUID assigned to each pill and capsule when created. This means:
+Migration uses **upsert by `sync_id`** — a UUID assigned to each pill when created. This means:
 
 - If a record doesn't exist in the destination, it's inserted.
 - If it already exists, it's updated only if `updated_at` in the source is more recent.
 - Soft-deleted records (`deleted_at IS NOT NULL`) are migrated as-is — soft deletes propagate.
-- The migration is idempotent: running it twice is safe.
+- Migration is a **cut**, not a copy: the source bottle is deleted after a successful transfer.
+  - Local → Global: the `.pillbox/pillbox.db` file is removed.
+  - Global → Local: the bottle and all its data are deleted from the global DB.
 
 The full migration chain for a bottle:
 1. Bottle (upsert by `name`)
 2. Prescriptions (upsert by `id` UUID)
 3. Pills (upsert by `sync_id`)
-4. Capsules (optional, global — upsert by `sync_id`)
 
 ---
 
@@ -45,24 +46,6 @@ Both databases must exist. The bottle must be registered in the local DB.
 ```bash
 cd my-project
 pillbox bottle migrate --reverse
-```
-
-### Include capsules
-
-Capsules are global and have no bottle. Use `--capsules` to include them in the migration (copies all capsules from source DB to destination DB):
-
-```bash
-pillbox bottle migrate --capsules
-pillbox bottle migrate --reverse --capsules
-```
-
-### Output
-
-```
-Migrando bottle 'my-project' (local → global)...
-✓ Bottles:        1
-✓ Prescripciones: 5
-✓ Pills:          23
 ```
 
 ---
@@ -107,7 +90,7 @@ If you have three projects with local databases and want to consolidate:
 ```bash
 cd ~/projects/project-a && pillbox bottle migrate
 cd ~/projects/project-b && pillbox bottle migrate
-cd ~/projects/project-c && pillbox bottle migrate --capsules
+cd ~/projects/project-c && pillbox bottle migrate
 ```
 
 After this, all pills are in `~/.pillbox/pillbox.db` and searchable together with `pill_find`.

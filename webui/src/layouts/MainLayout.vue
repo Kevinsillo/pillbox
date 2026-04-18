@@ -28,13 +28,11 @@ onMounted(async () => {
     } catch {}
 })
 
-const activeBottle = () => bottles.value.find(b => b.id === activeBottleId.value)
-
 const navItems = [
+    { path: "/search", label: "nav.search", icon: ISearch },
     { path: "/", label: "nav.dashboard", icon: ILayoutDashboard },
     { path: "/bottles", label: "nav.bottles", icon: IBox },
     { path: "/capsules", label: "nav.capsules", icon: IPill },
-    { path: "/search", label: "nav.search", icon: ISearch },
 ]
 
 const isActive = (path: string) => {
@@ -62,9 +60,6 @@ const isActive = (path: string) => {
                     <option v-if="bottles.length === 0" :value="null" disabled>{{ $t('sidebar.no_bottles') }}</option>
                     <option v-for="b in bottles" :key="b.id" :value="b.id">{{ b.display_name }}</option>
                 </select>
-                <p v-if="activeBottle()" class="text-xs text-zinc-600 mt-1 truncate" :title="activeBottle()!.directory">
-                    {{ activeBottle()!.directory }}
-                </p>
             </div>
 
             <!-- Nav -->

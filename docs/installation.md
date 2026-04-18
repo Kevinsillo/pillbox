@@ -118,21 +118,7 @@ launchctl load ~/Library/LaunchAgents/sh.pillbox.plist
 pillbox doctor
 ```
 
-Expected output:
-
-```
-Pillbox Doctor
-════════════════════════════════════════════════════════
-
-Binary      /home/you/.local/bin/pillbox
-
-DB global   /home/you/.pillbox/pillbox.db
-             ✓ Schema v1  —  0 bottles  —  0 pills  —  0 capsules
-
-DB local    .pillbox/pillbox.db  (no existe en este directorio)
-
-Bottle      ✗ No hay bottle para este directorio
-```
+Checks binary path, global and local databases, and the active bottle for the current directory. Output language follows your system locale — override with `PILLBOX_LANG=en pillbox doctor` (see [cli.md](cli.md#language-commands)).
 
 ---
 
