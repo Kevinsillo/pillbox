@@ -197,6 +197,22 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<PillDiscardResul
     Ok(Some(PillDiscardResult { id, deleted_at }))
 }
 
+/// Lista todas las pills de una prescription, ordenadas por fecha de creación.
+pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<Vec<Pill>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, sync_id, compound, title, content, prescription_id,
+                dispenser, author_name, author_email, created_at, updated_at
+         FROM pills
+         WHERE prescription_id = ?1 AND deleted_at IS NULL
+         ORDER BY created_at ASC",
+    )?;
+    let pills = stmt
+        .query_map(params![prescription_id], row_to_pill)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("no se pudo listar las pills de la prescription")?;
+    Ok(pills)
+}
+
 fn row_to_pill(row: &rusqlite::Row<'_>) -> rusqlite::Result<Pill> {
     Ok(Pill {
         id: row.get(0)?,

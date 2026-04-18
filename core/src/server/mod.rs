@@ -5,6 +5,7 @@
 //! Al arrancar publica un servicio mDNS `pillbox._http._tcp.local.` para
 //! descubrimiento en la red local.
 
+mod assets;
 mod handlers;
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
@@ -34,7 +35,7 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
         .allow_headers(Any);
 
     let app = Router::new()
-        .route("/", get(root))
+        .route("/", get(assets::serve_root))
         // Pills
         .route("/pills", post(handlers::pill_create))
         .route("/pills/search", get(handlers::pill_search))
@@ -55,8 +56,16 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
         // Bottles
         .route("/bottles", get(handlers::bottle_list))
         .route("/bottles", post(handlers::bottle_create))
+        .route("/bottles/:id", get(handlers::bottle_get))
+        .route("/bottles/:id/prescriptions", get(handlers::bottle_prescriptions))
+        // Prescriptions (nested pills)
+        .route("/prescriptions/:id/pills", get(handlers::prescription_pills))
+        // Capsules (list)
+        .route("/capsules", get(handlers::capsule_list))
         // Context
         .route("/context", get(handlers::context_get))
+        // WebUI — catch-all para SPA routing (debe ir al final)
+        .route("/*path", get(assets::serve))
         .layer(cors)
         .with_state(state);
 
@@ -74,15 +83,6 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
 
     // _mdns se dropea aquí → unregister automático del servicio mDNS
     Ok(())
-}
-
-async fn root() -> axum::Json<serde_json::Value> {
-    axum::Json(serde_json::json!({
-        "name": "pillbox",
-        "version": env!("CARGO_PKG_VERSION"),
-        "status": "ok",
-        "docs": "https://pillbox.dev/docs/api"
-    }))
 }
 
 /// Señal de apagado graceful: espera CTRL+C.

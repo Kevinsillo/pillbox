@@ -1,4 +1,4 @@
-.PHONY: dev dev-mcp build test lint check fmt fmt-check \
+.PHONY: dev dev-mcp dev-webui webui-build build build-full test lint check fmt fmt-check \
         build-linux build-mac build-win build-all \
         db-shell db-reset \
         mcp-build mcp-install mcp-dev \
@@ -14,9 +14,21 @@ dev:
 dev-mcp: mcp-build
 	cd mcp && PILLBOX_BIN=../core/target/debug/pillbox node --watch dist/index.js
 
+## Arranca el servidor de desarrollo de la WebUI (con proxy a pillbox serve)
+dev-webui:
+	cd webui && npm run dev
+
 # ─── Build ────────────────────────────────────────────────────────────────────
 
-## Compila el binario Rust (release)
+## Compila la WebUI y genera dist/
+webui-build:
+	cd webui && npm run build
+
+## Compila la WebUI y luego el binario Rust (webui embebida)
+build-full: webui-build
+	cargo build --release --manifest-path core/Cargo.toml
+
+## Compila el binario Rust sin WebUI (más rápido, para desarrollo del core)
 build:
 	cargo build --release --manifest-path core/Cargo.toml
 

@@ -139,6 +139,24 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<CapsuleDiscardRe
     Ok(Some(CapsuleDiscardResult { id, deleted_at }))
 }
 
+/// Lista capsules globales con filtros opcionales.
+pub fn list(conn: &Connection, limit: Option<u32>, compound: Option<&str>) -> Result<Vec<Capsule>> {
+    let limit = limit.unwrap_or(50);
+    let mut stmt = conn.prepare(
+        "SELECT id, sync_id, compound, title, content, created_at, updated_at
+         FROM capsules
+         WHERE deleted_at IS NULL
+           AND (?1 IS NULL OR compound = ?1)
+         ORDER BY updated_at DESC
+         LIMIT ?2",
+    )?;
+    let capsules = stmt
+        .query_map(params![compound, limit], row_to_capsule)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("no se pudo listar las capsules")?;
+    Ok(capsules)
+}
+
 fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
     Ok(Capsule {
         id: row.get(0)?,

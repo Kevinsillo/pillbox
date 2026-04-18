@@ -307,6 +307,18 @@ pub async fn prescription_delete(State(s): State<AppState>, Path(id): Path<Strin
 
 // ─── Bottles ──────────────────────────────────────────────────────────────────
 
+pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::bottles::find_by_id(&conn, id) {
+        Ok(Some(b)) => ok(b),
+        Ok(None) => err_404("bottle", id),
+        Err(e) => err_500(e),
+    }
+}
+
 pub async fn bottle_list(State(s): State<AppState>) -> ApiResponse {
     let conn = match open_conn(&s) {
         Ok(c) => c,
@@ -328,6 +340,59 @@ pub async fn bottle_create(State(s): State<AppState>, Json(input): Json<NewBottl
     };
     match store::bottles::create(&mut conn, &input) {
         Ok(b) => ok_created(b),
+        Err(e) => err_500(e),
+    }
+}
+
+pub async fn bottle_prescriptions(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+    Query(params): Query<BottlePrescriptionsParams>,
+) -> ApiResponse {
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::bottles::find_by_id(&conn, id) {
+        Ok(None) => return err_404("bottle", id),
+        Err(e) => return err_500(e),
+        Ok(Some(_)) => {}
+    }
+    match store::prescriptions::list_by_bottle(&conn, id, params.limit) {
+        Ok(rxs) => ok(rxs),
+        Err(e) => err_500(e),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct BottlePrescriptionsParams {
+    #[serde(default = "default_50")]
+    pub limit: u32,
+}
+
+pub async fn prescription_pills(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::prescriptions::read(&conn, &id) {
+        Ok(None) => return err_404("prescription", &id),
+        Err(e) => return err_500(e),
+        Ok(Some(_)) => {}
+    }
+    match store::pills::list_by_prescription(&conn, &id) {
+        Ok(pills) => ok(pills),
+        Err(e) => err_500(e),
+    }
+}
+
+pub async fn capsule_list(State(s): State<AppState>, Query(params): Query<CapsuleSearchParams>) -> ApiResponse {
+    let conn = match open_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::capsules::list(&conn, params.limit, params.compound.as_deref()) {
+        Ok(capsules) => ok(capsules),
         Err(e) => err_500(e),
     }
 }
@@ -366,9 +431,6 @@ pub async fn context_get(
     }
 }
 
-fn default_5() -> u32 {
-    5
-}
-fn default_30() -> u32 {
-    30
-}
+fn default_5() -> u32 { 5 }
+fn default_30() -> u32 { 30 }
+fn default_50() -> u32 { 50 }
