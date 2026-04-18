@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "bottles": "Bottles",
+    "capsules": "Capsules",
+    "search": "Buscar"
+  },
+  "sidebar": {
+    "active_bottle_label": "Bottle activo",
+    "no_bottles": "Sin bottles"
+  },
+  "footer": {
+    "version": "v0.3.0"
+  },
+  "locale": {
+    "es": "Español"
+  }
+}
