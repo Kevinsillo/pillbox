@@ -186,6 +186,8 @@ Pillbox is inspired by the idea that AI agents should accumulate knowledge the s
 | [rust-i18n](https://github.com/longbridgeapp/rust-i18n) | Internationalization (6 languages) |
 | [sys-locale](https://github.com/1Password/sys-locale) | Native locale detection (Windows/macOS/Linux) |
 | [mdns-sd](https://github.com/keepsimple1/mdns-sd) | mDNS local network discovery |
+| [strsim](https://github.com/rapidfuzz/strsim-rs) | Fuzzy string similarity (Jaro-Winkler) |
+| [rayon](https://github.com/rayon-rs/rayon) | Data parallelism for fuzzy vocab scanning |
 | [serde](https://serde.rs) | Serialization |
 | [anyhow](https://github.com/dtolnay/anyhow) | Error handling |
 

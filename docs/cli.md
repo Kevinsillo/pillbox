@@ -12,15 +12,16 @@ Shows global status: binary path, global and local databases, active bottle, HTT
 
 ## Serve commands
 
-### `pillbox serve start [--port N] [--daemon]`
+### `pillbox serve start [--port N]`
 
-Starts the HTTP server. Default port: 4242.
+Starts the HTTP server as a background daemon. Default port: 4242.
 
 ```bash
 pillbox serve start
 pillbox serve start --port 8080
-pillbox serve start --daemon       # background process
 ```
+
+If startup fails, the error is written to `~/.pillbox/pillbox.log`.
 
 Publishes `pillbox._http._tcp.local.` via mDNS for local network discovery. The web UI is available at `http://localhost:<port>`.
 
@@ -121,7 +122,7 @@ Closes the open prescription for the current bottle.
 
 ### `pillbox mcp install`
 
-Downloads and installs the MCP server to `~/.pillbox/mcp/`. Requires Node.js ≥ 18.
+Extracts the MCP server (embedded in the binary) to `~/.pillbox/mcp/`. Requires Node.js ≥ 18.
 
 ### `pillbox mcp uninstall`
 
@@ -133,7 +134,7 @@ Removes the MCP server directory.
 
 ### `pillbox skill install`
 
-Downloads and installs the Claude Code skill to `~/.claude/skills/pillbox/SKILL.md`.
+Extracts the Claude Code skill (embedded in the binary) to `~/.claude/skills/pillbox/`.
 
 ### `pillbox skill uninstall`
 

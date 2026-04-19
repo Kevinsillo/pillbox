@@ -93,4 +93,4 @@ cd ~/projects/project-b && pillbox bottle migrate
 cd ~/projects/project-c && pillbox bottle migrate
 ```
 
-After this, all pills are in `~/.pillbox/pillbox.db` and searchable together with `pill_find`.
+After this, all pills are in `~/.pillbox/pillbox.db` and searchable together with `pill_search`.

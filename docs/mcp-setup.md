@@ -6,20 +6,22 @@ Pillbox exposes its tools to AI agents via the [Model Context Protocol](https://
 
 ## Claude Code
 
-Add the following to your `~/.claude.json` (global) or `.claude.json` (project-level):
+`pillbox mcp install` configures Claude Code automatically — it writes the `pillbox` entry into `~/.claude.json`, creating the file if needed and preserving any existing entries.
+
+Restart Claude Code after installing. Run `/mcp` to verify the server is connected and the tools are listed.
+
+If you prefer to configure manually, add the following to `~/.claude.json`:
 
 ```json
 {
   "mcpServers": {
     "pillbox": {
       "command": "node",
-      "args": ["~/.pillbox/mcp/dist/index.js"]
+      "args": ["/home/you/.pillbox/mcp/index.js"]
     }
   }
 }
 ```
-
-Restart Claude Code after saving. Run `/mcp` to verify the server is connected and the tools are listed.
 
 ---
 
@@ -32,7 +34,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "pillbox": {
       "command": "node",
-      "args": ["/home/you/.pillbox/mcp/dist/index.js"]
+      "args": ["/home/you/.pillbox/mcp/index.js"]
     }
   }
 }
@@ -55,9 +57,9 @@ You should see `pillbox` listed with its tools:
 ```
 pillbox (connected)
   Tools: prescription_open, prescription_close, prescription_read,
-         prescription_discard, bottle_list, pill_take, pill_find,
+         prescription_discard, bottle_list, pill_take, pill_search,
          pill_context, pill_read, pill_revise, pill_discard,
-         capsule_take, capsule_find, capsule_read, capsule_revise,
+         capsule_take, capsule_search, capsule_read, capsule_revise,
          capsule_discard
 ```
 
@@ -128,7 +130,7 @@ Saves a piece of project knowledge within an open prescription.
 
 **Compounds:** `decision`, `architecture`, `bugfix`, `pattern`, `discovery`, `learning`, `feedback`, `prescription_summary`, `manual`
 
-#### `pill_find`
+#### `pill_search`
 Full-text search across pills.
 
 ```json
@@ -198,7 +200,7 @@ Saves personal, cross-project knowledge.
 
 **Compounds:** `convention`, `workflow`, `environment`, `context`, `goal`, `feedback`, `manual`
 
-#### `capsule_find`
+#### `capsule_search`
 Full-text search across capsules (global — not filtered by project).
 
 ```json

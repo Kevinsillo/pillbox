@@ -61,21 +61,18 @@ This creates `~/.pillbox/pillbox.db` with the full schema.
 ### 3. Install the MCP server
 
 ```bash
-# Download the MCP package
-# (included in the release tarball as pillbox-mcp.tar.gz)
-
-mkdir -p ~/.pillbox/mcp
-tar -xzf pillbox-mcp.tar.gz -C ~/.pillbox/mcp
-cd ~/.pillbox/mcp && npm install --production
+pillbox mcp install
 ```
+
+This extracts the MCP server (embedded in the binary) to `~/.pillbox/mcp/`. Requires Node.js ≥ 18.
 
 ### 4. Install the Claude Code skill
 
 ```bash
-mkdir -p ~/.claude/skills/pillbox
-# Copy SKILL.md from the release package
-cp pillbox-skill/SKILL.md ~/.claude/skills/pillbox/
+pillbox skill install
 ```
+
+This extracts the skill (embedded in the binary) to `~/.claude/skills/pillbox/`.
 
 ---
 
@@ -142,12 +139,13 @@ Requires Rust 1.75+ and Node.js 20+.
 git clone https://github.com/kevinsillo/pillbox
 cd pillbox
 
-# Build the Rust binary
-cargo build --release -p pillbox-core
-
-# Build the MCP server
-cd mcp && npm install && npm run build
+# Build WebUI + MCP + Rust binary (everything embedded)
+make build-full
 
 # Initialize global DB
-./target/release/pillbox --init-global
+./core/target/release/pillbox --init-global
+
+# Install MCP and skill from the binary
+./core/target/release/pillbox mcp install
+./core/target/release/pillbox skill install
 ```
