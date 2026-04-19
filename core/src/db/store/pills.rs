@@ -4,6 +4,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::domain::pill::{NewPill, Pill, PillPatch};
+use crate::error::PillboxError;
 
 // ─── Tipos de resultado ───────────────────────────────────────────────────────
 
@@ -40,10 +41,10 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
         .context("error al verificar la prescription")?;
 
     if !rx_open {
-        anyhow::bail!(
-            "prescription_required: la prescription '{}' no existe o está cerrada",
-            input.prescription_id
-        );
+        return Err(PillboxError::PrescriptionRequired {
+            prescription_id: input.prescription_id.clone(),
+        }
+        .into());
     }
 
     let sync_id = Uuid::now_v7().to_string();

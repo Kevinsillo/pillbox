@@ -21,10 +21,7 @@ use validator::Validate;
 
 use pillbox::{
     config,
-    db::{
-        self,
-        store::{self, PrescriptionAlreadyOpen},
-    },
+    db::{self, store},
     domain::{
         bottle::NewBottle,
         capsule::{CapsulePatch, NewCapsule},
@@ -32,6 +29,7 @@ use pillbox::{
         prescription::NewPrescription,
         search::SearchParams,
     },
+    error::PillboxError,
 };
 
 // ─── Protocolo ────────────────────────────────────────────────────────────────
@@ -327,17 +325,27 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             }
             match store::prescriptions::open(conn, &req) {
                 Ok(rx) => Response::ok(rx),
-                Err(e) => {
-                    if let Some(already) = e.downcast_ref::<PrescriptionAlreadyOpen>() {
-                        Response::err_with_data(
-                            "prescription_already_open",
-                            already.to_string(),
-                            serde_json::to_value(already).unwrap_or(Value::Null),
-                        )
-                    } else {
-                        anyhow_to_response(e)
-                    }
-                }
+                Err(e) => match e.downcast::<PillboxError>() {
+                    Ok(PillboxError::PrescriptionAlreadyOpen {
+                        ref id,
+                        ref title,
+                        ref started_at,
+                        pill_count,
+                    }) => Response::err_with_data(
+                        "prescription_already_open",
+                        format!(
+                            "prescription_already_open: '{title}' (id={id}, iniciada={started_at}, {pill_count} pills)"
+                        ),
+                        serde_json::json!({
+                            "id": id,
+                            "title": title,
+                            "started_at": started_at,
+                            "pill_count": pill_count,
+                        }),
+                    ),
+                    Ok(other) => anyhow_to_response(other.into()),
+                    Err(e) => anyhow_to_response(e),
+                },
             }
         }
 

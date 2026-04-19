@@ -17,7 +17,7 @@ use validator::Validate;
 use pillbox::{
     db::{
         self,
-        store::{self, registered_bottles, PrescriptionAlreadyOpen},
+        store::{self, registered_bottles},
     },
     domain::{
         bottle::NewBottle,
@@ -26,6 +26,7 @@ use pillbox::{
         prescription::NewPrescription,
         search::SearchParams,
     },
+    error::PillboxError,
 };
 
 use super::AppState;
@@ -271,17 +272,27 @@ pub async fn prescription_open(
     };
     match store::prescriptions::open(&mut conn, &input) {
         Ok(rx) => ok_created(rx),
-        Err(e) => {
-            if let Some(already) = e.downcast_ref::<PrescriptionAlreadyOpen>() {
-                err_409(
-                    "prescription_already_open",
-                    &already.to_string(),
-                    serde_json::to_value(already).unwrap_or(Value::Null),
-                )
-            } else {
-                err_500(e)
-            }
-        }
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::PrescriptionAlreadyOpen {
+                ref id,
+                ref title,
+                ref started_at,
+                pill_count,
+            }) => err_409(
+                "prescription_already_open",
+                &format!(
+                    "prescription_already_open: '{title}' (id={id}, iniciada={started_at}, {pill_count} pills)"
+                ),
+                serde_json::json!({
+                    "id": id,
+                    "title": title,
+                    "started_at": started_at,
+                    "pill_count": pill_count,
+                }),
+            ),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 

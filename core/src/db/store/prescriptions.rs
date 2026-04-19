@@ -1,43 +1,15 @@
-use std::fmt;
-
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection, TransactionBehavior};
 use uuid::Uuid;
 
 use crate::domain::prescription::{NewPrescription, Prescription};
-
-// ─── Error tipado ─────────────────────────────────────────────────────────────
-
-/// Error devuelto cuando ya existe una prescription abierta para el bottle.
-///
-/// Contiene suficiente información para que el modelo decida:
-/// - Reutilizar la sesión activa pasando `id` a `pill_take`
-/// - Cerrarla con `prescription_close` y abrir una nueva
-#[derive(Debug, serde::Serialize)]
-pub struct PrescriptionAlreadyOpen {
-    pub id: String,
-    pub title: String,
-    pub started_at: String,
-    pub pill_count: i64,
-}
-
-impl fmt::Display for PrescriptionAlreadyOpen {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "prescription_already_open: '{}' (id={}, iniciada={}, {} pills)",
-            self.title, self.id, self.started_at, self.pill_count
-        )
-    }
-}
-
-impl std::error::Error for PrescriptionAlreadyOpen {}
+use crate::error::PillboxError;
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 /// Abre una nueva prescription para el bottle dado.
 ///
-/// Falla con `PrescriptionAlreadyOpen` si ya hay una prescription activa
+/// Falla con `PillboxError::PrescriptionAlreadyOpen` si ya hay una prescription activa
 /// (no cerrada ni descartada) para ese bottle.
 pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescription> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -67,7 +39,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
     };
 
     if let Some((id, title, started_at, pill_count)) = existing {
-        return Err(PrescriptionAlreadyOpen {
+        return Err(PillboxError::PrescriptionAlreadyOpen {
             id,
             title,
             started_at,
@@ -84,7 +56,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
     )?;
 
     if !bottle_exists {
-        anyhow::bail!("bottle_not_found: no existe el bottle {}", input.bottle_id);
+        return Err(PillboxError::BottleNotFound { bottle_id: input.bottle_id }.into());
     }
 
     let id = Uuid::now_v7().to_string();
@@ -126,7 +98,7 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
         .context("no se pudo cerrar la prescription")?;
 
     if affected == 0 {
-        anyhow::bail!("prescription_not_found_or_closed: {}", id);
+        return Err(PillboxError::PrescriptionNotFoundOrClosed { id: id.to_string() }.into());
     }
 
     tx.execute(
@@ -158,7 +130,7 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
     )?;
 
     if affected == 0 {
-        anyhow::bail!("prescription_not_found: {}", id);
+        return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
     }
 
     // Cascade soft delete de las pills de esta prescription
@@ -227,6 +199,7 @@ mod tests {
     use crate::db::connection::open_in_memory;
     use crate::db::store::bottles;
     use crate::domain::bottle::{BottleScope, NewBottle};
+    use crate::error::PillboxError;
 
     fn make_bottle(conn: &mut Connection, name: &str) -> i64 {
         bottles::create(
@@ -286,10 +259,12 @@ mod tests {
         )
         .unwrap_err();
 
-        let already_open = err.downcast_ref::<PrescriptionAlreadyOpen>();
-        assert!(already_open.is_some());
-        assert_eq!(already_open.unwrap().title, "Primera sesión");
-        assert_eq!(already_open.unwrap().pill_count, 0);
+        let already_open = err.downcast_ref::<PillboxError>();
+        assert!(matches!(already_open, Some(PillboxError::PrescriptionAlreadyOpen { .. })));
+        if let Some(PillboxError::PrescriptionAlreadyOpen { title, pill_count, .. }) = already_open {
+            assert_eq!(title, "Primera sesión");
+            assert_eq!(*pill_count, 0);
+        }
     }
 
     #[test]

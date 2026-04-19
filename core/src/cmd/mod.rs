@@ -1,0 +1,10 @@
+pub mod bottle;
+pub mod lang;
+pub mod mcp;
+pub mod pills;
+pub mod prescription;
+pub mod serve;
+pub mod shared;
+pub mod skill;
+pub mod status;
+pub mod uninstall;
