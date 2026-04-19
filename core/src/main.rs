@@ -1,6 +1,6 @@
 mod cmd;
-mod exec;
 mod i18n;
+mod mcp;
 mod output;
 mod server;
 
@@ -198,7 +198,7 @@ async fn main() -> Result<()> {
     match cli.command {
         None => cmd_root_help(),
         Some(Command::Status) => cmd::status::run(),
-        Some(Command::Exec) => exec::run(),
+        Some(Command::Exec) => mcp::run(),
         Some(Command::Serve { cmd }) => match cmd {
             Some(ServeCommand::Start { port, inline }) => {
                 cmd::serve::cmd_serve_start(port, inline).await
