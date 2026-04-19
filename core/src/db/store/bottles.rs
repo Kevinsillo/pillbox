@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 
-use crate::domain::bottle::{Bottle, NewBottle};
+use crate::{domain::bottle::{Bottle, NewBottle}, error::PillboxError};
 
 /// Crea un bottle nuevo en la DB.
 pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
@@ -17,7 +17,16 @@ pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
             input.scope.as_str()
         ],
     )
-    .context("no se pudo crear el bottle")?;
+    .map_err(|e| {
+        if let rusqlite::Error::SqliteFailure(ref f, _) = e {
+            if f.code == rusqlite::ErrorCode::ConstraintViolation {
+                return anyhow::anyhow!(PillboxError::BottleAlreadyExists {
+                    name: input.name.clone(),
+                });
+            }
+        }
+        anyhow::anyhow!(e).context("no se pudo crear el bottle")
+    })?;
 
     let id = tx.last_insert_rowid();
 
@@ -146,6 +155,8 @@ mod tests {
     fn duplicate_name_fails() {
         let mut conn = open_in_memory().unwrap();
         create(&mut conn, &test_bottle("dup", "/tmp/dup1")).unwrap();
-        assert!(create(&mut conn, &test_bottle("dup", "/tmp/dup2")).is_err());
+        let err = create(&mut conn, &test_bottle("dup", "/tmp/dup2")).unwrap_err();
+        let typed = err.downcast::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::BottleAlreadyExists { .. }));
     }
 }

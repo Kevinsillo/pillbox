@@ -27,4 +27,7 @@ pub enum PillboxError {
     // ── Bottle ────────────────────────────────────────────────────────────────
     #[error("bottle_not_found: no existe el bottle {bottle_id}")]
     BottleNotFound { bottle_id: i64 },
+
+    #[error("bottle_already_exists: ya existe un bottle con el nombre '{name}'")]
+    BottleAlreadyExists { name: String },
 }
