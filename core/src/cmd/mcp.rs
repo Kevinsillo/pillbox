@@ -2,7 +2,7 @@ use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
-use crate::mcp_assets;
+use super::install;
 
 pub fn cmd_mcp_install() -> Result<()> {
     let node_ok = std::process::Command::new("node")
@@ -26,55 +26,34 @@ pub fn cmd_mcp_install() -> Result<()> {
     }
 
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
-    std::fs::create_dir_all(&mcp_dir)?;
+    let claude_cfg = pillbox::config::claude_config_path();
 
-    for file in mcp_assets::McpAssets::iter() {
-        let content = mcp_assets::McpAssets::get(&file).unwrap();
-        let dest = mcp_dir.join(file.as_ref());
-        if let Some(parent) = dest.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(&dest, content.data.as_ref())?;
-    }
+    println!("{}", t!("mcp.downloading"));
+    let version = install::mcp::install(&mcp_dir, &claude_cfg)?;
 
     println!(
         "{} {}\n",
         "●".green().bold(),
         t!("mcp.installed", path = mcp_dir.display())
     );
-
-    let claude_cfg = pillbox::config::claude_config_path();
-    let index_js = mcp_dir.join("index.js");
-    let entry = serde_json::json!({
-        "command": "node",
-        "args": [index_js.to_string_lossy()]
-    });
-
-    let mut root: serde_json::Value = if claude_cfg.exists() {
-        let raw = std::fs::read_to_string(&claude_cfg)?;
-        serde_json::from_str(&raw).unwrap_or(serde_json::json!({}))
-    } else {
-        serde_json::json!({})
-    };
-
-    root["mcpServers"]["pillbox"] = entry;
-    std::fs::write(&claude_cfg, serde_json::to_string_pretty(&root)? + "\n")?;
-
     println!(
         "{} {}\n",
         "●".green().bold(),
         t!("mcp.claude_json_updated", path = claude_cfg.display())
     );
+    println!("{} {}\n", "●".green().bold(), version);
     Ok(())
 }
 
 pub fn cmd_mcp_uninstall() -> Result<()> {
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
-    if !mcp_dir.exists() {
+    let claude_cfg = pillbox::config::claude_config_path();
+
+    let removed = install::mcp::uninstall(&mcp_dir, &claude_cfg)?;
+    if removed {
+        println!("{} {}\n", "●".green().bold(), t!("mcp.uninstalled"));
+    } else {
         println!("{}\n", t!("mcp.not_installed"));
-        return Ok(());
     }
-    std::fs::remove_dir_all(&mcp_dir)?;
-    println!("{} {}\n", "●".green().bold(), t!("mcp.uninstalled"));
     Ok(())
 }

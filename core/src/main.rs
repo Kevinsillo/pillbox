@@ -1,10 +1,8 @@
 mod cmd;
 mod exec;
 mod i18n;
-mod mcp_assets;
 mod output;
 mod server;
-mod skill_assets;
 
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};

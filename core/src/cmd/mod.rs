@@ -1,4 +1,5 @@
 pub mod bottle;
+pub mod install;
 pub mod lang;
 pub mod mcp;
 pub mod pills;

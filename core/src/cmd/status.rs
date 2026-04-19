@@ -32,6 +32,7 @@ pub fn run() -> Result<()> {
 
     let global_path = pillbox::config::global_db_path();
     let local_path = pillbox::config::local_db_path();
+    let _ = pillbox::db::connection::open(&global_path);
 
     let global = StatusDb {
         result: query_db(&global_path),
