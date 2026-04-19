@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
-import { bottlesApi } from '@/api/bottles'
-import { prescriptionsApi } from '@/api/prescriptions'
-import type { Bottle, Prescription } from '@/api/types'
+import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
+import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
+import type { Bottle, Prescription } from '@/core/domain/types'
 import { RouterLink } from 'vue-router'
+import IArrowLeft from '~icons/lucide/arrow-left'
+import IClipboard from '~icons/lucide/clipboard'
 
 const { t } = useI18n()
 const props = defineProps<{ id: string }>()
@@ -49,8 +51,8 @@ async function deleteRx(rx: Prescription) {
 </script>
 
 <template>
-    <div class="p-6 max-w-3xl mx-auto space-y-5">
-        <RouterLink to="/bottles" class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">← {{ $t('bottle_detail.back') }}</RouterLink>
+    <div class="p-6 max-w-4xl mx-auto space-y-5">
+        <RouterLink to="/bottles" class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"><IArrowLeft class="w-3 h-3" /> {{ $t('bottle_detail.back') }}</RouterLink>
 
         <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
 
@@ -72,33 +74,33 @@ async function deleteRx(rx: Prescription) {
                 </h2>
                 <div v-if="prescriptions.length === 0" class="text-zinc-500 text-sm">{{ $t('bottle_detail.empty') }}</div>
                 <div v-else class="space-y-2">
-                    <div
+                    <RouterLink
                         v-for="rx in prescriptions"
                         :key="rx.id"
-                        class="flex items-center gap-2"
+                        :to="`/prescriptions/${rx.id}`"
+                        class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                     >
-                        <RouterLink
-                            :to="`/prescriptions/${rx.id}`"
-                            class="flex-1 flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg px-4 py-3 hover:border-zinc-600 transition-colors"
-                        >
-                            <div>
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
+                                <IClipboard class="w-4 h-4 text-zinc-400" />
+                            </div>
+                            <div class="space-y-1 min-w-0">
                                 <div class="flex items-center gap-2">
                                     <span class="text-(--text-h) text-sm font-medium">{{ rx.title }}</span>
                                     <span v-if="isOpen(rx)" class="text-xs text-green-500">● {{ $t('bottle_detail.status_open') }}</span>
-                                    <span v-else-if="rx.deleted_at" class="text-xs text-red-500">● {{ $t('bottle_detail.status_deleted') }}</span>
+                                    <span v-else-if="rx.deleted_at" class="text-xs text-red-400">● {{ $t('bottle_detail.status_deleted') }}</span>
                                     <span v-else class="text-xs text-zinc-600">● {{ $t('bottle_detail.status_closed') }}</span>
                                 </div>
-                                <p class="text-xs text-zinc-600 mt-0.5">{{ new Date(rx.started_at).toLocaleString() }}</p>
+                                <p class="text-xs text-zinc-600">{{ new Date(rx.started_at).toLocaleString() }}</p>
                             </div>
-                            <span class="text-zinc-600">→</span>
-                        </RouterLink>
+                        </div>
                         <button
                             v-if="!rx.deleted_at"
                             class="shrink-0 text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
-                            @click="deleteRx(rx)">
+                            @click.prevent="deleteRx(rx)">
                             {{ $t('common.delete') }}
                         </button>
-                    </div>
+                    </RouterLink>
                 </div>
             </div>
         </template>

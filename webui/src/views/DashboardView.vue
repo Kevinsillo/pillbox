@@ -2,11 +2,13 @@
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useActiveBottle } from '@/composables/useActiveBottle'
-import { contextApi } from '@/api/context'
-import { bottlesApi } from '@/api/bottles'
-import type { Context, Bottle, Prescription } from '@/api/types'
+import { contextApi } from '@/core/infrastructure/repositories/ContextRepository'
+import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
+import type { Context, Bottle, Prescription } from '@/core/domain/types'
 import PillCard from '@/components/PillCard.vue'
 import { RouterLink } from 'vue-router'
+import IArrowRight from '~icons/lucide/arrow-right'
+import IClipboard from '~icons/lucide/clipboard'
 
 const { t } = useI18n()
 const { activeBottleId } = useActiveBottle()
@@ -22,7 +24,7 @@ async function load(id: number) {
     error.value = null
     try {
         const [c, b, rx] = await Promise.all([
-            contextApi.get(id, { prescription_limit: 5, pill_limit: 30 }),
+            contextApi.get(id, { prescription_limit: 5, pill_limit: 8 }),
             bottlesApi.get(id),
             bottlesApi.prescriptions(id, 5),
         ])
@@ -54,7 +56,7 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
             <p class="text-4xl mb-3">⬢</p>
             <p>{{ $t('dashboard.no_bottle_hint') }}</p>
             <RouterLink to="/bottles" class="text-sm text-zinc-400 hover:text-(--text-h) underline mt-2 inline-block">
-                {{ $t('dashboard.manage_bottles') }} →
+                {{ $t('dashboard.manage_bottles') }} <IArrowRight class="w-3 h-3 inline" />
             </RouterLink>
         </div>
 
@@ -74,7 +76,7 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                         <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_prescriptions') }}</p>
                     </div>
                     <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 text-center">
-                        <p class="text-2xl font-bold" :class="openRx ? 'text-green-400' : 'text-zinc-600'">
+                        <p class="text-2xl font-bold" :class="openRx ? 'text-green-500' : 'text-zinc-600'">
                             {{ openRx ? ('● ' + $t('dashboard.stat_rx_open')) : ('● ' + $t('dashboard.stat_rx_closed')) }}
                         </p>
                         <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_rx_label') }}</p>
@@ -86,19 +88,12 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                 </div>
 
                 <!-- Rx abierta -->
-                <div v-if="openRx" class="bg-(--bg-surface) border border-green-900/40 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs text-green-500 uppercase tracking-wider mb-1">{{ $t('dashboard.open_rx_label') }}</p>
-                            <p class="text-(--text-h) font-medium">{{ openRx.title }}</p>
-                            <p class="text-xs text-zinc-500 mt-0.5">{{ new Date(openRx.started_at).toLocaleString() }}</p>
-                        </div>
-                        <RouterLink :to="`/prescriptions/${openRx.id}`"
-                                    class="text-sm text-zinc-400 hover:text-(--text-h) transition-colors">
-                            {{ $t('dashboard.view_link') }} →
-                        </RouterLink>
-                    </div>
-                </div>
+                <RouterLink v-if="openRx" :to="`/prescriptions/${openRx.id}`"
+                            class="block bg-(--bg-surface) border border-green-900/40 rounded-lg p-4 hover:border-green-700/60 transition-colors">
+                    <p class="text-xs text-green-500 uppercase tracking-wider mb-1">{{ $t('dashboard.open_rx_label') }}</p>
+                    <p class="text-(--text-h) font-medium">{{ openRx.title }}</p>
+                    <p class="text-xs text-zinc-500 mt-0.5">{{ new Date(openRx.started_at).toLocaleString() }}</p>
+                </RouterLink>
 
                 <!-- Últimas Rx -->
                 <div v-if="closedRx.length > 0">
@@ -108,15 +103,20 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                             v-for="rx in closedRx"
                             :key="rx.id"
                             :to="`/prescriptions/${rx.id}`"
-                            class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg px-4 py-3 hover:border-zinc-600 transition-colors"
+                            class="flex items-center gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                         >
-                            <span class="text-sm text-(--text-h)">{{ rx.title }}</span>
-                            <span class="text-xs text-zinc-600">{{ new Date(rx.ended_at!).toLocaleDateString() }}</span>
+                            <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
+                                <IClipboard class="w-4 h-4 text-zinc-400" />
+                            </div>
+                            <div class="space-y-1 min-w-0">
+                                <p class="text-sm text-(--text-h) font-medium">{{ rx.title }}</p>
+                                <p class="text-xs text-zinc-600">{{ new Date(rx.ended_at!).toLocaleDateString() }}</p>
+                            </div>
                         </RouterLink>
                     </div>
                     <RouterLink :to="`/bottles/${activeBottleId}`"
                                 class="text-xs text-zinc-500 hover:text-zinc-300 mt-2 inline-block">
-                        {{ $t('dashboard.view_all') }} →
+                        <span class="flex items-center gap-1">{{ $t('dashboard.view_all') }} <IArrowRight class="w-3 h-3" /></span>
                     </RouterLink>
                 </div>
 

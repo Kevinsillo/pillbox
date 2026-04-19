@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PillCompound, CapsuleCompound } from '@/api/types'
+import type { PillCompound, CapsuleCompound } from '@/core/domain/types'
 
 defineProps<{ compound: PillCompound | CapsuleCompound }>()
 
@@ -22,7 +22,7 @@ const colors: Record<string, string> = {
 </script>
 
 <template>
-    <span :class="['inline-block text-xs font-medium px-2 py-0.5 rounded-full', colors[compound] ?? 'bg-zinc-700 text-zinc-400']">
+    <span :class="['inline-block text-xs font-medium px-1.5 py-0.5 rounded', colors[compound] ?? 'bg-zinc-700 text-zinc-400']">
         {{ compound }}
     </span>
 </template>

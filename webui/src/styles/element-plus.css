@@ -1,0 +1,60 @@
+/* Override Element Plus variables to match the project's dark zinc palette.
+   Imported after element-plus/dist/index.css so :root wins over EP defaults. */
+
+:root {
+  /* Primary — subtle zinc, keeps the minimal aesthetic */
+  --el-color-primary: #a1a1aa;
+  --el-color-primary-light-3: #71717a;
+  --el-color-primary-light-5: #52525b;
+  --el-color-primary-light-7: #3f3f46;
+  --el-color-primary-light-8: #27272a;
+  --el-color-primary-light-9: #1f1f22;
+  --el-color-primary-dark-2: #d4d4d8;
+
+  /* Backgrounds */
+  --el-bg-color-page:    #111113;
+  --el-bg-color:         #18181b;
+  --el-bg-color-overlay: #1c1c1f;
+
+  /* Text */
+  --el-text-color-primary:     #e4e4e7;
+  --el-text-color-regular:     #a1a1aa;
+  --el-text-color-secondary:   #71717a;
+  --el-text-color-placeholder: #52525b;
+  --el-text-color-disabled:    #3f3f46;
+
+  /* Borders */
+  --el-border-color:             #27272a;
+  --el-border-color-light:       #27272a;
+  --el-border-color-lighter:     #1f1f22;
+  --el-border-color-extra-light: #1a1a1d;
+  --el-border-color-dark:        #3f3f46;
+  --el-border-color-darker:      #52525b;
+
+  /* Fill (hover states, selected rows, etc.) */
+  --el-fill-color:             #27272a;
+  --el-fill-color-light:       #1f1f22;
+  --el-fill-color-lighter:     #18181b;
+  --el-fill-color-extra-light: #111113;
+  --el-fill-color-dark:        #3f3f46;
+  --el-fill-color-darker:      #52525b;
+  --el-fill-color-blank:       #18181b;
+
+  /* Shadows */
+  --el-box-shadow:        0 4px 12px rgba(0, 0, 0, 0.5);
+  --el-box-shadow-light:  0 2px 8px  rgba(0, 0, 0, 0.4);
+  --el-box-shadow-lighter: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --el-box-shadow-dark:   0 6px 16px rgba(0, 0, 0, 0.6);
+
+  /* Mask/overlay */
+  --el-mask-color:             rgba(0, 0, 0, 0.7);
+  --el-mask-color-extra-light: rgba(0, 0, 0, 0.3);
+
+  /* Disabled */
+  --el-disabled-bg-color:     #18181b;
+  --el-disabled-text-color:   #3f3f46;
+  --el-disabled-border-color: #27272a;
+
+  /* Font */
+  --el-font-size-base: 13px;
+}

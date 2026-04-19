@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
+import IArrowLeft from '~icons/lucide/arrow-left'
 
 useI18n()
 </script>
@@ -9,6 +10,6 @@ useI18n()
     <div class="flex flex-col items-center justify-center h-screen text-zinc-500">
         <p class="text-6xl mb-4">{{ $t('not_found.code') }}</p>
         <p class="mb-4">{{ $t('not_found.message') }}</p>
-        <RouterLink to="/" class="text-sm text-zinc-400 hover:text-(--text-h) underline">← {{ $t('not_found.back_link') }}</RouterLink>
+        <RouterLink to="/" class="flex items-center gap-1 text-sm text-zinc-400 hover:text-(--text-h) underline"><IArrowLeft class="w-3 h-3" /> {{ $t('not_found.back_link') }}</RouterLink>
     </div>
 </template>
