@@ -1,0 +1,135 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "bottles": "Bottles",
+    "capsules": "Capsules",
+    "search": "Search"
+  },
+  "sidebar": {
+    "active_bottle_label": "Active bottle",
+    "no_bottles": "No bottles"
+  },
+  "locale": {
+    "en": "English"
+  },
+  "common": {
+    "loading": "Loading",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving",
+    "create": "Create",
+    "creating": "Creating",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "open": "Open",
+    "opening": "Opening",
+    "title": "Title",
+    "compound": "Compound",
+    "error": "Unknown error",
+    "content_md": "Content (Markdown)"
+  },
+  "confirm": {
+    "delete_capsule_title": "Delete capsule",
+    "delete_capsule_msg": "«{title}» will be permanently deleted. This action cannot be undone.",
+    "delete_prescription_title": "Delete prescription",
+    "delete_prescription_msg": "The prescription and all its pills will be permanently deleted. This action cannot be undone.",
+    "delete_pill_title": "Delete pill",
+    "delete_pill_msg": "«{title}» will be permanently deleted. This action cannot be undone.",
+    "close_prescription_title": "Close prescription",
+    "close_prescription_msg": "The prescription will be closed and no more pills can be added."
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "no_bottle_hint": "Select a bottle in the sidebar to see its context",
+    "manage_bottles": "Manage bottles",
+    "stat_pills": "Total pills",
+    "stat_prescriptions": "Prescriptions",
+    "stat_rx_open": "Open",
+    "stat_rx_closed": "Closed",
+    "stat_rx_label": "Active prescription",
+    "stat_context": "Pills in context",
+    "open_rx_label": "Open prescription",
+    "view_link": "View",
+    "last_prescriptions": "Latest prescriptions",
+    "view_all": "View all",
+    "recent_context": "Recent context",
+    "error_loading": "Error loading context"
+  },
+  "bottles": {
+    "heading": "Bottles",
+    "new_btn": "New",
+    "empty": "No bottles yet",
+    "active_badge": "active",
+    "activate_btn": "Activate",
+    "modal_title": "New bottle",
+    "field_name": "Name (slug)",
+    "field_name_placeholder": "my-project",
+    "field_display_name": "Display name",
+    "field_display_name_placeholder": "My Project",
+    "field_directory": "Directory (absolute path)",
+    "field_directory_placeholder": "/home/user/project",
+    "field_scope": "Scope"
+  },
+  "bottle_detail": {
+    "back": "Bottles",
+    "new_rx_btn": "Prescription",
+    "prescriptions_heading": "Prescriptions",
+    "empty": "No prescriptions yet",
+    "status_open": "open",
+    "status_deleted": "deleted",
+    "status_closed": "closed",
+    "modal_title": "New prescription",
+    "field_title_placeholder": "Implement feature X"
+  },
+  "prescription_detail": {
+    "status_open": "open",
+    "status_closed": "closed",
+    "started_at": "Started",
+    "closed_at": "Closed",
+    "add_pill_btn": "Pill",
+    "close_btn": "Close",
+    "pills_heading": "Pills",
+    "empty": "No pills yet",
+    "modal_edit_title": "Edit pill",
+    "modal_new_title": "New pill",
+    "confirm_close": "Close this prescription?",
+    "confirm_delete_rx": "Delete this prescription and all its pills?",
+    "confirm_delete_pill": "Delete pill \"{title}\"?"
+  },
+  "capsules": {
+    "heading": "Capsules",
+    "new_btn": "New",
+    "search_placeholder": "Search capsules",
+    "filter_all": "All",
+    "empty_search": "No capsules for that search",
+    "empty": "No capsules",
+    "modal_title": "New capsule"
+  },
+  "capsule_detail": {
+    "back": "Capsules",
+    "updated_at": "Updated",
+    "edit_heading": "Editing capsule",
+    "confirm_delete": "Delete capsule \"{title}\"?"
+  },
+  "search": {
+    "heading": "Search",
+    "placeholder": "Search in pills and capsules",
+    "searching": "Searching",
+    "pills_heading": "Pills",
+    "capsules_heading": "Capsules",
+    "no_results": "No results for \"{query}\"",
+    "hint": "Type something to search in pills and capsules"
+  },
+  "not_found": {
+    "code": "404",
+    "message": "Page not found",
+    "back_link": "Back to dashboard"
+  },
+  "pill_detail": { "created_at": "Created", "updated_at": "Updated" },
+  "pill_edit": { "heading": "Editing pill" },
+  "pill_card": {
+    "edit": "Edit",
+    "delete": "Delete"
+  }
+}

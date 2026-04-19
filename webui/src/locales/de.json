@@ -1,0 +1,135 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "bottles": "Bottles",
+    "capsules": "Capsules",
+    "search": "Suchen"
+  },
+  "sidebar": {
+    "active_bottle_label": "Aktive Bottle",
+    "no_bottles": "Keine Bottles"
+  },
+  "locale": {
+    "de": "Deutsch"
+  },
+  "common": {
+    "loading": "Laden",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "saving": "Speichern",
+    "create": "Erstellen",
+    "creating": "Erstellen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "back": "Zurück",
+    "open": "Öffnen",
+    "opening": "Öffnen",
+    "title": "Titel",
+    "compound": "Wirkstoff",
+    "error": "Unbekannter Fehler",
+    "content_md": "Inhalt (Markdown)"
+  },
+  "confirm": {
+    "delete_capsule_title": "Capsule löschen",
+    "delete_capsule_msg": "«{title}» wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "delete_prescription_title": "Prescription löschen",
+    "delete_prescription_msg": "Die Prescription und alle ihre Pills werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "delete_pill_title": "Pill löschen",
+    "delete_pill_msg": "«{title}» wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "close_prescription_title": "Prescription schließen",
+    "close_prescription_msg": "Die Prescription wird geschlossen und es können keine weiteren Pills hinzugefügt werden."
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "no_bottle_hint": "Wähle eine Bottle in der Seitenleiste, um den Kontext zu sehen",
+    "manage_bottles": "Bottles verwalten",
+    "stat_pills": "Pills gesamt",
+    "stat_prescriptions": "Prescriptions",
+    "stat_rx_open": "Offen",
+    "stat_rx_closed": "Geschlossen",
+    "stat_rx_label": "Aktive Prescription",
+    "stat_context": "Pills im Kontext",
+    "open_rx_label": "Offene Prescription",
+    "view_link": "Ansehen",
+    "last_prescriptions": "Letzte Prescriptions",
+    "view_all": "Alle ansehen",
+    "recent_context": "Aktueller Kontext",
+    "error_loading": "Fehler beim Laden des Kontexts"
+  },
+  "bottles": {
+    "heading": "Bottles",
+    "new_btn": "Neu",
+    "empty": "Noch keine Bottles",
+    "active_badge": "aktiv",
+    "activate_btn": "Aktivieren",
+    "modal_title": "Neue Bottle",
+    "field_name": "Name (Slug)",
+    "field_name_placeholder": "mein-projekt",
+    "field_display_name": "Anzeigename",
+    "field_display_name_placeholder": "Mein Projekt",
+    "field_directory": "Verzeichnis (absoluter Pfad)",
+    "field_directory_placeholder": "/home/user/projekt",
+    "field_scope": "Bereich"
+  },
+  "bottle_detail": {
+    "back": "Bottles",
+    "new_rx_btn": "Prescription",
+    "prescriptions_heading": "Prescriptions",
+    "empty": "Noch keine Prescriptions",
+    "status_open": "offen",
+    "status_deleted": "gelöscht",
+    "status_closed": "geschlossen",
+    "modal_title": "Neue Prescription",
+    "field_title_placeholder": "Feature X implementieren"
+  },
+  "prescription_detail": {
+    "status_open": "offen",
+    "status_closed": "geschlossen",
+    "started_at": "Gestartet",
+    "closed_at": "Geschlossen",
+    "add_pill_btn": "Pill",
+    "close_btn": "Schließen",
+    "pills_heading": "Pills",
+    "empty": "Noch keine Pills",
+    "modal_edit_title": "Pill bearbeiten",
+    "modal_new_title": "Neue Pill",
+    "confirm_close": "Diese Prescription schließen?",
+    "confirm_delete_rx": "Diese Prescription und alle Pills löschen?",
+    "confirm_delete_pill": "Pill \"{title}\" löschen?"
+  },
+  "capsules": {
+    "heading": "Capsules",
+    "new_btn": "Neu",
+    "search_placeholder": "Capsules suchen",
+    "filter_all": "Alle",
+    "empty_search": "Keine Capsules für diese Suche",
+    "empty": "Keine Capsules",
+    "modal_title": "Neue Capsule"
+  },
+  "capsule_detail": {
+    "back": "Capsules",
+    "updated_at": "Aktualisiert",
+    "edit_heading": "Capsule bearbeiten",
+    "confirm_delete": "Capsule \"{title}\" löschen?"
+  },
+  "search": {
+    "heading": "Suchen",
+    "placeholder": "In Pills und Capsules suchen",
+    "searching": "Suchen",
+    "pills_heading": "Pills",
+    "capsules_heading": "Capsules",
+    "no_results": "Keine Ergebnisse für \"{query}\"",
+    "hint": "Tippe etwas, um in Pills und Capsules zu suchen"
+  },
+  "not_found": {
+    "code": "404",
+    "message": "Seite nicht gefunden",
+    "back_link": "Zurück zum Dashboard"
+  },
+  "pill_detail": { "created_at": "Erstellt", "updated_at": "Aktualisiert" },
+  "pill_edit": { "heading": "Pill bearbeiten" },
+  "pill_card": {
+    "edit": "Bearbeiten",
+    "delete": "Löschen"
+  }
+}

@@ -9,9 +9,6 @@
     "active_bottle_label": "Bottle activo",
     "no_bottles": "Sin bottles"
   },
-  "footer": {
-    "version": "v0.3.0"
-  },
   "locale": {
     "es": "Español"
   },
@@ -29,6 +26,7 @@
     "opening": "Abriendo",
     "title": "Título",
     "compound": "Compound",
+    "error": "Error desconocido",
     "content_md": "Contenido (Markdown)"
   },
   "confirm": {
@@ -128,6 +126,8 @@
     "message": "Página no encontrada",
     "back_link": "Volver al dashboard"
   },
+  "pill_detail": { "created_at": "Creada", "updated_at": "Actualizada" },
+  "pill_edit": { "heading": "Editando pill" },
   "pill_card": {
     "edit": "Editar",
     "delete": "Borrar"

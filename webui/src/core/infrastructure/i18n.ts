@@ -18,14 +18,14 @@ export function detectSystemLanguage(): string {
     const browser = navigator.language.split('-')[0]
     if (availableLocales.includes(browser)) return browser
 
-    return 'es'
+    return 'en'
 }
 
 export const i18n = createI18n({
     legacy: false,
     locale: detectSystemLanguage(),
     globalInjection: true,
-    fallbackLocale: "es",
+    fallbackLocale: "en",
     availableLocales,
     messages,
 })

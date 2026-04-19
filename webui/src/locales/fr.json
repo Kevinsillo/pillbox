@@ -1,0 +1,135 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "bottles": "Bottles",
+    "capsules": "Capsules",
+    "search": "Rechercher"
+  },
+  "sidebar": {
+    "active_bottle_label": "Bottle active",
+    "no_bottles": "Aucune bottle"
+  },
+  "locale": {
+    "fr": "Français"
+  },
+  "common": {
+    "loading": "Chargement",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "saving": "Enregistrement",
+    "create": "Créer",
+    "creating": "Création",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "back": "Retour",
+    "open": "Ouvrir",
+    "opening": "Ouverture",
+    "title": "Titre",
+    "compound": "Composé",
+    "error": "Erreur inconnue",
+    "content_md": "Contenu (Markdown)"
+  },
+  "confirm": {
+    "delete_capsule_title": "Supprimer la capsule",
+    "delete_capsule_msg": "«{title}» sera supprimée définitivement. Cette action est irréversible.",
+    "delete_prescription_title": "Supprimer la prescription",
+    "delete_prescription_msg": "La prescription et toutes ses pills seront supprimées définitivement. Cette action est irréversible.",
+    "delete_pill_title": "Supprimer la pill",
+    "delete_pill_msg": "«{title}» sera supprimée définitivement. Cette action est irréversible.",
+    "close_prescription_title": "Fermer la prescription",
+    "close_prescription_msg": "La prescription sera fermée et il ne sera plus possible d'ajouter des pills."
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "no_bottle_hint": "Sélectionnez une bottle dans la barre latérale pour voir son contexte",
+    "manage_bottles": "Gérer les bottles",
+    "stat_pills": "Pills totales",
+    "stat_prescriptions": "Prescriptions",
+    "stat_rx_open": "Ouverte",
+    "stat_rx_closed": "Fermée",
+    "stat_rx_label": "Prescription active",
+    "stat_context": "Pills dans le contexte",
+    "open_rx_label": "Prescription ouverte",
+    "view_link": "Voir",
+    "last_prescriptions": "Dernières prescriptions",
+    "view_all": "Voir tout",
+    "recent_context": "Contexte récent",
+    "error_loading": "Erreur lors du chargement du contexte"
+  },
+  "bottles": {
+    "heading": "Bottles",
+    "new_btn": "Nouveau",
+    "empty": "Aucune bottle pour l'instant",
+    "active_badge": "active",
+    "activate_btn": "Activer",
+    "modal_title": "Nouvelle bottle",
+    "field_name": "Nom (slug)",
+    "field_name_placeholder": "mon-projet",
+    "field_display_name": "Nom d'affichage",
+    "field_display_name_placeholder": "Mon Projet",
+    "field_directory": "Répertoire (chemin absolu)",
+    "field_directory_placeholder": "/home/user/projet",
+    "field_scope": "Portée"
+  },
+  "bottle_detail": {
+    "back": "Bottles",
+    "new_rx_btn": "Prescription",
+    "prescriptions_heading": "Prescriptions",
+    "empty": "Aucune prescription pour l'instant",
+    "status_open": "ouverte",
+    "status_deleted": "supprimée",
+    "status_closed": "fermée",
+    "modal_title": "Nouvelle prescription",
+    "field_title_placeholder": "Implémenter la fonctionnalité X"
+  },
+  "prescription_detail": {
+    "status_open": "ouverte",
+    "status_closed": "fermée",
+    "started_at": "Démarrée",
+    "closed_at": "Fermée",
+    "add_pill_btn": "Pill",
+    "close_btn": "Fermer",
+    "pills_heading": "Pills",
+    "empty": "Aucune pill pour l'instant",
+    "modal_edit_title": "Modifier la pill",
+    "modal_new_title": "Nouvelle pill",
+    "confirm_close": "Fermer cette prescription ?",
+    "confirm_delete_rx": "Supprimer cette prescription et toutes ses pills ?",
+    "confirm_delete_pill": "Supprimer la pill \"{title}\" ?"
+  },
+  "capsules": {
+    "heading": "Capsules",
+    "new_btn": "Nouvelle",
+    "search_placeholder": "Rechercher des capsules",
+    "filter_all": "Tous",
+    "empty_search": "Aucune capsule pour cette recherche",
+    "empty": "Aucune capsule",
+    "modal_title": "Nouvelle capsule"
+  },
+  "capsule_detail": {
+    "back": "Capsules",
+    "updated_at": "Mise à jour",
+    "edit_heading": "Modification de la capsule",
+    "confirm_delete": "Supprimer la capsule \"{title}\" ?"
+  },
+  "search": {
+    "heading": "Rechercher",
+    "placeholder": "Rechercher dans les pills et capsules",
+    "searching": "Recherche",
+    "pills_heading": "Pills",
+    "capsules_heading": "Capsules",
+    "no_results": "Aucun résultat pour \"{query}\"",
+    "hint": "Tapez quelque chose pour rechercher dans les pills et capsules"
+  },
+  "not_found": {
+    "code": "404",
+    "message": "Page non trouvée",
+    "back_link": "Retour au tableau de bord"
+  },
+  "pill_detail": { "created_at": "Créée", "updated_at": "Mise à jour" },
+  "pill_edit": { "heading": "Modifier la pill" },
+  "pill_card": {
+    "edit": "Modifier",
+    "delete": "Supprimer"
+  }
+}
