@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+use super::manifest::Manifest;
+
 #[derive(Deserialize)]
 struct GithubRelease {
     pub tag_name: String,
@@ -37,4 +39,13 @@ pub fn download_asset(repo: &str, version: &str, asset: &str) -> Result<Vec<u8>>
         .bytes()
         .context("error leyendo el cuerpo de la descarga")?;
     Ok(bytes.to_vec())
+}
+
+/// Descarga `pillbox.json` de la última release y lo deserializa.
+pub fn fetch_manifest(repo: &str) -> Result<(String, Manifest)> {
+    let version = latest_version(repo)?;
+    let bytes = download_asset(repo, &version, "pillbox.json")?;
+    let manifest: Manifest =
+        serde_json::from_slice(&bytes).context("pillbox.json inválido o formato desconocido")?;
+    Ok((version, manifest))
 }
