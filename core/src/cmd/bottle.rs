@@ -117,7 +117,8 @@ pub fn cmd_bottle_init() -> Result<()> {
         }
 
         let global_path = pillbox::config::global_db_path();
-        if global_path.exists() {
+        let _ = connection::open(&global_path);
+        {
             let pb2 = spinner(t!("bottle.init.registering"));
             let local_db_abs = current_dir.join(".pillbox").join("pillbox.db");
             match register_in_global(
@@ -136,6 +137,7 @@ pub fn cmd_bottle_init() -> Result<()> {
             }
         }
     }
+
 
     output::fmt::bottle_init_done();
     Ok(())

@@ -2,13 +2,9 @@
 target/
 Cargo.lock
 
-# Node
-node_modules/
-mcp/dist/
-
-# Web UI build
-webui/dist/*
-!webui/dist/.gitkeep
+# WebUI
+webui/node_modules/
+webui/dist/
 
 # DB files
 *.db

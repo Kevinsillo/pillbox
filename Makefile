@@ -1,18 +1,12 @@
-.PHONY: dev dev-mcp dev-webui webui-build build build-full test lint check fmt fmt-check \
+.PHONY: dev dev-webui webui-build build build-full test lint check fmt fmt-check \
         build-linux build-mac build-win build-all \
-        db-shell db-reset \
-        mcp-build mcp-install mcp-dev \
-        skill-install
+        db-shell db-reset install
 
 # ─── Desarrollo ───────────────────────────────────────────────────────────────
 
 ## Arranca el core Rust en modo watch (requiere cargo-watch)
 dev:
 	cargo watch -x 'build' --manifest-path core/Cargo.toml
-
-## Arranca el servidor MCP en modo watch (apunta al binario de debug)
-dev-mcp: mcp-build
-	cd mcp && PILLBOX_BIN=../core/target/debug/pillbox node --watch dist/index.js
 
 ## Arranca el servidor de desarrollo de la WebUI (con proxy a pillbox serve)
 dev-webui:
@@ -24,17 +18,13 @@ dev-webui:
 webui-build:
 	cd webui && pnpm build
 
-## Compila la WebUI, el MCP y luego el binario Rust (todo embebido)
-build-full: webui-build mcp-build
+## Compila la WebUI y luego el binario Rust (WebUI embebida)
+build-full: webui-build
 	cargo build --release --manifest-path core/Cargo.toml
 
 ## Compila el binario Rust sin WebUI (más rápido, para desarrollo del core)
 build:
 	cargo build --release --manifest-path core/Cargo.toml
-
-## Compila el servidor MCP TypeScript
-mcp-build:
-	cd mcp && pnpm install && pnpm build
 
 # ─── Tests y calidad ──────────────────────────────────────────────────────────
 
@@ -46,22 +36,16 @@ test:
 lint:
 	cargo clippy --manifest-path core/Cargo.toml -- -D warnings
 
-## Verifica tipos del MCP TypeScript sin compilar
-typecheck:
-	cd mcp && pnpm typecheck
-
-## Formatea todo el código: Rust (cargo fmt) + TypeScript (prettier)
+## Formatea el código Rust
 fmt:
 	cargo fmt --manifest-path core/Cargo.toml
-	cd mcp && pnpm fmt
 
 ## Verifica formato sin modificar (útil en CI)
 fmt-check:
 	cargo fmt --manifest-path core/Cargo.toml -- --check
-	cd mcp && pnpm fmt:check
 
-## Ejecuta test + lint + typecheck + fmt-check
-check: test lint typecheck fmt-check
+## Ejecuta test + lint + fmt-check
+check: test lint fmt-check
 
 # ─── Distribución ─────────────────────────────────────────────────────────────
 
@@ -91,24 +75,12 @@ db-reset:
 	rm -f .pillbox/pillbox.db $${HOME}/.pillbox/pillbox.db
 	@echo "DBs eliminadas."
 
-# ─── Instalación (desarrollo local) ──────────────────────────────────────────
+# ─── Instalación local ───────────────────────────────────────────────────────
 
-## Instala el MCP y la skill desde el source local
-mcp-install: build mcp-build skill-install
-	@echo "Pillbox MCP instalado."
-	@echo "Añade esto a tu configuración de Claude Code:"
-	@echo '  { "mcpServers": { "pillbox": { "command": "node", "args": ["$(CURDIR)/mcp/dist/index.js"] } } }'
-
-## Copia la skill al directorio de skills de Claude Code
-skill-install:
-	mkdir -p $${HOME}/.claude/skills/pillbox
-	cp -r skill/* $${HOME}/.claude/skills/pillbox/
-	@echo "Skill instalada en ~/.claude/skills/pillbox/"
-
-## Compila (webui + core + MCP) e instala el binario y la skill
-install: build-full skill-install
+## Compila (webui + core) e instala el binario
+install:
+	@pillbox serve stop 2>/dev/null && echo "✓ pillbox serve detenido" || true
+	$(MAKE) build-full
 	mkdir -p $${HOME}/.local/bin
 	cp core/target/release/pillbox $${HOME}/.local/bin/pillbox
 	@echo "✓ pillbox instalado en ~/.local/bin/pillbox"
-	@echo "✓ MCP compilado en mcp/dist/"
-	@echo "✓ skill instalada en ~/.claude/skills/pillbox/"
