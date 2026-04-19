@@ -22,11 +22,13 @@ use tower_http::cors::{Any, CorsLayer};
 #[derive(Clone)]
 pub struct AppState {
     pub db_path: Arc<PathBuf>,
+    pub global_db_path: Arc<PathBuf>,
 }
 
-pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
+pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result<()> {
     let state = AppState {
         db_path: Arc::new(db_path),
+        global_db_path: Arc::new(global_db_path),
     };
 
     let cors = CorsLayer::new()
@@ -34,8 +36,7 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let app = Router::new()
-        .route("/", get(assets::serve_root))
+    let api = Router::new()
         // Pills
         .route("/pills", post(handlers::pill_create))
         .route("/pills/search", get(handlers::pill_search))
@@ -43,6 +44,7 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
         .route("/pills/:id", patch(handlers::pill_patch))
         .route("/pills/:id", delete(handlers::pill_delete))
         // Capsules
+        .route("/capsules", get(handlers::capsule_list))
         .route("/capsules", post(handlers::capsule_create))
         .route("/capsules/search", get(handlers::capsule_search))
         .route("/capsules/:id", get(handlers::capsule_get))
@@ -53,17 +55,21 @@ pub async fn run(port: u16, db_path: PathBuf) -> Result<()> {
         .route("/prescriptions/:id", get(handlers::prescription_get))
         .route("/prescriptions/:id", patch(handlers::prescription_close))
         .route("/prescriptions/:id", delete(handlers::prescription_delete))
+        .route("/prescriptions/:id/pills", get(handlers::prescription_pills))
         // Bottles
         .route("/bottles", get(handlers::bottle_list))
         .route("/bottles", post(handlers::bottle_create))
         .route("/bottles/:id", get(handlers::bottle_get))
         .route("/bottles/:id/prescriptions", get(handlers::bottle_prescriptions))
-        // Prescriptions (nested pills)
-        .route("/prescriptions/:id/pills", get(handlers::prescription_pills))
-        // Capsules (list)
-        .route("/capsules", get(handlers::capsule_list))
         // Context
         .route("/context", get(handlers::context_get))
+        // Meta
+        .route("/version", get(handlers::version_get))
+        .with_state(state.clone());
+
+    let app = Router::new()
+        .route("/", get(assets::serve_root))
+        .nest("/api", api)
         // WebUI — catch-all para SPA routing (debe ir al final)
         .route("/*path", get(assets::serve))
         .layer(cors)

@@ -229,7 +229,10 @@ pub fn delete_bottle(conn: &mut Connection, bottle_name: &str) -> Result<()> {
         params![bottle_id],
     )?;
 
-    tx.execute("DELETE FROM prescriptions WHERE bottle_id = ?1", params![bottle_id])?;
+    tx.execute(
+        "DELETE FROM prescriptions WHERE bottle_id = ?1",
+        params![bottle_id],
+    )?;
     tx.execute("DELETE FROM bottles WHERE id = ?1", params![bottle_id])?;
 
     tx.commit()?;

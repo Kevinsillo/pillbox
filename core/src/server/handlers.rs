@@ -48,6 +48,10 @@ fn ok_created(data: impl Serialize) -> ApiResponse {
     ApiResponse(StatusCode::CREATED, json!({ "ok": true, "data": data }))
 }
 
+pub(super) async fn version_get() -> ApiResponse {
+    ok(json!({ "version": env!("CARGO_PKG_VERSION") }))
+}
+
 fn err(status: StatusCode, error: &str, message: &str) -> ApiResponse {
     ApiResponse(
         status,
@@ -84,6 +88,10 @@ fn err_409(error: &str, message: &str, data: Value) -> ApiResponse {
 
 fn open_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {
     db::connection::open(&state.db_path).map_err(err_500)
+}
+
+fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {
+    db::connection::open(&state.global_db_path).map_err(err_500)
 }
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
@@ -168,7 +176,7 @@ pub async fn capsule_create(
     if let Err(e) = input.validate() {
         return err_422(e);
     }
-    let mut conn = match open_conn(&s) {
+    let mut conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
@@ -179,7 +187,7 @@ pub async fn capsule_create(
 }
 
 pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
-    let conn = match open_conn(&s) {
+    let conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
@@ -198,7 +206,7 @@ pub async fn capsule_patch(
     if let Err(e) = patch.validate() {
         return err_422(e);
     }
-    let mut conn = match open_conn(&s) {
+    let mut conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
@@ -210,7 +218,7 @@ pub async fn capsule_patch(
 }
 
 pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
-    let mut conn = match open_conn(&s) {
+    let mut conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
@@ -222,8 +230,14 @@ pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<i64>) -> A
 }
 
 #[derive(Deserialize)]
+pub struct CapsuleListParams {
+    pub compound: Option<String>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Deserialize)]
 pub struct CapsuleSearchParams {
-    pub q: String,
+    pub query: String,
     pub compound: Option<String>,
     pub limit: Option<u32>,
 }
@@ -232,11 +246,11 @@ pub async fn capsule_search(
     State(s): State<AppState>,
     Query(params): Query<CapsuleSearchParams>,
 ) -> ApiResponse {
-    let conn = match open_conn(&s) {
+    let conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::search::capsule_find(&conn, &params.q, params.compound.as_deref(), params.limit) {
+    match store::search::capsule_find(&conn, &params.query, params.compound.as_deref(), params.limit) {
         Ok(results) => ok(results),
         Err(e) => err_500(e),
     }
@@ -386,8 +400,11 @@ pub async fn prescription_pills(State(s): State<AppState>, Path(id): Path<String
     }
 }
 
-pub async fn capsule_list(State(s): State<AppState>, Query(params): Query<CapsuleSearchParams>) -> ApiResponse {
-    let conn = match open_conn(&s) {
+pub async fn capsule_list(
+    State(s): State<AppState>,
+    Query(params): Query<CapsuleListParams>,
+) -> ApiResponse {
+    let conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
@@ -416,21 +433,32 @@ pub async fn context_get(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::search::pill_context(
+    let ctx = match store::search::pill_context(
         &conn,
         params.bottle_id,
         params.prescription_limit,
         params.pill_limit,
     ) {
-        Ok(ctx) => ok(json!({
-            "context":            ctx.context,
-            "prescription_count": ctx.prescription_count,
-            "pill_count":         ctx.pill_count,
-        })),
-        Err(e) => err_500(e),
-    }
+        Ok(c) => c,
+        Err(e) => return err_500(e),
+    };
+    let pills = match store::search::recent_pills(&conn, params.bottle_id, params.pill_limit) {
+        Ok(p) => p,
+        Err(e) => return err_500(e),
+    };
+    ok(json!({
+        "context":            pills,
+        "prescription_count": ctx.prescription_count,
+        "pill_count":         ctx.pill_count,
+    }))
 }
 
-fn default_5() -> u32 { 5 }
-fn default_30() -> u32 { 30 }
-fn default_50() -> u32 { 50 }
+fn default_5() -> u32 {
+    5
+}
+fn default_30() -> u32 {
+    30
+}
+fn default_50() -> u32 {
+    50
+}

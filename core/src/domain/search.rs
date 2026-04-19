@@ -24,7 +24,14 @@ pub struct SearchResult {
     pub title: String,
     /// Snippet del contenido con el match resaltado.
     pub snippet: String,
+    pub created_at: String,
     pub updated_at: String,
     /// Rank FTS5 (negativo — más cercano a 0 = más relevante).
     pub rank: f64,
+    /// Solo presente en pills.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prescription_id: Option<String>,
+    /// Solo presente en pills (a través del join con prescriptions).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bottle_id: Option<i64>,
 }
