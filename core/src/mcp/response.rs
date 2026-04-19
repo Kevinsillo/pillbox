@@ -1,6 +1,7 @@
+use pillbox::error::PillboxError;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use validator::Validate;
 
 // ─── Response ─────────────────────────────────────────────────────────────────
@@ -65,15 +66,28 @@ pub fn validate_input<T: Validate>(v: &T) -> Result<(), Response> {
 }
 
 pub fn anyhow_to_response(e: anyhow::Error) -> Response {
-    let msg = e.to_string();
-    if let Some(colon) = msg.find(':') {
-        let code = msg[..colon].trim();
-        if code.chars().all(|c| c.is_alphanumeric() || c == '_') {
-            let message = msg[colon + 1..].trim().to_string();
-            return Response::err(code, message);
-        }
+    if let Some(pe) = e.downcast_ref::<PillboxError>() {
+        return pillbox_to_response(pe);
     }
-    Response::err("error", msg)
+    Response::err("internal_error", e.to_string())
+}
+
+fn pillbox_to_response(pe: &PillboxError) -> Response {
+    match pe {
+        PillboxError::PrescriptionAlreadyOpen { id, title, started_at, pill_count } => {
+            Response::err_with_data(
+                pe.code(),
+                pe.to_string(),
+                json!({
+                    "id": id,
+                    "title": title,
+                    "started_at": started_at,
+                    "pill_count": pill_count,
+                }),
+            )
+        }
+        _ => Response::err(pe.code(), pe.to_string()),
+    }
 }
 
 // Alias para evitar importar Connection en todos los handlers

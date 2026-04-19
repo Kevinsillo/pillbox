@@ -1,4 +1,4 @@
-use pillbox::{db::store, domain::prescription::NewPrescription, error::PillboxError};
+use pillbox::{db::store, domain::prescription::NewPrescription};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -14,27 +14,7 @@ pub fn open(conn: &mut Conn, input: Value) -> Response {
     }
     match store::prescriptions::open(conn, &req) {
         Ok(rx) => Response::ok(rx),
-        Err(e) => match e.downcast::<PillboxError>() {
-            Ok(PillboxError::PrescriptionAlreadyOpen {
-                ref id,
-                ref title,
-                ref started_at,
-                pill_count,
-            }) => Response::err_with_data(
-                "prescription_already_open",
-                format!(
-                    "prescription_already_open: '{title}' (id={id}, iniciada={started_at}, {pill_count} pills)"
-                ),
-                json!({
-                    "id": id,
-                    "title": title,
-                    "started_at": started_at,
-                    "pill_count": pill_count,
-                }),
-            ),
-            Ok(other) => anyhow_to_response(other.into()),
-            Err(e) => anyhow_to_response(e),
-        },
+        Err(e) => anyhow_to_response(e),
     }
 }
 

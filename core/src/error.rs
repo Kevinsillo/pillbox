@@ -4,6 +4,13 @@ use thiserror::Error;
 #[derive(Debug, Error, Serialize)]
 #[serde(tag = "error", rename_all = "snake_case")]
 pub enum PillboxError {
+    // ── Pill ──────────────────────────────────────────────────────────────────
+    #[error("pill_not_found: no existe la pill con id={id}")]
+    PillNotFound { id: i64 },
+
+    // ── Capsule ───────────────────────────────────────────────────────────────
+    #[error("capsule_not_found: no existe la capsule con id={id}")]
+    CapsuleNotFound { id: i64 },
     // ── Prescription ──────────────────────────────────────────────────────────
     #[error("prescription_required: la prescription '{prescription_id}' no existe o está cerrada")]
     PrescriptionRequired { prescription_id: String },
@@ -30,4 +37,20 @@ pub enum PillboxError {
 
     #[error("bottle_already_exists: ya existe un bottle con el nombre '{name}'")]
     BottleAlreadyExists { name: String },
+}
+
+impl PillboxError {
+    /// Código de error estable para clientes MCP/HTTP — sin parsear strings.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::PillNotFound { .. }                  => "pill_not_found",
+            Self::CapsuleNotFound { .. }               => "capsule_not_found",
+            Self::PrescriptionRequired { .. }          => "prescription_required",
+            Self::PrescriptionAlreadyOpen { .. }       => "prescription_already_open",
+            Self::PrescriptionNotFoundOrClosed { .. }  => "prescription_not_found_or_closed",
+            Self::PrescriptionNotFound { .. }          => "prescription_not_found",
+            Self::BottleNotFound { .. }                => "bottle_not_found",
+            Self::BottleAlreadyExists { .. }           => "bottle_already_exists",
+        }
+    }
 }
