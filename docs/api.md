@@ -17,8 +17,10 @@ The server binds to `localhost` only (not exposed to the network). It publishes 
 ## Base URL
 
 ```
-http://localhost:4242
+http://localhost:4242/api
 ```
+
+All API routes are prefixed with `/api`. The root path `/` and any path not matching a known API route serve the embedded web UI (`index.html`).
 
 ---
 
@@ -70,15 +72,15 @@ Create a new pill within an open prescription.
 
 ---
 
-### `GET /pills/search?q=...`
+### `GET /pills/search?query=...`
 
-Full-text search across pills.
+Full-text search across pills. Supports prefix matching (`hex` finds `hexagonal`) and fuzzy matching for typos (`tokenizr` finds `tokenizer`). Multiple terms are ANDed together.
 
 **Query parameters:**
 
 | Parameter | Type | Description |
 |---|---|---|
-| `q` | string (required) | Search terms (space-separated) |
+| `query` | string (required) | Search terms (space-separated). Prefix and fuzzy matching applied automatically. |
 | `bottle_id` | integer | Filter by bottle |
 | `compound` | string | Filter by compound type |
 | `limit` | integer (1–100) | Max results (default: 20) |
@@ -90,11 +92,15 @@ Full-text search across pills.
   "data": [
     {
       "id": 42,
+      "sync_id": "uuid",
       "compound": "decision",
       "title": "Use JWT for session tokens",
-      "content": "...",
+      "snippet": "...highlighted match...",
+      "created_at": "2026-04-14T10:00:00Z",
+      "updated_at": "2026-04-14T10:00:00Z",
+      "rank": -0.42,
       "prescription_id": "uuid",
-      "created_at": "2026-04-14T10:00:00Z"
+      "bottle_id": 1
     }
   ]
 }
@@ -176,15 +182,15 @@ Create a new capsule.
 
 ---
 
-### `GET /capsules/search?q=...`
+### `GET /capsules/search?query=...`
 
-Full-text search across capsules (global — not filtered by project).
+Full-text search across capsules (global — not filtered by project). Supports prefix and fuzzy matching, same as pill search.
 
 **Query parameters:**
 
 | Parameter | Type | Description |
 |---|---|---|
-| `q` | string (required) | Search terms |
+| `query` | string (required) | Search terms. Prefix and fuzzy matching applied automatically. |
 | `compound` | string | Filter by compound type |
 | `limit` | integer (1–100) | Max results (default: 20) |
 
@@ -346,6 +352,19 @@ Returns recent prescriptions and pills as Markdown — same as `pill_context` in
   "ok": true,
   "data": "## Recent context for my-project\n\n### [2026-04-14] Implement OAuth login\n\n..."
 }
+```
+
+---
+
+## Meta
+
+### `GET /version`
+
+Returns the running server version.
+
+**Response:**
+```json
+{ "ok": true, "data": { "version": "0.4.0" } }
 ```
 
 ---

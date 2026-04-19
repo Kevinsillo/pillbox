@@ -1,49 +1,157 @@
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
+use rayon::prelude::*;
 use rusqlite::{params, Connection};
 
+use crate::domain::pill::Pill;
 use crate::domain::search::{SearchParams, SearchResult};
 
-// ─── Sanitización de queries FTS5 ────────────────────────────────────────────
+// ─── Constantes fuzzy ────────────────────────────────────────────────────────
 
-/// Convierte una query de texto libre en una expresión FTS5 segura.
-///
-/// Cada término se envuelve en comillas dobles para evitar que caracteres
-/// especiales (AND, OR, NOT, *, etc.) sean interpretados como operadores.
-/// El resultado es una búsqueda AND implícita de todos los términos.
-///
-/// Ejemplo: `"fix auth bug"` → `"fix" "auth" "bug"`
-fn sanitize_fts_query(query: &str) -> String {
+const FUZZY_MIN_LEN: usize = 4;
+const FUZZY_THRESHOLD_SHORT: f64 = 0.85; // 4–6 chars
+const FUZZY_THRESHOLD_LONG: f64 = 0.80;  // 7+ chars
+const FUZZY_MAX_LEN_DIFF: usize = 2;
+
+// ─── Pipeline de query FTS5 + fuzzy ─────────────────────────────────────────
+
+/// Extrae los términos individuales de la query del usuario, limpiando comillas.
+fn extract_terms(query: &str) -> Vec<String> {
     query
         .split_whitespace()
-        .map(|term| format!("\"{}\"", term.replace('"', "")))
+        .map(|t| t.replace('"', ""))
+        .filter(|t| !t.is_empty())
+        .collect()
+}
+
+/// Obtiene todos los términos únicos del índice FTS5 indicado.
+///
+/// Usa una tabla virtual temporal `fts5vocab` que existe solo durante la
+/// vida de la conexión — no requiere migración.
+fn fetch_vocab(conn: &Connection, fts_table: &str) -> Result<Vec<String>> {
+    let temp_name = format!("temp.{}_vocab", fts_table);
+    conn.execute_batch(&format!(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS {temp_name}
+         USING fts5vocab('main', '{fts_table}', 'row')"
+    ))?;
+
+    let mut stmt = conn.prepare(&format!("SELECT term FROM {temp_name}"))?;
+    let vocab = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("error al leer vocabulario FTS5")?;
+
+    Ok(vocab)
+}
+
+/// Para cada término de la query, encuentra términos del vocab con alta
+/// similitud (Jaro-Winkler) usando rayon para paralelizar el escaneo.
+///
+/// Términos cortos (< FUZZY_MIN_LEN) se omiten para evitar falsos positivos.
+/// Pre-filtra por diferencia de longitud antes de calcular similitud (O(1)).
+fn fuzzy_expand<'a>(terms: &'a [String], vocab: &[String]) -> HashMap<&'a str, Vec<String>> {
+    terms
+        .iter()
+        .map(|term| {
+            let term_str = term.as_str();
+            if term.len() < FUZZY_MIN_LEN {
+                return (term_str, vec![]);
+            }
+
+            let threshold = if term.len() <= 6 {
+                FUZZY_THRESHOLD_SHORT
+            } else {
+                FUZZY_THRESHOLD_LONG
+            };
+
+            let matches: Vec<String> = vocab
+                .par_iter()
+                .filter(|v| {
+                    // Excluir el término exacto (ya lo cubre el prefix match)
+                    v.as_str() != term_str
+                    // Pre-filtro de longitud O(1): elimina ~80% de candidatos
+                    && v.len().abs_diff(term.len()) <= FUZZY_MAX_LEN_DIFF
+                    // Similitud Jaro-Winkler
+                    && strsim::jaro_winkler(term_str, v.as_str()) >= threshold
+                })
+                .cloned()
+                .collect();
+
+            (term_str, matches)
+        })
+        .collect()
+}
+
+/// Construye la expresión FTS5 final combinando prefix search y expansión fuzzy.
+///
+/// Cada término genera un grupo OR: `("term"* OR "fuzzy1" OR "fuzzy2")`
+/// Los grupos se unen con AND implícito (espacio).
+///
+/// Ejemplo: query "hexagnol auth" con fuzzy "hexagonal" →
+/// `("hexagnol"* OR "hexagonal") "auth"*`
+fn build_fts_query(terms: &[String], fuzzy_map: &HashMap<&str, Vec<String>>) -> String {
+    terms
+        .iter()
+        .map(|term| {
+            let prefix = format!("\"{}\"*", term);
+            let fuzzy = fuzzy_map.get(term.as_str()).map(|v| v.as_slice()).unwrap_or(&[]);
+
+            if fuzzy.is_empty() {
+                prefix
+            } else {
+                let fuzzy_parts: String = fuzzy
+                    .iter()
+                    .map(|t| format!("\"{}\"", t))
+                    .collect::<Vec<_>>()
+                    .join(" OR ");
+                format!("({prefix} OR {fuzzy_parts})")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+// ─── Sanitización simple (para queries sin fuzzy) ────────────────────────────
+
+#[cfg(test)]
+fn sanitize_fts_query(query: &str) -> String {
+    let terms = extract_terms(query);
+    if terms.is_empty() {
+        return String::new();
+    }
+    terms
+        .iter()
+        .map(|t| format!("\"{}\"*", t))
         .collect::<Vec<_>>()
         .join(" ")
 }
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
 
-/// Busca pills por texto completo (FTS5).
-///
-/// Soporta filtros opcionales por bottle y compound.
-/// El snippet se genera del campo `content` con marcadores `<b>`/`</b>`.
 pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
-    let fts_query = sanitize_fts_query(&params_in.query);
-    if fts_query.is_empty() {
+    let terms = extract_terms(&params_in.query);
+    if terms.is_empty() {
         return Ok(vec![]);
     }
 
+    let vocab = fetch_vocab(conn, "pills_fts")?;
+    let fuzzy_map = fuzzy_expand(&terms, &vocab);
+    let fts_query = build_fts_query(&terms, &fuzzy_map);
+
     let limit = params_in.limit.unwrap_or(20).min(100) as i64;
 
-    // La condición de bottle_id requiere join con prescriptions.
-    // La usamos siempre (LEFT JOIN) para poder filtrar opcionalmente.
     let mut stmt = conn.prepare(
         "SELECT p.id,
                 p.sync_id,
                 p.compound,
                 p.title,
                 snippet(pills_fts, 1, '<b>', '</b>', '...', 12) AS snippet,
+                p.created_at,
                 p.updated_at,
-                pills_fts.rank
+                pills_fts.rank,
+                p.prescription_id,
+                rx.bottle_id
          FROM pills_fts
          JOIN pills p ON pills_fts.rowid = p.id
          LEFT JOIN prescriptions rx ON p.prescription_id = rx.id
@@ -58,7 +166,7 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
     let results = stmt
         .query_map(
             params![fts_query, params_in.bottle_id, params_in.compound, limit],
-            row_to_search_result,
+            |row| row_to_search_result(row, true),
         )?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("error en búsqueda FTS5 de pills")?;
@@ -68,19 +176,20 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
 
 // ─── Capsules ─────────────────────────────────────────────────────────────────
 
-/// Busca capsules por texto completo (FTS5).
-///
-/// No soporta filtro por bottle (las capsules son globales del usuario).
 pub fn capsule_find(
     conn: &Connection,
     query: &str,
     compound: Option<&str>,
     limit: Option<u32>,
 ) -> Result<Vec<SearchResult>> {
-    let fts_query = sanitize_fts_query(query);
-    if fts_query.is_empty() {
+    let terms = extract_terms(query);
+    if terms.is_empty() {
         return Ok(vec![]);
     }
+
+    let vocab = fetch_vocab(conn, "capsules_fts")?;
+    let fuzzy_map = fuzzy_expand(&terms, &vocab);
+    let fts_query = build_fts_query(&terms, &fuzzy_map);
 
     let limit = limit.unwrap_or(20).min(100) as i64;
 
@@ -90,6 +199,7 @@ pub fn capsule_find(
                 c.compound,
                 c.title,
                 snippet(capsules_fts, 1, '<b>', '</b>', '...', 12) AS snippet,
+                c.created_at,
                 c.updated_at,
                 capsules_fts.rank
          FROM capsules_fts
@@ -102,7 +212,9 @@ pub fn capsule_find(
     )?;
 
     let results = stmt
-        .query_map(params![fts_query, compound, limit], row_to_search_result)?
+        .query_map(params![fts_query, compound, limit], |row| {
+            row_to_search_result(row, false)
+        })?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("error en búsqueda FTS5 de capsules")?;
 
@@ -111,25 +223,18 @@ pub fn capsule_find(
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-/// Resultado de `pill_context`: Markdown formateado listo para incluir en el
-/// contexto del agente al iniciar una prescription.
 pub struct ContextResult {
     pub context: String,
     pub prescription_count: usize,
     pub pill_count: usize,
 }
 
-/// Genera el contexto de un bottle para cargar al inicio de una sesión.
-///
-/// Devuelve las últimas `prescription_limit` prescriptions con su conteo de pills
-/// y las últimas `pill_limit` pills, formateadas como Markdown.
 pub fn pill_context(
     conn: &Connection,
     bottle_id: i64,
     prescription_limit: u32,
     pill_limit: u32,
 ) -> Result<ContextResult> {
-    // Últimas N prescriptions con conteo de pills
     let mut rx_stmt = conn.prepare(
         "SELECT rx.id, rx.title, rx.started_at, rx.ended_at,
                 COUNT(p.id) AS pill_count
@@ -160,7 +265,6 @@ pub fn pill_context(
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("error al cargar prescriptions para contexto")?;
 
-    // Últimas M pills del bottle
     struct PillEntry {
         compound: String,
         title: String,
@@ -187,7 +291,6 @@ pub fn pill_context(
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("error al cargar pills para contexto")?;
 
-    // Formatear como Markdown
     let prescription_count = prescriptions.len();
     let pill_count = pills.len();
     let mut md = String::new();
@@ -195,11 +298,7 @@ pub fn pill_context(
     if !prescriptions.is_empty() {
         md.push_str("## Recent Prescriptions\n\n");
         for rx in &prescriptions {
-            let status = if rx.ended_at.is_some() {
-                "closed"
-            } else {
-                "open"
-            };
+            let status = if rx.ended_at.is_some() { "closed" } else { "open" };
             let date = rx.started_at.get(..10).unwrap_or(&rx.started_at);
             md.push_str(&format!(
                 "- **{}** ({}, {}) [{} pills]\n",
@@ -212,7 +311,6 @@ pub fn pill_context(
     if !pills.is_empty() {
         md.push_str("## Recent Pills\n\n");
         for pill in &pills {
-            // Truncar el contenido a 400 chars para mantener el contexto manejable
             let snippet = if pill.content.len() > 400 {
                 format!("{}…", &pill.content[..400])
             } else {
@@ -232,15 +330,51 @@ pub fn pill_context(
     })
 }
 
-fn row_to_search_result(row: &rusqlite::Row<'_>) -> rusqlite::Result<SearchResult> {
+pub fn recent_pills(conn: &Connection, bottle_id: i64, limit: u32) -> Result<Vec<Pill>> {
+    let mut stmt = conn.prepare(
+        "SELECT p.id, p.sync_id, p.compound, p.title, p.content, p.prescription_id,
+                p.dispenser, p.author_name, p.author_email, p.created_at, p.updated_at
+         FROM pills p
+         JOIN prescriptions rx ON p.prescription_id = rx.id
+         WHERE rx.bottle_id = ?1 AND p.deleted_at IS NULL
+         ORDER BY p.created_at DESC
+         LIMIT ?2",
+    )?;
+
+    let pills = stmt
+        .query_map(params![bottle_id, limit], |row| {
+            Ok(Pill {
+                id: row.get(0)?,
+                sync_id: row.get(1)?,
+                compound: row.get(2)?,
+                title: row.get(3)?,
+                content: row.get(4)?,
+                prescription_id: row.get(5)?,
+                dispenser: row.get(6)?,
+                author_name: row.get(7)?,
+                author_email: row.get(8)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("error al cargar pills recientes")?;
+
+    Ok(pills)
+}
+
+fn row_to_search_result(row: &rusqlite::Row<'_>, has_prescription_id: bool) -> rusqlite::Result<SearchResult> {
     Ok(SearchResult {
         id: row.get(0)?,
         sync_id: row.get(1)?,
         compound: row.get(2)?,
         title: row.get(3)?,
         snippet: row.get(4)?,
-        updated_at: row.get(5)?,
-        rank: row.get(6)?,
+        created_at: row.get(5)?,
+        updated_at: row.get(6)?,
+        rank: row.get(7)?,
+        prescription_id: if has_prescription_id { row.get(8)? } else { None },
+        bottle_id: if has_prescription_id { row.get(9)? } else { None },
     })
 }
 
@@ -332,6 +466,46 @@ mod tests {
     }
 
     #[test]
+    fn pill_find_prefix_search() {
+        let mut conn = open_in_memory().unwrap();
+        setup_with_pills(&mut conn);
+
+        // "tok" debe encontrar "tokens" y "tokenizer"
+        let results = pill_find(
+            &conn,
+            &SearchParams {
+                query: "tok".into(),
+                bottle_id: None,
+                compound: None,
+                limit: Some(10),
+            },
+        )
+        .unwrap();
+
+        assert!(!results.is_empty());
+    }
+
+    #[test]
+    fn pill_find_fuzzy_typo() {
+        let mut conn = open_in_memory().unwrap();
+        setup_with_pills(&mut conn);
+
+        // "tokenir" (typo de "tokenizer") debe encontrar resultados via fuzzy
+        let results = pill_find(
+            &conn,
+            &SearchParams {
+                query: "tokenizr".into(),
+                bottle_id: None,
+                compound: None,
+                limit: Some(10),
+            },
+        )
+        .unwrap();
+
+        assert!(!results.is_empty(), "fuzzy debe encontrar 'tokenizer' desde 'tokenizr'");
+    }
+
+    #[test]
     fn pill_find_filters_by_compound() {
         let mut conn = open_in_memory().unwrap();
         setup_with_pills(&mut conn);
@@ -403,9 +577,20 @@ mod tests {
     fn sanitize_fts_query_wraps_terms() {
         assert_eq!(
             sanitize_fts_query("fix auth bug"),
-            "\"fix\" \"auth\" \"bug\""
+            "\"fix\"* \"auth\"* \"bug\"*"
         );
-        assert_eq!(sanitize_fts_query("AND OR NOT"), "\"AND\" \"OR\" \"NOT\"");
+        assert_eq!(sanitize_fts_query("AND OR NOT"), "\"AND\"* \"OR\"* \"NOT\"*");
         assert_eq!(sanitize_fts_query(""), "");
+    }
+
+    #[test]
+    fn build_fts_query_combines_prefix_and_fuzzy() {
+        let terms = vec!["hexagnol".to_string(), "auth".to_string()];
+        let mut fuzzy_map: HashMap<&str, Vec<String>> = HashMap::new();
+        fuzzy_map.insert("hexagnol", vec!["hexagonal".to_string()]);
+        fuzzy_map.insert("auth", vec![]);
+
+        let query = build_fts_query(&terms, &fuzzy_map);
+        assert_eq!(query, "(\"hexagnol\"* OR \"hexagonal\") \"auth\"*");
     }
 }

@@ -84,7 +84,7 @@ The `compound` field classifies the type of knowledge:
 | `prescription_summary` | End-of-session summary (one per prescription, saved on close) |
 | `manual` | Anything that doesn't fit the above |
 
-Pills are searchable via FTS5 full-text search across `title` and `content`.
+Pills are searchable via FTS5 full-text search across `title` and `content`. The search engine supports prefix matching (`hex` finds `hexagonal`) and fuzzy matching to tolerate typos, using Jaro-Winkler similarity with parallel vocab scanning via rayon.
 
 ---
 
@@ -133,7 +133,7 @@ Project directory
 
 **Typical agent workflow:**
 
-1. **Session start** — call `pill_context` to retrieve recent prescriptions and pills. Call `capsule_find` with relevant terms to load personal conventions.
+1. **Session start** — call `pill_context` to retrieve recent prescriptions and pills. Call `capsule_search` with relevant terms to load personal conventions.
 2. **During work** — call `pill_take` to save decisions, bugs fixed, discoveries.
 3. **Session end** — call `pill_take` with `compound: "prescription_summary"` to summarize the session, then `prescription_close`.
 
