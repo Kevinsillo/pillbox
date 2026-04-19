@@ -19,7 +19,7 @@ pub fn lang_file_path() -> std::path::PathBuf {
 }
 
 pub fn detect() -> String {
-    // 1. ~/.pillbox/lang
+    // 1. ~/.pillbox/lang — persisted preference
     if let Ok(content) = std::fs::read_to_string(lang_file_path()) {
         let code = content.trim().to_lowercase();
         if is_supported(&code) {
@@ -33,18 +33,19 @@ pub fn detect() -> String {
             return code;
         }
     }
-    // 3. System locale — native on Windows (Win32), macOS (CFLocale), Linux (env vars)
-    if let Some(locale) = sys_locale::get_locale() {
-        let code = locale
-            .split(['-', '_', '.', '@'])
-            .next()
-            .unwrap_or("")
-            .to_lowercase();
-        if is_supported(&code) {
-            return code;
-        }
-    }
-    "es".to_string()
+    // 3. First run: detect system locale, save it and use it
+    let detected = sys_locale::get_locale()
+        .and_then(|locale| {
+            let code = locale
+                .split(['-', '_', '.', '@'])
+                .next()
+                .unwrap_or("")
+                .to_lowercase();
+            if is_supported(&code) { Some(code) } else { None }
+        })
+        .unwrap_or_else(|| "en".to_string());
+    let _ = save(&detected);
+    detected
 }
 
 pub fn save(code: &str) -> std::io::Result<()> {

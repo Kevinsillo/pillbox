@@ -84,6 +84,21 @@ pub fn pid_path() -> PathBuf {
         .join("pillbox.pid")
 }
 
+/// Ruta del fichero de configuración de Claude Code: `~/.claude.json`
+pub fn claude_config_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("no se pudo resolver el directorio home")
+        .join(".claude.json")
+}
+
+/// Ruta del log del servidor daemon: `~/.pillbox/pillbox.log`
+pub fn log_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("no se pudo resolver el directorio home")
+        .join(format!(".{}", env!("CARGO_PKG_NAME")))
+        .join("pillbox.log")
+}
+
 /// Indica si una ruta de DB corresponde a una pillbox local de proyecto.
 pub fn is_local_db(path: &Path) -> bool {
     path.starts_with(LOCAL_DIR) || path.components().any(|c| c.as_os_str() == LOCAL_DIR)

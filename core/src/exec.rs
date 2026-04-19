@@ -97,12 +97,25 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
+const CAPSULE_TOOLS: &[&str] = &[
+    "capsule_take",
+    "capsule_read",
+    "capsule_revise",
+    "capsule_discard",
+    "capsule_search",
+    "capsule_compounds",
+];
+
 fn execute(raw: &str) -> Result<Response> {
     let req: Request =
         serde_json::from_str(raw).map_err(|e| anyhow::anyhow!("request_parse_error: {}", e))?;
 
-    let path = config::resolve_db_path()
-        .ok_or_else(|| anyhow::anyhow!("no_db: no se encontró ninguna DB de Pillbox"))?;
+    let path = if CAPSULE_TOOLS.contains(&req.tool.as_str()) {
+        config::global_db_path()
+    } else {
+        config::resolve_db_path()
+            .ok_or_else(|| anyhow::anyhow!("no_db: no se encontró ninguna DB de Pillbox"))?
+    };
 
     let mut conn = db::connection::open(&path)?;
     Ok(dispatch(&mut conn, &req.tool, req.input))
@@ -179,7 +192,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             }
         }
 
-        "pill_find" => {
+        "pill_search" => {
             let params: SearchParams = match from_value(input) {
                 Ok(v) => v,
                 Err(r) => return r,
@@ -285,7 +298,7 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             }
         }
 
-        "capsule_find" => {
+        "capsule_search" => {
             #[derive(Deserialize)]
             struct In {
                 query: String,
@@ -371,6 +384,38 @@ fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
             match store::prescriptions::discard(conn, &req.id) {
                 Ok(()) => Response::ok(json!({ "discarded": true })),
                 Err(e) => anyhow_to_response(e),
+            }
+        }
+
+        // ── Compounds ─────────────────────────────────────────────────────────
+        "pill_compounds" | "capsule_compounds" => {
+            #[derive(Serialize)]
+            struct CompoundEntry {
+                id: String,
+                description: String,
+                prompt_hint: String,
+            }
+            let table = if tool == "pill_compounds" {
+                "pill_compounds"
+            } else {
+                "capsule_compounds"
+            };
+            let sql = format!(
+                "SELECT id, description, prompt_hint FROM {} WHERE is_active = 1",
+                table
+            );
+            match conn.prepare(&sql).and_then(|mut s| {
+                s.query_map([], |row| {
+                    Ok(CompoundEntry {
+                        id: row.get(0)?,
+                        description: row.get(1)?,
+                        prompt_hint: row.get(2)?,
+                    })
+                })
+                .and_then(|rows| rows.collect::<rusqlite::Result<Vec<_>>>())
+            }) {
+                Ok(entries) => Response::ok(entries),
+                Err(e) => anyhow_to_response(anyhow::anyhow!("{}", e)),
             }
         }
 

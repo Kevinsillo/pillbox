@@ -83,6 +83,7 @@ serve:
   error:
     already_running: "El servidor ya está en ejecución (PID %{pid})."
     no_db: "no se encontró ninguna DB de Pillbox"
+    start_failed: "El servidor no pudo arrancar. Revisa el log en ~/.pillbox/pillbox.log"
   stop:
     none: "No hay ningún servidor en ejecución."
     dead: "No hay ningún servidor en ejecución (PID %{pid} no existe)."
@@ -171,6 +172,7 @@ mcp:
   downloading: "Descargando MCP..."
   installed: "MCP instalado en %{path}"
   claude_json: "Añade esto a tu ~/.claude.json:"
+  claude_json_updated: "Configuración añadida en %{path}"
   not_installed: "El MCP no está instalado."
   uninstalled: "MCP desinstalado."
   error:
@@ -201,20 +203,58 @@ uninstall:
     manual: "Ejecuta manualmente: rm %{path}"
 
 help:
-  usage: "Usage:"
-  commands: "Commands"
+  usage: "Uso:"
+  commands: "Comandos"
+  about:
+    pillbox: "Memoria persistente de conocimiento para agentes de IA."
+    serve: "Gestiona el servidor HTTP."
+    bottle: "Operaciones sobre bottles."
+    pills: "Operaciones sobre pills del bottle actual."
+    prescription: "Operaciones sobre prescriptions del bottle actual."
+    mcp: "Gestiona el servidor MCP."
+    skill: "Gestiona la skill de Claude Code."
+    lang: "Cambia o muestra el idioma del CLI."
+    uninstall: "Desinstala componentes de Pillbox."
+  sub:
+    pillbox:
+      status: "Estado global: DBs, bottle activo, servidor, MCP y skill."
+      serve: "Gestiona el servidor HTTP."
+      bottle: "Operaciones sobre bottles."
+      pills: "Operaciones sobre pills del bottle actual."
+      prescription: "Operaciones sobre prescriptions del bottle actual."
+      mcp: "Gestiona el servidor MCP."
+      skill: "Gestiona la skill de Claude Code."
+      lang: "Cambia o muestra el idioma del CLI."
+      uninstall: "Desinstala componentes de Pillbox."
+    serve:
+      start: "Arranca el servidor HTTP en segundo plano."
+      stop: "Para el servidor daemon."
+      status: "Muestra el estado del servidor."
+    bottle:
+      init: "Inicializa un bottle en el directorio actual (wizard interactivo)."
+      status: "Estado del bottle del directorio actual."
+      list: "Lista los bottles registrados en la DB global."
+      migrate: "Migra el bottle entre DB local y global."
+    migrate:
+      global: "Mueve el bottle de este directorio → global."
+      local: "Elige un bottle global y muévelo aquí."
+    pills:
+      list: "Lista las pills del bottle actual."
+    prescription:
+      open: "Abre una nueva prescripción."
+      close: "Cierra la prescripción activa."
+      list: "Lista las prescriptions del bottle actual."
+    mcp:
+      install: "Instala el servidor MCP."
+      uninstall: "Desinstala el servidor MCP."
+    skill:
+      install: "Instala la skill de Claude Code."
+      uninstall: "Desinstala la skill de Claude Code."
+    lang:
+      set: "Cambia el idioma del CLI."
 
 lang:
   current: "Idioma actual"
-  available: "Disponibles"
-  active: "● activo"
   set:
     ok: "Idioma cambiado a: %{lang}"
     invalid: "Idioma no soportado: '%{lang}'. Disponibles: %{available}"
-  name:
-    es: "Español"
-    en: "English"
-    de: "Deutsch"
-    it: "Italiano"
-    pt: "Português"
-    fr: "Français"

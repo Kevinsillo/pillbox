@@ -3,6 +3,56 @@ use owo_colors::OwoColorize;
 use pillbox::domain::{bottle::Bottle, prescription::Prescription};
 use rust_i18n::t;
 
+// ─── Logo ─────────────────────────────────────────────────────────────────────
+
+const LOGO: [&str; 7] = [
+    "████████              ████████",
+    "███         ██████         ███",
+    "███      ████████████      ███",
+    "███      ▓▓▓▓▓▓▓▓▓▓▓▓      ███",
+    "███      ▒▒▒▒▒▒▒▒▒▒▒▒      ███",
+    "███         ▒▒▒▒▒▒         ███",
+    "████████              ████████",
+];
+
+fn color_line(line: &str) -> String {
+    let mut out = String::new();
+    let mut seg = String::new();
+    let mut red = false;
+    for ch in line.chars() {
+        let is_red = matches!(ch, '▓' | '▒');
+        if is_red != red && !seg.is_empty() {
+            out.push_str(&if red {
+                seg.red().to_string()
+            } else {
+                seg.bright_white().to_string()
+            });
+            seg.clear();
+        }
+        red = is_red;
+        seg.push(ch);
+    }
+    if !seg.is_empty() {
+        out.push_str(&if red {
+            seg.red().to_string()
+        } else {
+            seg.bright_white().to_string()
+        });
+    }
+    out
+}
+
+pub fn print_logo(version: &str) {
+    for (i, line) in LOGO.iter().enumerate() {
+        if i == 6 {
+            println!(" {}  pillbox {}", color_line(line), version.dimmed());
+        } else {
+            println!(" {}", color_line(line));
+        }
+    }
+    println!();
+}
+
 // ─── Bottles ──────────────────────────────────────────────────────────────────
 
 pub fn bottles_list(bottles: &[Bottle]) {
@@ -10,7 +60,10 @@ pub fn bottles_list(bottles: &[Bottle]) {
         println!("{}\n", t!("bottles.none"));
         return;
     }
-    println!("{}\n", t!("bottles.list.title", count = bottles.len()).bold());
+    println!(
+        "{}\n",
+        t!("bottles.list.title", count = bottles.len()).bold()
+    );
     let rows = bottles
         .iter()
         .enumerate()
@@ -41,7 +94,11 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
     let rx_val = match open_rx {
         Some((id, title)) => format!(
             "{}",
-            t!("bottle.status.rx_open", title = title, id = &id[..id.len().min(8)])
+            t!(
+                "bottle.status.rx_open",
+                title = title,
+                id = &id[..id.len().min(8)]
+            )
         ),
         None => t!("bottle.status.rx_none").dimmed().to_string(),
     };
@@ -50,9 +107,18 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
             t!("bottle.status.labels.bottle").bold().to_string(),
             format!("{} — \"{}\"", bottle.name, bottle.display_name),
         ],
-        [t!("bottle.status.labels.scope").bold().to_string(), bottle.scope.to_string()],
-        [t!("bottle.status.labels.dir").bold().to_string(), bottle.directory.clone()],
-        [t!("bottle.status.labels.pills").bold().to_string(), pill_count.to_string()],
+        [
+            t!("bottle.status.labels.scope").bold().to_string(),
+            bottle.scope.to_string(),
+        ],
+        [
+            t!("bottle.status.labels.dir").bold().to_string(),
+            bottle.directory.clone(),
+        ],
+        [
+            t!("bottle.status.labels.pills").bold().to_string(),
+            pill_count.to_string(),
+        ],
         [t!("bottle.status.labels.rx").bold().to_string(), rx_val],
     ];
     println!("{}\n", table::dict(rows));
@@ -107,14 +173,22 @@ pub fn status(
         };
         if let Some(b) = bottle {
             if let Some(title) = b.open_rx {
-                val.push_str(&format!("\n{}  \"{}\"", t!("status.db.rx").bold(), title.green()));
+                val.push_str(&format!(
+                    "\n{}  \"{}\"",
+                    t!("status.db.rx").bold(),
+                    title.green()
+                ));
             }
         }
         val
     };
 
     let server_val = match server_port {
-        Some(port) => format!("{} {}", "●".green(), t!("status.server.running", port = port)),
+        Some(port) => format!(
+            "{} {}",
+            "●".green(),
+            t!("status.server.running", port = port)
+        ),
         None => format!("{} {}", "●".red(), t!("status.server.stopped")),
     };
 
@@ -131,9 +205,18 @@ pub fn status(
     };
 
     let rows = vec![
-        [t!("status.labels.bin").bold().to_string(), bin_path.to_string()],
-        [t!("status.labels.global").bold().to_string(), db_val(global, None, false)],
-        [t!("status.labels.local").bold().to_string(), db_val(local, bottle, true)],
+        [
+            t!("status.labels.bin").bold().to_string(),
+            bin_path.to_string(),
+        ],
+        [
+            t!("status.labels.global").bold().to_string(),
+            db_val(global, None, false),
+        ],
+        [
+            t!("status.labels.local").bold().to_string(),
+            db_val(local, bottle, true),
+        ],
         [t!("status.labels.web").bold().to_string(), server_val],
         [t!("status.labels.mcp").bold().to_string(), mcp_val],
         [t!("status.labels.skill").bold().to_string(), skill_val],
@@ -150,7 +233,10 @@ pub fn serve_status(running: bool, pid: Option<u32>, port: u16) {
     };
     let mut rows = vec![
         [t!("serve.labels.estado").bold().to_string(), estado],
-        [t!("serve.labels.url").bold().to_string(), format!("http://localhost:{}", port)],
+        [
+            t!("serve.labels.url").bold().to_string(),
+            format!("http://localhost:{}", port),
+        ],
     ];
     if let Some(p) = pid {
         rows.push([t!("serve.labels.pid").bold().to_string(), p.to_string()]);
@@ -166,7 +252,13 @@ pub fn component_status_with_help(path: &std::path::Path, help: &str) {
     };
     let split = help.find("\n\n").unwrap_or(help.len());
     let (title, rest) = help.split_at(split);
-    let content = format!("{}\n\n{}: {}{}", title, t!("status.component.estado").bold(), status, rest);
+    let content = format!(
+        "{}\n\n{}: {}{}",
+        title,
+        t!("status.component.estado").bold(),
+        status,
+        rest
+    );
     let rows = vec![["".to_string(), content]];
     println!("{}\n", table::dict(rows));
 }
@@ -180,7 +272,11 @@ pub fn db_not_found() {
 pub fn pills_list(bottle_name: &str, pills: &[(i64, String, String, String)]) {
     println!("{}\n", t!("pills.list.title", bottle = bottle_name).bold());
     let rows = if pills.is_empty() {
-        vec![vec!["".into(), t!("pills.none").dimmed().to_string(), "".into()]]
+        vec![vec![
+            "".into(),
+            t!("pills.none").dimmed().to_string(),
+            "".into(),
+        ]]
     } else {
         pills
             .iter()
@@ -212,7 +308,12 @@ pub fn pills_list(bottle_name: &str, pills: &[(i64, String, String, String)]) {
 pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], limit: u32) {
     println!(
         "{}\n",
-        t!("prescriptions.list.title", bottle = bottle_name, limit = limit).bold()
+        t!(
+            "prescriptions.list.title",
+            bottle = bottle_name,
+            limit = limit
+        )
+        .bold()
     );
     if rxs.is_empty() {
         println!("  {}\n", t!("prescriptions.none").dimmed());
@@ -244,12 +345,20 @@ pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], limit: u32) {
 }
 
 pub fn prescription_opened(id: &str, title: &str) {
-    println!("{} {}", "●".green().bold(), t!("prescriptions.msg.opened", title = title));
+    println!(
+        "{} {}",
+        "●".green().bold(),
+        t!("prescriptions.msg.opened", title = title)
+    );
     println!("  {}{}\n", t!("prescriptions.msg.opened_id"), id.dimmed());
 }
 
 pub fn prescription_closed(title: &str) {
-    println!("{} {}\n", "●".green().bold(), t!("prescriptions.msg.closed", title = title));
+    println!(
+        "{} {}\n",
+        "●".green().bold(),
+        t!("prescriptions.msg.closed", title = title)
+    );
 }
 
 // ─── Bottle init ─────────────────────────────────────────────────────────────
@@ -259,17 +368,34 @@ pub fn bottle_init_start(dir: &str) {
 }
 
 pub fn bottle_init_created(name: &str, display_name: &str, db_path: &std::path::Path) {
-    println!("{} {}\n", "●".green().bold(), t!("bottle.init.created", name = name));
+    println!(
+        "{} {}\n",
+        "●".green().bold(),
+        t!("bottle.init.created", name = name)
+    );
     let rows = vec![
-        [t!("bottle.init.col.slug").bold().to_string(), name.to_string()],
-        [t!("bottle.init.col.display").bold().to_string(), display_name.to_string()],
-        [t!("bottle.init.col.db").bold().to_string(), db_path.display().to_string()],
+        [
+            t!("bottle.init.col.slug").bold().to_string(),
+            name.to_string(),
+        ],
+        [
+            t!("bottle.init.col.display").bold().to_string(),
+            display_name.to_string(),
+        ],
+        [
+            t!("bottle.init.col.db").bold().to_string(),
+            db_path.display().to_string(),
+        ],
     ];
     println!("{}\n", table::dict(rows));
 }
 
 pub fn bottle_init_gitignore() {
-    println!("{} {}", "●".green().bold(), t!("bottle.init.gitignore.done"));
+    println!(
+        "{} {}",
+        "●".green().bold(),
+        t!("bottle.init.gitignore.done")
+    );
 }
 
 pub fn bottle_init_done() {
@@ -285,8 +411,14 @@ pub fn migrate_help(bottle_name: Option<&str>, local_path: &str, global_path: &s
         .unwrap_or_else(|| t!("migrate.help.no_bottle").to_string());
     let rows = vec![
         [t!("migrate.help.bottle").bold().to_string(), bottle_val],
-        [t!("migrate.help.local").bold().to_string(), local_path.to_string()],
-        [t!("migrate.help.global").bold().to_string(), global_path.to_string()],
+        [
+            t!("migrate.help.local").bold().to_string(),
+            local_path.to_string(),
+        ],
+        [
+            t!("migrate.help.global").bold().to_string(),
+            global_path.to_string(),
+        ],
         ["".to_string(), "".to_string()],
         [
             "migrate global".green().to_string(),
@@ -309,11 +441,26 @@ pub fn migrate_confirm_global(
 ) {
     println!("{}\n", t!("migrate.global.title").bold());
     let rows = vec![
-        [t!("migrate.global.bottle").bold().to_string(), bottle_name.to_string()],
-        [t!("migrate.global.origin").bold().to_string(), local_path.to_string()],
-        [t!("migrate.global.dest").bold().to_string(), global_path.to_string()],
-        [t!("migrate.global.prescriptions").bold().to_string(), prescriptions.to_string()],
-        [t!("migrate.global.pills").bold().to_string(), pills.to_string()],
+        [
+            t!("migrate.global.bottle").bold().to_string(),
+            bottle_name.to_string(),
+        ],
+        [
+            t!("migrate.global.origin").bold().to_string(),
+            local_path.to_string(),
+        ],
+        [
+            t!("migrate.global.dest").bold().to_string(),
+            global_path.to_string(),
+        ],
+        [
+            t!("migrate.global.prescriptions").bold().to_string(),
+            prescriptions.to_string(),
+        ],
+        [
+            t!("migrate.global.pills").bold().to_string(),
+            pills.to_string(),
+        ],
     ];
     println!("{}\n", table::dict(rows));
     println!("  {}\n", t!("migrate.global.warning").dimmed());
@@ -334,11 +481,23 @@ pub fn migrate_confirm_local(
         local_path.to_string()
     };
     let rows = vec![
-        [t!("migrate.local.bottle").bold().to_string(), bottle_name.to_string()],
-        [t!("migrate.local.origin").bold().to_string(), global_path.to_string()],
+        [
+            t!("migrate.local.bottle").bold().to_string(),
+            bottle_name.to_string(),
+        ],
+        [
+            t!("migrate.local.origin").bold().to_string(),
+            global_path.to_string(),
+        ],
         [t!("migrate.local.dest").bold().to_string(), dest_val],
-        [t!("migrate.local.prescriptions").bold().to_string(), prescriptions.to_string()],
-        [t!("migrate.local.pills").bold().to_string(), pills.to_string()],
+        [
+            t!("migrate.local.prescriptions").bold().to_string(),
+            prescriptions.to_string(),
+        ],
+        [
+            t!("migrate.local.pills").bold().to_string(),
+            pills.to_string(),
+        ],
     ];
     println!("{}\n", table::dict(rows));
     println!("  {}\n", t!("migrate.local.warning").dimmed());
@@ -347,20 +506,39 @@ pub fn migrate_confirm_local(
 pub fn migrate_result_global(prescriptions: usize, pills: usize) {
     println!("{} {}\n", "●".green().bold(), t!("migrate.result.done"));
     let rows = vec![
-        [t!("migrate.result.prescriptions").bold().to_string(), prescriptions.to_string()],
-        [t!("migrate.result.pills").bold().to_string(), pills.to_string()],
+        [
+            t!("migrate.result.prescriptions").bold().to_string(),
+            prescriptions.to_string(),
+        ],
+        [
+            t!("migrate.result.pills").bold().to_string(),
+            pills.to_string(),
+        ],
     ];
     println!("{}\n", table::dict(rows));
-    println!("{} {}\n", "●".green().bold(), t!("migrate.result.removed_local"));
+    println!(
+        "{} {}\n",
+        "●".green().bold(),
+        t!("migrate.result.removed_local")
+    );
 }
 
 pub fn migrate_result_local(prescriptions: usize, pills: usize) {
     println!("{} {}\n", "●".green().bold(), t!("migrate.result.done"));
     let rows = vec![
-        [t!("migrate.result.prescriptions").bold().to_string(), prescriptions.to_string()],
-        [t!("migrate.result.pills").bold().to_string(), pills.to_string()],
+        [
+            t!("migrate.result.prescriptions").bold().to_string(),
+            prescriptions.to_string(),
+        ],
+        [
+            t!("migrate.result.pills").bold().to_string(),
+            pills.to_string(),
+        ],
     ];
     println!("{}\n", table::dict(rows));
-    println!("{} {}\n", "●".green().bold(), t!("migrate.result.removed_global"));
+    println!(
+        "{} {}\n",
+        "●".green().bold(),
+        t!("migrate.result.removed_global")
+    );
 }
-

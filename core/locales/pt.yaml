@@ -1,1 +1,258 @@
-{}
+bottles:
+  none: "Nenhuma bottle registrada."
+  list:
+    title: "Bottles registradas (%{count})"
+    col:
+      num: "#"
+      name: "Nome"
+      display: "Display"
+      dir: "Diretório"
+
+bottle:
+  status:
+    labels:
+      bottle: "Bottle"
+      scope: "Escopo"
+      dir: "Diretório"
+      pills: "Pills"
+      rx: "Rx"
+    rx_none: "nenhuma aberta"
+    rx_open: "\"%{title}\" (aberta, id=%{id})"
+  init:
+    start: "Inicializando bottle em %{dir}..."
+    name_prompt: "Como você quer chamar este projeto?"
+    scope:
+      prompt: "Onde salvar as memories?"
+      local: "local  — .pillbox/pillbox.db (somente este projeto)"
+      global: "global — ~/.pillbox/pillbox.db (compartilhado)"
+    creating: "Criando DB..."
+    exists: "Já existe uma bottle para este diretório em %{path}"
+    created: "Bottle '%{name}' criada."
+    col:
+      slug: "Slug"
+      display: "Display"
+      db: "DB"
+    gitignore:
+      prompt: "Adicionar .pillbox/ ao .gitignore?"
+      done: ".gitignore atualizado."
+    registering: "Registrando no DB global..."
+    registered_ok: "✓ Registrada no DB global."
+    register_err: "⚠  Não foi possível registrar no DB global: %{err}"
+    done: "Pronto. Use 'pillbox bottle status' para ver o status."
+  error:
+    not_found: "Nenhuma bottle encontrada para este diretório.\nExecute 'pillbox bottle init' para criar uma."
+    not_found_short: "Nenhuma bottle encontrada para este diretório."
+
+status:
+  title: "Pillbox Status"
+  bin_unknown: "(desconhecido)"
+  labels:
+    bin: "Binário"
+    global: "Bottle global"
+    local: "Bottle local"
+    web: "Servidor web"
+    mcp: "MCP"
+    skill: "Skill"
+  db:
+    none: "(não encontrado)"
+    schema: "Schema: "
+    bottles: "Bottles: "
+    capsules: "Capsules: "
+    pills: "Pills: "
+    prescriptions: "Prescriptions: "
+    rx: "Rx: "
+  server:
+    running: "em execução — http://localhost:%{port}"
+    stopped: "não está em execução"
+  component:
+    missing: "não instalado"
+    estado: "Status"
+
+serve:
+  title: "Servidor web"
+  running: "em execução"
+  stopped: "parado"
+  daemon_started: "Servidor iniciado em segundo plano (PID %{pid}, porta %{port})."
+  labels:
+    url: "URL"
+    pid: "PID"
+    estado: "Status"
+  inline:
+    running: "em execução — http://localhost:%{port}  (PID %{pid})"
+    stopped: "parado — http://localhost:%{port}"
+  error:
+    already_running: "O servidor já está em execução (PID %{pid})."
+    no_db: "nenhum DB Pillbox encontrado"
+  stop:
+    none: "Nenhum servidor em execução."
+    dead: "Nenhum servidor em execução (PID %{pid} não existe)."
+    done: "Servidor parado (PID %{pid})."
+
+db:
+  not_found: "Nenhuma Pillbox encontrada. Execute o script de instalação."
+  open_not_found: "Nenhum DB Pillbox encontrado.\nExecute 'pillbox bottle init' para criar um."
+
+pills:
+  none: "(nenhuma)"
+  list:
+    title: "Pills de '%{bottle}'"
+    col:
+      num: "#"
+      compound: "Composto"
+      title: "Título"
+
+prescriptions:
+  none: "(nenhuma)"
+  state:
+    open: "aberta"
+    closed: "fechada"
+  list:
+    title: "Prescriptions de '%{bottle}' (últimas %{limit})"
+    col:
+      id: "ID"
+      title: "Título"
+      state: "Status"
+  msg:
+    opened: "Prescription aberta: \"%{title}\""
+    opened_id: "ID: "
+    closed: "Prescription fechada: \"%{title}\""
+  error:
+    already_open: "Uma prescription já está aberta: \"%{title}\" (%{pills} pills, id=%{id}).\nFeche-a com 'pillbox prescription close' antes de abrir uma nova."
+    none_open: "Nenhuma prescription aberta para a bottle '%{name}'."
+
+migrate:
+  help:
+    title: "Migração de bottle"
+    bottle: "Bottle"
+    local: "Local"
+    global: "Global"
+    cmd_global: "Mover a bottle deste diretório → global"
+    cmd_local: "Escolher uma bottle global e movê-la aqui"
+    no_bottle: "—"
+  global:
+    title: "Mover bottle para global"
+    bottle: "Bottle"
+    origin: "Origem"
+    dest: "Destino"
+    prescriptions: "Prescriptions"
+    pills: "Pills"
+    warning: "O arquivo .pillbox/pillbox.db será excluído após a migração."
+  local:
+    title: "Mover bottle para local"
+    select: "Selecione a bottle a mover aqui:"
+    bottle: "Bottle"
+    origin: "Origem"
+    dest: "Destino"
+    dest_new: "(será criado)"
+    prescriptions: "Prescriptions"
+    pills: "Pills"
+    warning: "A bottle será removida do DB global após a migração."
+    error:
+      already_local: "Já existe uma bottle local. Mova-a primeiro com 'pillbox bottle migrate global'."
+      no_bottles: "Nenhuma bottle no DB global."
+  confirm:
+    prompt: "Continuar?"
+  result:
+    done: "Migração concluída"
+    prescriptions: "Prescriptions"
+    pills: "Pills"
+    removed_local: "DB local excluído"
+    removed_global: "Bottle removida do DB global"
+  dir:
+    to_global: "local → global"
+    to_local: "global → local"
+  error:
+    no_global: "DB global não encontrado (%{path})"
+    no_local: "DB local não encontrado (.pillbox/pillbox.db) no diretório atual"
+    no_bottle: "nenhuma bottle registrada para '%{dir}' em %{path}"
+
+mcp:
+  node_required: "Node.js ≥ 18 é necessário para o servidor MCP."
+  downloading: "Baixando MCP..."
+  installed: "MCP instalado em %{path}"
+  claude_json: "Adicione isso ao seu ~/.claude.json:"
+  not_installed: "O MCP não está instalado."
+  uninstalled: "MCP desinstalado."
+  error:
+    download: "Erro ao baixar o MCP de %{url}"
+    extract: "Erro ao extrair o MCP."
+
+skill:
+  downloading: "Baixando skill..."
+  installed: "Skill instalada em %{path}"
+  not_installed: "A skill não está instalada."
+  uninstalled: "Skill desinstalada."
+  error:
+    download: "Erro ao baixar a skill de %{url}"
+
+uninstall:
+  title: "Desinstalar Pillbox"
+  mcp:
+    prompt: "Remover o servidor MCP?"
+    done: "MCP removido."
+  skill:
+    prompt: "Remover a skill do Claude Code?"
+    done: "Skill removida."
+  db:
+    prompt: "Remover o DB global? (todas as memories serão perdidas)"
+    done: "DB global removido."
+  bin:
+    prompt: "Remover o binário (%{path})?"
+    manual: "Execute manualmente: rm %{path}"
+
+help:
+  usage: "Uso:"
+  commands: "Comandos"
+  about:
+    pillbox: "Memória persistente de conhecimento para agentes de IA."
+    serve: "Gerencia o servidor HTTP."
+    bottle: "Operações sobre bottles."
+    pills: "Operações sobre pills da bottle ativa."
+    prescription: "Operações sobre prescriptions da bottle ativa."
+    mcp: "Gerencia o servidor MCP."
+    skill: "Gerencia a skill do Claude Code."
+    lang: "Altera ou mostra o idioma do CLI."
+    uninstall: "Desinstala componentes do Pillbox."
+  sub:
+    pillbox:
+      status: "Status global: DBs, bottle ativa, servidor, MCP e skill."
+      serve: "Gerencia o servidor HTTP."
+      bottle: "Operações sobre bottles."
+      pills: "Operações sobre pills da bottle ativa."
+      prescription: "Operações sobre prescriptions da bottle ativa."
+      mcp: "Gerencia o servidor MCP."
+      skill: "Gerencia a skill do Claude Code."
+      lang: "Altera ou mostra o idioma do CLI."
+      uninstall: "Desinstala componentes do Pillbox."
+    serve:
+      start: "Inicia o servidor HTTP em segundo plano."
+      stop: "Para o servidor daemon."
+      status: "Mostra o status do servidor."
+    bottle:
+      init: "Inicializa uma bottle no diretório atual (assistente interativo)."
+      status: "Status da bottle do diretório atual."
+      list: "Lista as bottles registradas no DB global."
+      migrate: "Migra a bottle entre DB local e global."
+    migrate:
+      global: "Move a bottle deste diretório → global."
+      local: "Escolhe uma bottle global e a move para cá."
+    pills:
+      list: "Lista as pills da bottle ativa."
+    prescription:
+      open: "Abre uma nova prescription."
+      close: "Fecha a prescription ativa."
+      list: "Lista as prescriptions da bottle ativa."
+    mcp:
+      install: "Instala o servidor MCP."
+      uninstall: "Desinstala o servidor MCP."
+    skill:
+      install: "Instala a skill do Claude Code."
+      uninstall: "Desinstala a skill do Claude Code."
+    lang:
+      set: "Altera o idioma do CLI."
+
+lang:
+  current: "Idioma atual"
+  set:
+    ok: "Idioma alterado para: %{lang}"
+    invalid: "Idioma não suportado: '%{lang}'. Disponíveis: %{available}"
