@@ -437,7 +437,8 @@ fn cmd_bottle_init() -> Result<()> {
         let global_path = pillbox::config::global_db_path();
         if global_path.exists() {
             let pb2 = spinner(t!("bottle.init.registering"));
-            match register_in_global(&global_path, &name, &display_name, &dir_str, &scope) {
+            let local_db_abs = current_dir.join(".pillbox").join("pillbox.db");
+            match register_in_global(&global_path, &name, &display_name, &dir_str, &scope, &local_db_abs) {
                 Ok(_) => pb2.finish_with_message(t!("bottle.init.registered_ok").to_string()),
                 Err(e) => {
                     pb2.finish_and_clear();
@@ -481,8 +482,12 @@ fn register_in_global(
     display_name: &str,
     directory: &str,
     scope: &pillbox::domain::bottle::BottleScope,
+    local_db_path: &std::path::Path,
 ) -> Result<()> {
-    use pillbox::db::{connection, store::bottles};
+    use pillbox::db::{
+        connection,
+        store::{bottles, registered_bottles},
+    };
     use pillbox::domain::bottle::NewBottle;
 
     let mut conn = connection::open(global_path)?;
@@ -497,6 +502,12 @@ fn register_in_global(
             },
         )?;
     }
+
+    let db_path_str = local_db_path
+        .to_str()
+        .context("la ruta de la DB local contiene caracteres no UTF-8")?;
+    registered_bottles::register(&conn, name, display_name, db_path_str)?;
+
     Ok(())
 }
 

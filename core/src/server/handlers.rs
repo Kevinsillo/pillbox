@@ -17,7 +17,7 @@ use validator::Validate;
 use pillbox::{
     db::{
         self,
-        store::{self, PrescriptionAlreadyOpen},
+        store::{self, registered_bottles, PrescriptionAlreadyOpen},
     },
     domain::{
         bottle::NewBottle,
@@ -334,14 +334,61 @@ pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiRe
 }
 
 pub async fn bottle_list(State(s): State<AppState>) -> ApiResponse {
-    let conn = match open_conn(&s) {
-        Ok(c) => c,
-        Err(r) => return r,
+    // 1. Bottles de la DB activa (local o global)
+    let mut all_bottles: Vec<pillbox::domain::bottle::Bottle> = {
+        let conn = match open_conn(&s) {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match store::bottles::list(&conn) {
+            Ok(b) => b,
+            Err(e) => return err_500(e),
+        }
     };
-    match store::bottles::list(&conn) {
-        Ok(bottles) => ok(bottles),
-        Err(e) => err_500(e),
+
+    // 2. Bottles de otras DBs locales registradas en la global
+    //    Solo cuando db_path != global_db_path (evitar doble lectura)
+    if s.db_path != s.global_db_path {
+        let registered = {
+            let global_conn = match open_global_conn(&s) {
+                Ok(c) => c,
+                Err(_) => return ok(all_bottles),
+            };
+            match registered_bottles::list(&global_conn) {
+                Ok(r) => r,
+                Err(_) => vec![],
+            }
+        };
+
+        let mut seen_dirs: std::collections::HashSet<String> =
+            all_bottles.iter().map(|b| b.directory.clone()).collect();
+
+        for reg in registered {
+            let reg_db_path = std::path::Path::new(&reg.db_path);
+            if !reg_db_path.exists() {
+                continue; // proyecto movido o borrado
+            }
+            if reg_db_path == s.db_path.as_ref() {
+                continue; // ya leído en paso 1
+            }
+            let remote_conn = match db::connection::open(reg_db_path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            let remote_bottles = match store::bottles::list(&remote_conn) {
+                Ok(b) => b,
+                Err(_) => continue,
+            };
+            for bottle in remote_bottles {
+                if seen_dirs.insert(bottle.directory.clone()) {
+                    all_bottles.push(bottle);
+                }
+            }
+        }
     }
+
+    all_bottles.sort_by(|a, b| a.display_name.cmp(&b.display_name));
+    ok(all_bottles)
 }
 
 pub async fn bottle_create(State(s): State<AppState>, Json(input): Json<NewBottle>) -> ApiResponse {
