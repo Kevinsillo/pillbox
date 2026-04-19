@@ -1,5 +1,5 @@
-import { api } from './client'
-import type { Capsule, CapsuleSummary, CapsuleCompound } from './types'
+import { api } from '@/core/infrastructure/managers/httpClient'
+import type { Capsule, CapsuleSummary, CapsuleSearchResult, CapsuleCompound } from '@/core/domain/types'
 
 export const capsulesApi = {
     list: (params?: { compound?: CapsuleCompound; limit?: number }) => {
@@ -15,10 +15,10 @@ export const capsulesApi = {
     update: (id: number, body: { title?: string; content?: string; compound?: CapsuleCompound }) =>
         api.patch<Capsule>(`/capsules/${id}`, body),
     delete: (id: number) => api.delete<Capsule>(`/capsules/${id}`),
-    search: (params: { q: string; compound?: CapsuleCompound; limit?: number }) => {
-        const qs = new URLSearchParams({ q: params.q })
+    search: (params: { query: string; compound?: CapsuleCompound; limit?: number }) => {
+        const qs = new URLSearchParams({ query: params.query })
         if (params.compound) qs.set('compound', params.compound)
         if (params.limit) qs.set('limit', String(params.limit))
-        return api.get<CapsuleSummary[]>(`/capsules/search?${qs}`)
+        return api.get<CapsuleSearchResult[]>(`/capsules/search?${qs}`)
     },
 }

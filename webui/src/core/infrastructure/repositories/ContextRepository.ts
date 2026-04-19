@@ -1,5 +1,5 @@
-import { api } from './client'
-import type { Context } from './types'
+import { api } from '@/core/infrastructure/managers/httpClient'
+import type { Context } from '@/core/domain/types'
 
 export const contextApi = {
     get: (bottle_id: number, params?: { prescription_limit?: number; pill_limit?: number }) => {

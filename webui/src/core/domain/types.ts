@@ -57,8 +57,11 @@ export interface PillSearchResult {
     compound: PillCompound
     title: string
     snippet: string
+    created_at: string
     updated_at: string
     rank: number
+    prescription_id?: string
+    bottle_id?: number
 }
 
 export interface Capsule {
@@ -78,6 +81,10 @@ export interface CapsuleSummary {
     title: string
     created_at: string
     updated_at: string
+}
+
+export interface CapsuleSearchResult extends CapsuleSummary {
+    snippet: string
 }
 
 export interface Context {

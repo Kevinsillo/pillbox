@@ -1,5 +1,5 @@
-import { api } from './client'
-import type { Pill, PillSearchResult, PillCompound } from './types'
+import { api } from '@/core/infrastructure/managers/httpClient'
+import type { Pill, PillSearchResult, PillCompound } from '@/core/domain/types'
 
 export const pillsApi = {
     get: (id: number) => api.get<Pill>(`/pills/${id}`),
