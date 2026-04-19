@@ -2,59 +2,132 @@
 name: pillbox
 description: >
   Apoyo para las MCP tools de Pillbox — memoria persistente por proyectos para agentes IA.
-  Usar cuando las herramientas pill_take, pill_find, prescription_open o bottle_list están disponibles,
+  Usar cuando las herramientas pill_take, pill_search, prescription_open, bottle_list,
+  capsule_take o capsule_search están disponibles,
   al empezar trabajo en un proyecto conocido, o cuando el usuario pide recordar o recuperar algo.
 metadata:
-  version: 2.0.0
+  version: 3.0.0
 ---
 
-# Pillbox — Referencia MCP
+# Pillbox
 
-Pillbox guarda conocimiento generado durante el trabajo para recuperarlo en sesiones futuras.
+Dos tipos de memoria independientes. La elección entre ellos es la decisión más importante.
 
-## Flujo básico
-
-```
-bottle_list()                          → encontrar el bottle_id del proyecto actual
-pill_context(bottle_id)                → recuperar contexto antes de empezar
-prescription_open(bottle_id, title)    → abrir sesión con título descriptivo de la tarea
-  pill_take(prescription_id, ...)      → guardar decisiones, bugs, patrones durante el trabajo
-  pill_take(compound: "prescription_summary", ...)  → resumen antes de cerrar
-prescription_close(id)                 → cerrar al terminar
-```
-
-## Pills vs Capsules
-
-| | Pills | Capsules |
+| | **Pills** | **Capsules** |
 |---|---|---|
-| **Scope** | Un proyecto (dentro de una prescripción) | Cross-proyecto (globales) |
-| **Qué guardar** | Decisiones, bugs, patrones del código | Preferencias, workflow, entorno del usuario |
+| ¿Qué guarda? | Conocimiento del proyecto actual | Preferencias y hábitos del usuario |
+| ¿Requiere prescription? | Sí — siempre | No |
+| ¿Scope? | Un bottle (proyecto) | Global, cross-proyecto |
+| Ejemplo | "decidimos usar UUID v7" | "el usuario prefiere commits en español" |
 
-## Compounds — Pills
+---
 
-| Compound | Cuándo |
-|---|---|
-| `decision` | Elección técnica: qué, por qué, qué se descartó |
-| `architecture` | Estructura, diseño de sistema o módulos |
-| `bugfix` | Bug resuelto: síntoma, causa raíz, fix |
-| `pattern` | Convención establecida en este proyecto |
-| `discovery` | Algo no obvio encontrado en el código o dominio |
-| `learning` | El modelo falló y extrajo una lección |
-| `feedback` | El usuario corrigió el enfoque del modelo |
-| `prescription_summary` | Resumen de sesión — siempre antes de cerrar |
+## Arranque de sesión
 
-## Compounds — Capsules
+```json
+{ "tool": "capsule_search", "query": "<términos relevantes>" }
+{ "tool": "bottle_list" }
+{ "tool": "pill_context", "bottle_id": 1 }
+{ "tool": "prescription_open", "bottle_id": 1, "title": "<descripción de la tarea>" }
+```
 
-| Compound | Cuándo |
-|---|---|
-| `convention` | Preferencia de estilo o naming que aplica a todo |
-| `workflow` | Proceso preferido del usuario |
-| `environment` | OS, shell, herramientas, versiones |
-| `context` | Restricciones personales o situación del equipo |
-| `goal` | Objetivo de largo plazo del usuario |
+Si `prescription_open` devuelve `prescription_already_open`: el campo `data` contiene la prescripción
+activa — reutilizar ese `id` directamente sin abrir otra.
 
-## Error: prescription_already_open
+---
 
-Si `prescription_open` devuelve este error, el campo `data` contiene la prescripción activa.
-- **Reutilizar**: pasar el `id` existente a `pill_take`
-- **Cerrar y nueva**: `prescription_close(id)` → `prescription_open(...)`
+## Cierre de sesión
+
+```json
+{ "tool": "pill_take", "prescription_id": "<uuid>", "compound": "prescription_summary", "title": "<título>", "content": "<resumen>" }
+{ "tool": "prescription_close", "id": "<uuid>" }
+```
+
+`prescription_summary` es **obligatorio** antes de cerrar. Sin él se pierde el contexto de la sesión.
+
+---
+
+## Tools completas
+
+### Pills
+
+| Tool | Parámetros clave | Cuándo |
+|---|---|---|
+| `pill_take` | `prescription_id`, `compound`, `title`, `content` | Guardar conocimiento nuevo |
+| `pill_search` | `query`, `bottle_id?`, `compound?`, `limit?` | Buscar antes de crear (evitar duplicados) |
+| `pill_context` | `bottle_id`, `prescription_limit?`, `pill_limit?` | Cargar contexto al inicio |
+| `pill_read` | `id` | Leer contenido completo de una pill |
+| `pill_revise` | `id`, `patch{title?, content?}` | Actualizar pill existente |
+| `pill_discard` | `id` | Soft-delete (irreversible) |
+
+### Capsules
+
+| Tool | Parámetros clave | Cuándo |
+|---|---|---|
+| `capsule_take` | `compound`, `title`, `content` | Guardar preferencia/hábito del usuario |
+| `capsule_search` | `query`, `compound?`, `limit?` | Buscar preferencias al inicio o antes de crear |
+| `capsule_read` | `id` | Leer contenido completo |
+| `capsule_revise` | `id`, `patch{title?, content?, compound?}` | Actualizar capsule existente |
+| `capsule_discard` | `id` | Soft-delete |
+
+### Prescriptions
+
+| Tool | Parámetros clave | Cuándo |
+|---|---|---|
+| `prescription_open` | `bottle_id`, `title` | Iniciar sesión de trabajo |
+| `prescription_close` | `id` | Finalizar sesión |
+| `prescription_read` | `id` | Ver detalles de una prescripción |
+| `prescription_discard` | `id` | Eliminar prescripción + todas sus pills en cascada |
+
+### Bottles
+
+| Tool | Parámetros clave | Cuándo |
+|---|---|---|
+| `bottle_list` | — | Listar proyectos registrados |
+| `bottle_create` | `name`, `display_name`, `directory`, `scope` | Registrar proyecto nuevo (normalmente lo hace el CLI) |
+| `stats` | — | Alias de `bottle_list` |
+| `pill_compounds` | — | Compounds disponibles para pill_take |
+| `capsule_compounds` | — | Compounds disponibles para capsule_take |
+
+---
+
+## Compounds
+
+Los compounds son dinámicos. Consultar antes de elegir:
+- `pill_compounds` → lista de compounds válidos para `pill_take`
+- `capsule_compounds` → lista de compounds válidos para `capsule_take`
+
+Cada entry incluye `id`, `description` y `prompt_hint` con instrucciones de formato.
+
+---
+
+## Formato de contenido
+
+Las pills las lee una IA, no un humano. Máxima densidad, mínimos tokens.
+Target: 100–400 chars. El límite es 5000 — es un techo, no un objetivo.
+
+```
+# decision / architecture / bugfix
+symptom/context: una línea
+chosen/fix: qué y por qué
+discarded: alternativas descartadas (si las hay)
+
+# pattern / discovery / learning
+Prosa técnica densa, 1-2 frases. Sin cabeceras.
+
+# prescription_summary
+goal: una línea
+done: bullet por item logrado
+found: descubrimientos no obvios (omitir si ninguno)
+next: pendiente
+files: solo los modificados significativamente
+```
+
+---
+
+## Reglas
+
+- **Buscar antes de crear**: `pill_search` / `capsule_search` antes de `pill_take` / `capsule_take` para evitar duplicados.
+- **No guardar lo que está en el código**: solo lo que no es obvio leyendo el repo (decisiones, contexto, causas).
+- **prescription_summary siempre**: sin él, el contexto de la sesión se pierde para futuras sesiones.
+- **Subagentes no usan MCP**: solo el orquestrador llama `pill_take`. Los subagentes devuelven hallazgos estructurados y el orquestrador consolida antes de guardar.

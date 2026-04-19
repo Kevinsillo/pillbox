@@ -16,16 +16,16 @@ dev-mcp: mcp-build
 
 ## Arranca el servidor de desarrollo de la WebUI (con proxy a pillbox serve)
 dev-webui:
-	cd webui && npm run dev
+	cd webui && pnpm dev
 
 # ─── Build ────────────────────────────────────────────────────────────────────
 
 ## Compila la WebUI y genera dist/
 webui-build:
-	cd webui && npm run build
+	cd webui && pnpm build
 
-## Compila la WebUI y luego el binario Rust (webui embebida)
-build-full: webui-build
+## Compila la WebUI, el MCP y luego el binario Rust (todo embebido)
+build-full: webui-build mcp-build
 	cargo build --release --manifest-path core/Cargo.toml
 
 ## Compila el binario Rust sin WebUI (más rápido, para desarrollo del core)
@@ -34,7 +34,7 @@ build:
 
 ## Compila el servidor MCP TypeScript
 mcp-build:
-	cd mcp && npm install && npm run build
+	cd mcp && pnpm install && pnpm build
 
 # ─── Tests y calidad ──────────────────────────────────────────────────────────
 
@@ -48,17 +48,17 @@ lint:
 
 ## Verifica tipos del MCP TypeScript sin compilar
 typecheck:
-	cd mcp && npm run typecheck
+	cd mcp && pnpm typecheck
 
 ## Formatea todo el código: Rust (cargo fmt) + TypeScript (prettier)
 fmt:
 	cargo fmt --manifest-path core/Cargo.toml
-	cd mcp && npm run fmt
+	cd mcp && pnpm fmt
 
 ## Verifica formato sin modificar (útil en CI)
 fmt-check:
 	cargo fmt --manifest-path core/Cargo.toml -- --check
-	cd mcp && npm run fmt:check
+	cd mcp && pnpm fmt:check
 
 ## Ejecuta test + lint + typecheck + fmt-check
 check: test lint typecheck fmt-check
@@ -104,3 +104,11 @@ skill-install:
 	mkdir -p $${HOME}/.claude/skills/pillbox
 	cp -r skill/* $${HOME}/.claude/skills/pillbox/
 	@echo "Skill instalada en ~/.claude/skills/pillbox/"
+
+## Compila (webui + core + MCP) e instala el binario y la skill
+install: build-full skill-install
+	mkdir -p $${HOME}/.local/bin
+	cp core/target/release/pillbox $${HOME}/.local/bin/pillbox
+	@echo "✓ pillbox instalado en ~/.local/bin/pillbox"
+	@echo "✓ MCP compilado en mcp/dist/"
+	@echo "✓ skill instalada en ~/.claude/skills/pillbox/"
