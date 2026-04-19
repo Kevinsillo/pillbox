@@ -18,8 +18,11 @@ export function registerCapsuleTools(server: McpServer): void {
     "capsule_take",
     {
       description:
-        "Guarda una nueva capsule (conocimiento personal del usuario, cross-proyecto). " +
-        "Compounds disponibles: convention, workflow, environment, context, goal, feedback, manual.",
+        "Guarda conocimiento personal del usuario (preferencias, convenciones, workflow). " +
+        "Usar en lugar de pill_take cuando el conocimiento NO pertenece a un proyecto específico — " +
+        "cross-proyecto, sin prescription activa. " +
+        "Ejemplos: estilo de código preferido, herramientas del entorno, forma de trabajar. " +
+        "Para elegir compound, llamar capsule_compounds.",
       inputSchema: CapsuleTakeSchema.shape,
     },
     async (input) => fromExecResult(pillboxExec("capsule_take", input)),
@@ -53,13 +56,13 @@ export function registerCapsuleTools(server: McpServer): void {
   );
 
   server.registerTool(
-    "capsule_find",
+    "capsule_search",
     {
       description:
         "Busca capsules usando búsqueda full-text (FTS5). " +
         "Las capsules son globales — no se filtran por proyecto.",
       inputSchema: CapsuleFindSchema.shape,
     },
-    async (input) => fromExecResult(pillboxExec("capsule_find", input)),
+    async (input) => fromExecResult(pillboxExec("capsule_search", input)),
   );
 }

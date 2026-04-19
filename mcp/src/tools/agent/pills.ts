@@ -19,9 +19,11 @@ export function registerPillTools(server: McpServer): void {
     "pill_take",
     {
       description:
-        "Guarda una nueva pill (conocimiento de proyecto) en una prescripción abierta. " +
-        "Compounds disponibles: decision, architecture, bugfix, pattern, discovery, " +
-        "learning, feedback, prescription_summary, manual.",
+        "Guarda conocimiento específico del proyecto en una prescripción abierta. " +
+        "Usar en lugar de capsule_take cuando el conocimiento pertenece a este proyecto concreto — " +
+        "requiere prescription_id activa. " +
+        "Ejemplos: decisiones de arquitectura, bugs corregidos, patrones del código. " +
+        "Para elegir compound, llamar pill_compounds.",
       inputSchema: PillTakeSchema.shape,
     },
     async (input) => fromExecResult(pillboxExec("pill_take", input)),
@@ -57,7 +59,7 @@ export function registerPillTools(server: McpServer): void {
   );
 
   server.registerTool(
-    "pill_find",
+    "pill_search",
     {
       description:
         "Busca pills usando búsqueda full-text (FTS5). " +
@@ -65,7 +67,7 @@ export function registerPillTools(server: McpServer): void {
         "Filtra opcionalmente por bottle_id o compound.",
       inputSchema: PillFindSchema.shape,
     },
-    async (input) => fromExecResult(pillboxExec("pill_find", input)),
+    async (input) => fromExecResult(pillboxExec("pill_search", input)),
   );
 
   server.registerTool(

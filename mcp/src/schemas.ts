@@ -44,7 +44,7 @@ export const PillDiscardSchema = z.object({
 });
 
 export const PillFindSchema = z.object({
-  q: z.string().min(1),
+  query: z.string().min(1),
   bottle_id: z.number().int().positive().optional(),
   compound: z
     .enum([

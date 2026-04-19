@@ -27,4 +27,26 @@ export function registerAdminTools(server: McpServer): void {
     },
     async () => fromExecResult(pillboxExec("bottle_list", {})),
   );
+
+  server.registerTool(
+    "pill_compounds",
+    {
+      description:
+        "Devuelve los compounds disponibles para pill_take, con descripción y prompt_hint. " +
+        "Consultar antes de pill_take si no estás seguro de qué compound usar.",
+      inputSchema: {},
+    },
+    async () => fromExecResult(pillboxExec("pill_compounds", {})),
+  );
+
+  server.registerTool(
+    "capsule_compounds",
+    {
+      description:
+        "Devuelve los compounds disponibles para capsule_take, con descripción y prompt_hint. " +
+        "Consultar antes de capsule_take si no estás seguro de qué compound usar.",
+      inputSchema: {},
+    },
+    async () => fromExecResult(pillboxExec("capsule_compounds", {})),
+  );
 }
