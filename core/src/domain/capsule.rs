@@ -91,4 +91,60 @@ mod tests {
         assert_eq!(CapsuleCompound::Environment.as_str(), "environment");
         assert_eq!(CapsuleCompound::Feedback.as_str(), "feedback");
     }
+
+    #[test]
+    fn all_compounds_as_str() {
+        assert_eq!(CapsuleCompound::Convention.as_str(), "convention");
+        assert_eq!(CapsuleCompound::Workflow.as_str(), "workflow");
+        assert_eq!(CapsuleCompound::Environment.as_str(), "environment");
+        assert_eq!(CapsuleCompound::Context.as_str(), "context");
+        assert_eq!(CapsuleCompound::Goal.as_str(), "goal");
+        assert_eq!(CapsuleCompound::Feedback.as_str(), "feedback");
+        assert_eq!(CapsuleCompound::Manual.as_str(), "manual");
+    }
+
+    #[test]
+    fn compound_display_matches_as_str() {
+        for c in [
+            CapsuleCompound::Convention,
+            CapsuleCompound::Workflow,
+            CapsuleCompound::Environment,
+            CapsuleCompound::Context,
+            CapsuleCompound::Goal,
+            CapsuleCompound::Feedback,
+            CapsuleCompound::Manual,
+        ] {
+            assert_eq!(format!("{c}"), c.as_str());
+        }
+    }
+
+    #[test]
+    fn new_capsule_empty_title_fails_validation() {
+        let cap = NewCapsule {
+            title: "".into(),
+            content: "Contenido válido".into(),
+            compound: CapsuleCompound::Convention,
+        };
+        assert!(cap.validate().is_err());
+    }
+
+    #[test]
+    fn new_capsule_content_too_long_fails_validation() {
+        let cap = NewCapsule {
+            title: "Título".into(),
+            content: "x".repeat(5001),
+            compound: CapsuleCompound::Goal,
+        };
+        assert!(cap.validate().is_err());
+    }
+
+    #[test]
+    fn capsule_patch_empty_title_fails_validation() {
+        let patch = CapsulePatch {
+            title: Some("".into()),
+            content: None,
+            compound: None,
+        };
+        assert!(patch.validate().is_err());
+    }
 }

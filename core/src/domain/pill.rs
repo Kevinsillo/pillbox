@@ -126,4 +126,72 @@ mod tests {
         };
         assert!(pill.validate().is_ok());
     }
+
+    #[test]
+    fn all_compounds_as_str() {
+        assert_eq!(PillCompound::Decision.as_str(), "decision");
+        assert_eq!(PillCompound::Architecture.as_str(), "architecture");
+        assert_eq!(PillCompound::Bugfix.as_str(), "bugfix");
+        assert_eq!(PillCompound::Pattern.as_str(), "pattern");
+        assert_eq!(PillCompound::Discovery.as_str(), "discovery");
+        assert_eq!(PillCompound::Learning.as_str(), "learning");
+        assert_eq!(PillCompound::Feedback.as_str(), "feedback");
+        assert_eq!(PillCompound::PrescriptionSummary.as_str(), "prescription_summary");
+        assert_eq!(PillCompound::Manual.as_str(), "manual");
+    }
+
+    #[test]
+    fn compound_display_matches_as_str() {
+        for c in [
+            PillCompound::Decision,
+            PillCompound::Architecture,
+            PillCompound::Bugfix,
+            PillCompound::Pattern,
+            PillCompound::Discovery,
+            PillCompound::Learning,
+            PillCompound::Feedback,
+            PillCompound::PrescriptionSummary,
+            PillCompound::Manual,
+        ] {
+            assert_eq!(format!("{c}"), c.as_str());
+        }
+    }
+
+    #[test]
+    fn new_pill_empty_title_fails_validation() {
+        let pill = NewPill {
+            title: "".into(),
+            content: "Contenido".into(),
+            compound: PillCompound::Decision,
+            prescription_id: "abc".into(),
+            dispenser: None,
+            author_name: None,
+            author_email: None,
+        };
+        assert!(pill.validate().is_err());
+    }
+
+    #[test]
+    fn new_pill_content_too_long_fails_validation() {
+        let pill = NewPill {
+            title: "Título válido".into(),
+            content: "x".repeat(5001),
+            compound: PillCompound::Decision,
+            prescription_id: "abc".into(),
+            dispenser: None,
+            author_name: None,
+            author_email: None,
+        };
+        assert!(pill.validate().is_err());
+    }
+
+    #[test]
+    fn pill_patch_empty_title_fails_validation() {
+        let patch = PillPatch {
+            title: Some("".into()),
+            content: None,
+            compound: None,
+        };
+        assert!(patch.validate().is_err());
+    }
 }

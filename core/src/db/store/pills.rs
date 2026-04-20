@@ -345,4 +345,82 @@ mod tests {
         discard(&mut conn, pill.id).unwrap();
         assert!(discard(&mut conn, pill.id).unwrap().is_none());
     }
+
+    #[test]
+    fn read_missing_returns_none() {
+        let conn = open_in_memory().unwrap();
+        assert!(read(&conn, 9999).unwrap().is_none());
+    }
+
+    #[test]
+    fn revise_missing_returns_none() {
+        let mut conn = open_in_memory().unwrap();
+        let result = revise(
+            &mut conn,
+            9999,
+            &PillPatch { title: Some("x".into()), content: None, compound: None },
+        )
+        .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn revise_discarded_returns_none() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        discard(&mut conn, pill.id).unwrap();
+
+        let result = revise(
+            &mut conn,
+            pill.id,
+            &PillPatch { title: Some("nuevo".into()), content: None, compound: None },
+        )
+        .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn list_by_prescription_returns_ordered_pills() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+
+        take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        take(
+            &mut conn,
+            &NewPill {
+                title: "Segunda pill".into(),
+                content: "Contenido de la segunda.".into(),
+                compound: PillCompound::Discovery,
+                prescription_id: rx_id.clone(),
+                dispenser: None,
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        let pills = list_by_prescription(&conn, &rx_id).unwrap();
+        assert_eq!(pills.len(), 2);
+        assert_eq!(pills[0].title, "Decisión de diseño");
+        assert_eq!(pills[1].title, "Segunda pill");
+    }
+
+    #[test]
+    fn list_by_prescription_empty_for_unknown() {
+        let conn = open_in_memory().unwrap();
+        let pills = list_by_prescription(&conn, "rx-inexistente").unwrap();
+        assert!(pills.is_empty());
+    }
+
+    #[test]
+    fn list_by_prescription_excludes_discarded() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        discard(&mut conn, pill.id).unwrap();
+
+        let pills = list_by_prescription(&conn, &rx_id).unwrap();
+        assert!(pills.is_empty());
+    }
 }

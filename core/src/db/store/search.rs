@@ -593,4 +593,151 @@ mod tests {
         let query = build_fts_query(&terms, &fuzzy_map);
         assert_eq!(query, "(\"hexagnol\"* OR \"hexagonal\") \"auth\"*");
     }
+
+    #[test]
+    fn pill_find_filters_by_bottle_id() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_a = setup_with_pills(&mut conn);
+
+        // Segundo bottle con pills distintas
+        let bottle_b = bottles::create(
+            &mut conn,
+            &NewBottle {
+                name: "otro-bottle".into(),
+                display_name: "Otro".into(),
+                directory: "/tmp/otro".into(),
+                scope: BottleScope::Local,
+            },
+        )
+        .unwrap();
+
+        let rx_b = prescriptions::open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_b.id,
+                title: "Sesión B".into(),
+            },
+        )
+        .unwrap();
+
+        pills::take(
+            &mut conn,
+            &NewPill {
+                title: "JWT en bottle B".into(),
+                content: "Otro contexto JWT completamente diferente.".into(),
+                compound: PillCompound::Decision,
+                prescription_id: rx_b.id.clone(),
+                dispenser: None,
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        // Buscar JWT solo en bottle_a
+        let results_a = pill_find(
+            &conn,
+            &SearchParams {
+                query: "JWT".into(),
+                bottle_id: Some(bottle_a),
+                compound: None,
+                limit: Some(10),
+            },
+        )
+        .unwrap();
+
+        // Buscar JWT solo en bottle_b
+        let results_b = pill_find(
+            &conn,
+            &SearchParams {
+                query: "JWT".into(),
+                bottle_id: Some(bottle_b.id),
+                compound: None,
+                limit: Some(10),
+            },
+        )
+        .unwrap();
+
+        assert!(!results_a.is_empty());
+        assert!(!results_b.is_empty());
+        // Cada búsqueda devuelve pills de su propio bottle
+        for r in &results_a {
+            assert_eq!(r.bottle_id, Some(bottle_a));
+        }
+        for r in &results_b {
+            assert_eq!(r.bottle_id, Some(bottle_b.id));
+        }
+    }
+
+    #[test]
+    fn capsule_find_filters_by_compound() {
+        let mut conn = open_in_memory().unwrap();
+
+        capsules::take(
+            &mut conn,
+            &NewCapsule {
+                title: "Convención de nombres".into(),
+                content: "Usar snake_case en Rust.".into(),
+                compound: CapsuleCompound::Convention,
+            },
+        )
+        .unwrap();
+
+        capsules::take(
+            &mut conn,
+            &NewCapsule {
+                title: "Flujo de despliegue snake_case".into(),
+                content: "Pipeline automatizado para snake_case deployments.".into(),
+                compound: CapsuleCompound::Workflow,
+            },
+        )
+        .unwrap();
+
+        let conventions = capsule_find(&conn, "snake_case", Some("convention"), None).unwrap();
+        assert_eq!(conventions.len(), 1);
+        assert_eq!(conventions[0].compound, "convention");
+    }
+
+    #[test]
+    fn capsule_find_empty_query_returns_empty() {
+        let conn = open_in_memory().unwrap();
+        let results = capsule_find(&conn, "", None, None).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn pill_context_empty_bottle_returns_empty_context() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle = bottles::create(
+            &mut conn,
+            &NewBottle {
+                name: "vacio".into(),
+                display_name: "Vacío".into(),
+                directory: "/tmp/vacio".into(),
+                scope: BottleScope::Local,
+            },
+        )
+        .unwrap();
+
+        let ctx = pill_context(&conn, bottle.id, 5, 30).unwrap();
+        assert_eq!(ctx.prescription_count, 0);
+        assert_eq!(ctx.pill_count, 0);
+        assert!(ctx.context.is_empty());
+    }
+
+    #[test]
+    fn recent_pills_returns_pills_for_bottle() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = setup_with_pills(&mut conn);
+
+        let recent = recent_pills(&conn, bottle_id, 10).unwrap();
+        assert!(!recent.is_empty());
+    }
+
+    #[test]
+    fn recent_pills_empty_for_unknown_bottle() {
+        let conn = open_in_memory().unwrap();
+        let recent = recent_pills(&conn, 9999, 10).unwrap();
+        assert!(recent.is_empty());
+    }
 }

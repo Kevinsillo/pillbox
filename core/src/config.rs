@@ -120,4 +120,60 @@ mod tests {
         let path = local_db_path();
         assert!(path.starts_with(LOCAL_DIR));
     }
+
+    #[test]
+    fn mcp_path_ends_with_index_js() {
+        let path = mcp_path();
+        assert!(path.ends_with("mcp/index.js"));
+        assert!(path.to_string_lossy().contains("pillbox"));
+    }
+
+    #[test]
+    fn skill_path_ends_with_skill_md() {
+        let path = skill_path();
+        assert!(path.ends_with("pillbox/SKILL.md"));
+        assert!(path.to_string_lossy().contains(".claude"));
+    }
+
+    #[test]
+    fn pid_path_ends_with_pillbox_pid() {
+        let path = pid_path();
+        assert!(path.ends_with("pillbox.pid"));
+        assert!(path.to_string_lossy().contains("pillbox"));
+    }
+
+    #[test]
+    fn log_path_ends_with_pillbox_log() {
+        let path = log_path();
+        assert!(path.ends_with("pillbox.log"));
+    }
+
+    #[test]
+    fn claude_config_path_ends_with_dot_claude_json() {
+        let path = claude_config_path();
+        assert!(path.ends_with(".claude.json"));
+    }
+
+    #[test]
+    fn is_local_db_true_for_local_path() {
+        let path = std::path::Path::new(".pillbox/pillbox.db");
+        assert!(is_local_db(path));
+    }
+
+    #[test]
+    fn is_local_db_false_for_unrelated_path() {
+        let path = std::path::Path::new("/tmp/other/pillbox.db");
+        assert!(!is_local_db(path));
+    }
+
+    #[test]
+    fn is_local_db_false_for_bare_filename() {
+        assert!(!is_local_db(std::path::Path::new("pillbox.db")));
+    }
+
+    #[test]
+    fn is_local_db_relative_local_dir() {
+        let local = local_db_path();
+        assert!(is_local_db(&local));
+    }
 }

@@ -45,3 +45,48 @@ pub fn list(conn: &Connection) -> Result<Vec<RegisteredBottle>> {
         .context("no se pudo listar los bottles registrados")?;
     Ok(rows)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::connection::open_in_memory;
+
+    #[test]
+    fn register_and_list() {
+        let conn = open_in_memory().unwrap();
+        register(&conn, "mi-proyecto", "Mi Proyecto", "/home/user/.pillbox/pillbox.db").unwrap();
+
+        let rows = list(&conn).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "mi-proyecto");
+        assert_eq!(rows[0].display_name, "Mi Proyecto");
+        assert_eq!(rows[0].db_path, "/home/user/.pillbox/pillbox.db");
+        assert!(!rows[0].id.is_empty());
+    }
+
+    #[test]
+    fn register_idempotent() {
+        let conn = open_in_memory().unwrap();
+        register(&conn, "proj", "Proj", "/tmp/proj.db").unwrap();
+        register(&conn, "proj", "Proj", "/tmp/proj.db").unwrap(); // INSERT OR IGNORE
+
+        let rows = list(&conn).unwrap();
+        assert_eq!(rows.len(), 1);
+    }
+
+    #[test]
+    fn list_empty_returns_empty_vec() {
+        let conn = open_in_memory().unwrap();
+        assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn register_multiple_different_paths() {
+        let conn = open_in_memory().unwrap();
+        register(&conn, "a", "A", "/tmp/a.db").unwrap();
+        register(&conn, "b", "B", "/tmp/b.db").unwrap();
+
+        let rows = list(&conn).unwrap();
+        assert_eq!(rows.len(), 2);
+    }
+}

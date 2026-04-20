@@ -288,6 +288,92 @@ mod tests {
     }
 
     #[test]
+    fn read_existing_prescription() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "read-test");
+        let rx = open(
+            &mut conn,
+            &NewPrescription { bottle_id, title: "Lectura".into() },
+        )
+        .unwrap();
+
+        let found = read(&conn, &rx.id).unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().title, "Lectura");
+    }
+
+    #[test]
+    fn read_discarded_returns_none() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "read-discard");
+        let rx = open(
+            &mut conn,
+            &NewPrescription { bottle_id, title: "A descartar".into() },
+        )
+        .unwrap();
+
+        discard(&mut conn, &rx.id).unwrap();
+        assert!(read(&conn, &rx.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn list_by_bottle_returns_multiple() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "list-test");
+
+        let rx1 = open(
+            &mut conn,
+            &NewPrescription { bottle_id, title: "Sesión 1".into() },
+        )
+        .unwrap();
+        close(&mut conn, &rx1.id).unwrap();
+
+        open(
+            &mut conn,
+            &NewPrescription { bottle_id, title: "Sesión 2".into() },
+        )
+        .unwrap();
+
+        let all = list_by_bottle(&conn, bottle_id, 10).unwrap();
+        assert_eq!(all.len(), 2);
+        let titles: Vec<&str> = all.iter().map(|r| r.title.as_str()).collect();
+        assert!(titles.contains(&"Sesión 1"));
+        assert!(titles.contains(&"Sesión 2"));
+    }
+
+    #[test]
+    fn list_by_bottle_respects_limit() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "list-limit");
+
+        for i in 0..5 {
+            let rx = open(
+                &mut conn,
+                &NewPrescription { bottle_id, title: format!("S{i}") },
+            )
+            .unwrap();
+            close(&mut conn, &rx.id).unwrap();
+        }
+
+        let limited = list_by_bottle(&conn, bottle_id, 3).unwrap();
+        assert_eq!(limited.len(), 3);
+    }
+
+    #[test]
+    fn discard_twice_fails() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "discard-twice");
+        let rx = open(
+            &mut conn,
+            &NewPrescription { bottle_id, title: "S".into() },
+        )
+        .unwrap();
+
+        discard(&mut conn, &rx.id).unwrap();
+        assert!(discard(&mut conn, &rx.id).is_err());
+    }
+
+    #[test]
     fn discard_cascades_to_pills() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = make_bottle(&mut conn, "cascade");

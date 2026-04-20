@@ -231,4 +231,103 @@ mod tests {
         discard(&mut conn, cap.id).unwrap();
         assert!(discard(&mut conn, cap.id).unwrap().is_none());
     }
+
+    #[test]
+    fn read_missing_returns_none() {
+        let conn = open_in_memory().unwrap();
+        assert!(read(&conn, 9999).unwrap().is_none());
+    }
+
+    #[test]
+    fn revise_missing_returns_none() {
+        let mut conn = open_in_memory().unwrap();
+        let result = revise(
+            &mut conn,
+            9999,
+            &CapsulePatch { title: Some("x".into()), content: None, compound: None },
+        )
+        .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn revise_discarded_returns_none() {
+        let mut conn = open_in_memory().unwrap();
+        let cap = take(&mut conn, &sample_capsule()).unwrap();
+        discard(&mut conn, cap.id).unwrap();
+
+        let result = revise(
+            &mut conn,
+            cap.id,
+            &CapsulePatch { title: Some("nuevo".into()), content: None, compound: None },
+        )
+        .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn list_returns_all_active() {
+        let mut conn = open_in_memory().unwrap();
+        take(&mut conn, &sample_capsule()).unwrap();
+        take(
+            &mut conn,
+            &NewCapsule {
+                title: "Otra convención".into(),
+                content: "Usar PascalCase para tipos.".into(),
+                compound: CapsuleCompound::Convention,
+            },
+        )
+        .unwrap();
+
+        let all = list(&conn, None, None).unwrap();
+        assert_eq!(all.len(), 2);
+    }
+
+    #[test]
+    fn list_filters_by_compound() {
+        let mut conn = open_in_memory().unwrap();
+        take(&mut conn, &sample_capsule()).unwrap(); // convention
+        take(
+            &mut conn,
+            &NewCapsule {
+                title: "Workflow de deploy".into(),
+                content: "push a main = deploy automático.".into(),
+                compound: CapsuleCompound::Workflow,
+            },
+        )
+        .unwrap();
+
+        let conventions = list(&conn, None, Some("convention")).unwrap();
+        assert_eq!(conventions.len(), 1);
+        assert_eq!(conventions[0].compound, "convention");
+    }
+
+    #[test]
+    fn list_respects_limit() {
+        let mut conn = open_in_memory().unwrap();
+        for i in 0..5 {
+            take(
+                &mut conn,
+                &NewCapsule {
+                    title: format!("Cap {i}"),
+                    content: "contenido".into(),
+                    compound: CapsuleCompound::Manual,
+                },
+            )
+            .unwrap();
+        }
+
+        let limited = list(&conn, Some(3), None).unwrap();
+        assert_eq!(limited.len(), 3);
+    }
+
+    #[test]
+    fn list_excludes_discarded() {
+        let mut conn = open_in_memory().unwrap();
+        let cap = take(&mut conn, &sample_capsule()).unwrap();
+        discard(&mut conn, cap.id).unwrap();
+
+        let all = list(&conn, None, None).unwrap();
+        assert!(all.is_empty());
+    }
 }

@@ -51,4 +51,33 @@ mod tests {
         let result = bottle_name("Mi Proyecto");
         assert_eq!(result, "mi-proyecto");
     }
+
+    #[test]
+    fn bottle_name_empty_returns_empty() {
+        assert_eq!(bottle_name(""), "");
+    }
+
+    #[test]
+    fn bottle_name_only_separators_returns_empty() {
+        assert_eq!(bottle_name("---"), "");
+        assert_eq!(bottle_name("_ _"), "");
+    }
+
+    #[test]
+    fn bottle_name_numbers_preserved() {
+        assert_eq!(bottle_name("proj-v2"), "proj-v2");
+        assert_eq!(bottle_name("42abc"), "42abc");
+    }
+
+    #[test]
+    fn bottle_name_trims_leading_trailing_dashes() {
+        assert_eq!(bottle_name("  --hello--  "), "hello");
+    }
+
+    #[test]
+    fn bottle_name_unicode_accents() {
+        // Los caracteres acentuados son alfanuméricos — se preservan
+        assert_eq!(bottle_name("Ñoño"), "ñoño");
+        assert_eq!(bottle_name("Façade"), "façade");
+    }
 }
