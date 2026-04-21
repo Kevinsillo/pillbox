@@ -231,7 +231,7 @@ pub struct ContextResult {
 
 pub fn pill_context(
     conn: &Connection,
-    bottle_id: i64,
+    bottle_id: &str,
     prescription_limit: u32,
     pill_limit: u32,
 ) -> Result<ContextResult> {
@@ -330,7 +330,7 @@ pub fn pill_context(
     })
 }
 
-pub fn recent_pills(conn: &Connection, bottle_id: i64, limit: u32) -> Result<Vec<Pill>> {
+pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
         "SELECT p.id, p.sync_id, p.compound, p.title, p.content, p.prescription_id,
                 p.dispenser, p.author_name, p.author_email, p.created_at, p.updated_at
@@ -389,7 +389,7 @@ mod tests {
     use crate::domain::prescription::NewPrescription;
     use crate::domain::search::SearchParams;
 
-    fn setup_with_pills(conn: &mut Connection) -> i64 {
+    fn setup_with_pills(conn: &mut Connection) -> String {
         let bottle = bottles::create(
             conn,
             &NewBottle {
@@ -404,7 +404,7 @@ mod tests {
         let rx = prescriptions::open(
             conn,
             &NewPrescription {
-                bottle_id: bottle.id,
+                bottle_id: bottle.id.clone(),
                 title: "Sesión de búsqueda".into(),
             },
         )
@@ -565,7 +565,7 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
-        let ctx = pill_context(&conn, bottle_id, 5, 30).unwrap();
+        let ctx = pill_context(&conn, &bottle_id, 5, 30).unwrap();
         assert!(ctx.prescription_count > 0);
         assert!(ctx.pill_count > 0);
         assert!(ctx.context.contains("## Recent Prescriptions"));
@@ -614,7 +614,7 @@ mod tests {
         let rx_b = prescriptions::open(
             &mut conn,
             &NewPrescription {
-                bottle_id: bottle_b.id,
+                bottle_id: bottle_b.id.clone(),
                 title: "Sesión B".into(),
             },
         )
@@ -639,7 +639,7 @@ mod tests {
             &conn,
             &SearchParams {
                 query: "JWT".into(),
-                bottle_id: Some(bottle_a),
+                bottle_id: Some(bottle_a.clone()),
                 compound: None,
                 limit: Some(10),
             },
@@ -651,7 +651,7 @@ mod tests {
             &conn,
             &SearchParams {
                 query: "JWT".into(),
-                bottle_id: Some(bottle_b.id),
+                bottle_id: Some(bottle_b.id.clone()),
                 compound: None,
                 limit: Some(10),
             },
@@ -662,10 +662,10 @@ mod tests {
         assert!(!results_b.is_empty());
         // Cada búsqueda devuelve pills de su propio bottle
         for r in &results_a {
-            assert_eq!(r.bottle_id, Some(bottle_a));
+            assert_eq!(r.bottle_id, Some(bottle_a.clone()));
         }
         for r in &results_b {
-            assert_eq!(r.bottle_id, Some(bottle_b.id));
+            assert_eq!(r.bottle_id, Some(bottle_b.id.clone()));
         }
     }
 
@@ -719,7 +719,7 @@ mod tests {
         )
         .unwrap();
 
-        let ctx = pill_context(&conn, bottle.id, 5, 30).unwrap();
+        let ctx = pill_context(&conn, &bottle.id, 5, 30).unwrap();
         assert_eq!(ctx.prescription_count, 0);
         assert_eq!(ctx.pill_count, 0);
         assert!(ctx.context.is_empty());
@@ -730,14 +730,14 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
-        let recent = recent_pills(&conn, bottle_id, 10).unwrap();
+        let recent = recent_pills(&conn, &bottle_id, 10).unwrap();
         assert!(!recent.is_empty());
     }
 
     #[test]
     fn recent_pills_empty_for_unknown_bottle() {
         let conn = open_in_memory().unwrap();
-        let recent = recent_pills(&conn, 9999, 10).unwrap();
+        let recent = recent_pills(&conn, "uuid-inexistente", 10).unwrap();
         assert!(recent.is_empty());
     }
 }

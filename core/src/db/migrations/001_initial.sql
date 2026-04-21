@@ -119,7 +119,7 @@ INSERT INTO link_types VALUES
 -- ─── ENTIDADES PRINCIPALES ───────────────────────────────────────────────────
 
 CREATE TABLE bottles (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    id           TEXT PRIMARY KEY,              -- UUID v7, generado en Rust antes del INSERT
     -- Slug generado automáticamente del nombre de carpeta (lowercase, normalizado).
     -- Inmutable: identidad técnica del bottle. No lo elige el usuario.
     name         TEXT NOT NULL UNIQUE,
@@ -136,7 +136,7 @@ CREATE TABLE bottles (
 
 CREATE TABLE prescriptions (
     id         TEXT PRIMARY KEY,
-    bottle_id  INTEGER NOT NULL,
+    bottle_id  TEXT NOT NULL,
     -- Título de la tarea/funcionalidad/bug. Obligatorio: el agente DEBE llamar
     -- a prescription_open con título ANTES de insertar cualquier pill.
     -- Flujo: prescription_open → pill_take (N veces) → prescription_close.
@@ -273,7 +273,8 @@ END;
 -- En DBs locales existe pero permanece vacía.
 
 CREATE TABLE registered_bottles (
-    id            TEXT PRIMARY KEY,          -- UUID v7
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    bottle_id     TEXT NOT NULL,             -- UUID del bottle en la DB local
     name          TEXT NOT NULL,             -- Nombre normalizado del bottle
     display_name  TEXT NOT NULL,             -- Nombre original para mostrar
     db_path       TEXT NOT NULL UNIQUE,      -- Ruta absoluta a la DB local

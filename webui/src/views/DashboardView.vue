@@ -5,6 +5,7 @@ import { useActiveBottle } from '@/composables/useActiveBottle'
 import type { Bottle, Context, Prescription } from '@/core/domain/types'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
 import { contextApi } from '@/core/infrastructure/repositories/ContextRepository'
+import { ApiError } from '@/core/infrastructure/managers/httpClient'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
@@ -20,7 +21,7 @@ const prescriptions = ref<Prescription[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-async function load(id: number) {
+async function load(id: string) {
     loading.value = true
     error.value = null
     try {
@@ -33,6 +34,10 @@ async function load(id: number) {
         bottle.value = b
         prescriptions.value = rx
     } catch (e: unknown) {
+        if (e instanceof ApiError && e.code === 'bottle_not_found') {
+            activeBottleId.value = null
+            return
+        }
         error.value = e instanceof Error ? e.message : t('common.error')
     } finally {
         loading.value = false
@@ -96,7 +101,7 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                 </div>
 
                 <!-- Rx abierta -->
-                <RouterLink v-if="openRx" :to="`/prescriptions/${openRx.id}`"
+                <RouterLink v-if="openRx" :to="`/bottles/${activeBottleId}/prescriptions/${openRx.id}`"
                             class="block bg-(--bg-surface) border border-green-900/40 rounded-lg p-4 hover:border-green-700/60 transition-colors">
                     <p class="text-xs text-green-500 uppercase tracking-wider mb-1">{{ $t('dashboard.open_rx_label') }}</p>
                     <p class="text-(--text-h) font-medium">{{ openRx.title }}</p>
@@ -110,7 +115,7 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                         <RouterLink
                             v-for="rx in closedRx"
                             :key="rx.id"
-                            :to="`/prescriptions/${rx.id}`"
+                            :to="`/bottles/${activeBottleId}/prescriptions/${rx.id}`"
                             class="flex items-center gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                         >
                             <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
@@ -132,7 +137,7 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                 <div v-if="ctx.context.length > 0">
                     <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">{{ $t('dashboard.recent_context') }}</h2>
                     <div class="space-y-3">
-                        <PillCard v-for="pill in ctx.context" :key="pill.id" :pill="pill" />
+                        <PillCard v-for="pill in ctx.context" :key="pill.id" :pill="pill" :bottle-id="activeBottleId ?? ''" />
                     </div>
                 </div>
             </template>

@@ -19,6 +19,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use pillbox::db;
+use pillbox::db::store::registered_bottles;
 
 use super::AppState;
 
@@ -73,8 +74,12 @@ pub(super) fn err_422(e: impl ToString) -> ApiResponse {
     )
 }
 
-pub(super) fn err_404_bottle(id: i64) -> ApiResponse {
+pub(super) fn err_404_bottle(id: &str) -> ApiResponse {
     err_with_context(StatusCode::NOT_FOUND, "bottle_not_found", json!({ "bottle_id": id }))
+}
+
+pub(super) fn err_404_registered_bottle(id: &str) -> ApiResponse {
+    err_with_context(StatusCode::NOT_FOUND, "registered_bottle_not_found", json!({ "reg_id": id }))
 }
 
 pub(super) fn err_404_pill(id: i64) -> ApiResponse {
@@ -100,8 +105,14 @@ pub(super) fn err_409(error: &str, message: &str, data: serde_json::Value) -> Ap
     )
 }
 
-pub(super) fn open_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {
-    db::connection::open(&state.db_path).map_err(err_500)
+/// Abre la DB local del bottle identificado por UUID.
+/// Busca la ruta en registered_bottles de la DB global.
+pub(super) fn conn_for_bottle(s: &AppState, bottle_id: &str) -> Result<rusqlite::Connection, ApiResponse> {
+    let global = db::connection::open(&s.global_db_path).map_err(err_500)?;
+    let reg = registered_bottles::find_by_bottle_id(&global, bottle_id)
+        .map_err(err_500)?
+        .ok_or_else(|| err_404_bottle(bottle_id))?;
+    db::connection::open_existing(std::path::Path::new(&reg.db_path)).map_err(err_500)
 }
 
 pub(super) fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {

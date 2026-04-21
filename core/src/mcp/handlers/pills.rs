@@ -90,7 +90,7 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
 pub fn context(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
-        bottle_id: i64,
+        bottle_id: String,
         #[serde(default = "default_5")]
         prescription_limit: u32,
         #[serde(default = "default_30")]
@@ -103,7 +103,7 @@ pub fn context(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::search::pill_context(conn, req.bottle_id, req.prescription_limit, req.pill_limit) {
+    match store::search::pill_context(conn, &req.bottle_id, req.prescription_limit, req.pill_limit) {
         Ok(ctx) => Response::ok(json!({
             "context":            ctx.context,
             "prescription_count": ctx.prescription_count,

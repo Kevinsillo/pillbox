@@ -72,7 +72,13 @@
     "field_display_name_placeholder": "Meu Projeto",
     "field_directory": "Diretório (caminho absoluto)",
     "field_directory_placeholder": "/home/user/projeto",
-    "field_scope": "Escopo"
+    "field_scope": "Escopo",
+    "unlinked_badge": "desvinculado",
+    "update_registration_btn": "Atualizar caminho",
+    "update_registration_hint": "Insira o caminho completo para o arquivo pillbox.db do projeto. Deve terminar em /.pillbox/pillbox.db",
+    "update_registration_invalid": "O caminho deve terminar em /.pillbox/pillbox.db",
+    "delete_registration_btn": "Remover registro",
+    "confirm_delete_registration": "O diretório não existe mais no disco. Remover o registro desta bottle?"
   },
   "bottle_detail": {
     "back": "Bottles",

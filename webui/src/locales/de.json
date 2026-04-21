@@ -72,7 +72,13 @@
     "field_display_name_placeholder": "Mein Projekt",
     "field_directory": "Verzeichnis (absoluter Pfad)",
     "field_directory_placeholder": "/home/user/projekt",
-    "field_scope": "Bereich"
+    "field_scope": "Bereich",
+    "unlinked_badge": "getrennt",
+    "update_registration_btn": "Pfad aktualisieren",
+    "update_registration_hint": "Geben Sie den vollständigen Pfad zur pillbox.db-Datei des Projekts ein. Er muss auf /.pillbox/pillbox.db enden",
+    "update_registration_invalid": "Der Pfad muss auf /.pillbox/pillbox.db enden",
+    "delete_registration_btn": "Registrierung löschen",
+    "confirm_delete_registration": "Das Verzeichnis existiert nicht mehr auf der Festplatte. Registrierung dieser Bottle löschen?"
   },
   "bottle_detail": {
     "back": "Bottles",

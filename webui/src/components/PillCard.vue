@@ -3,11 +3,13 @@ import { useI18n } from 'vue-i18n'
 import type { Pill } from '@/core/domain/types'
 import CompoundBadge from './CompoundBadge.vue'
 import IFileText from '~icons/lucide/file-text'
+import { RouterLink } from 'vue-router'
 
 useI18n()
 
 defineProps<{
     pill: Pill
+    bottleId: string
     editable?: boolean
 }>()
 
@@ -15,8 +17,9 @@ defineEmits<{ delete: [] }>()
 </script>
 
 <template>
-    <RouterLink
-        :to="`/pills/${pill.id}`"
+    <component
+        :is="pill.prescription_id ? RouterLink : 'div'"
+        :to="pill.prescription_id ? `/bottles/${bottleId}/prescriptions/${pill.prescription_id}/pills/${pill.id}` : undefined"
         class="flex items-center justify-between gap-4 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
     >
         <div class="flex items-center gap-3 min-w-0">
@@ -31,9 +34,9 @@ defineEmits<{ delete: [] }>()
                 <p class="text-xs text-zinc-600">{{ new Date(pill.updated_at).toLocaleString() }}</p>
             </div>
         </div>
-        <div v-if="editable" class="flex gap-2 shrink-0" @click.prevent>
+        <div v-if="editable && pill.prescription_id" class="flex gap-2 shrink-0" @click.prevent>
             <RouterLink
-                :to="`/pills/${pill.id}/edit`"
+                :to="`/bottles/${bottleId}/prescriptions/${pill.prescription_id}/pills/${pill.id}/edit`"
                 class="text-xs text-zinc-400 hover:text-(--text-h) border border-(--border) px-2.5 py-1.5 rounded-lg transition-colors"
                 @click.stop>
                 {{ $t('pill_card.edit') }}
@@ -44,5 +47,5 @@ defineEmits<{ delete: [] }>()
                 {{ $t('pill_card.delete') }}
             </button>
         </div>
-    </RouterLink>
+    </component>
 </template>

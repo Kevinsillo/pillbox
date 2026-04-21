@@ -56,7 +56,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
     )?;
 
     if !bottle_exists {
-        return Err(PillboxError::BottleNotFound { bottle_id: input.bottle_id }.into());
+        return Err(PillboxError::BottleNotFound { bottle_id: input.bottle_id.clone() }.into());
     }
 
     let id = Uuid::now_v7().to_string();
@@ -165,7 +165,7 @@ pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
 }
 
 /// Devuelve las últimas N prescriptions de un bottle (más recientes primero).
-pub fn list_by_bottle(conn: &Connection, bottle_id: i64, limit: u32) -> Result<Vec<Prescription>> {
+pub fn list_by_bottle(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Prescription>> {
     let mut stmt = conn.prepare(
         "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
          FROM prescriptions
@@ -201,7 +201,7 @@ mod tests {
     use crate::domain::bottle::{BottleScope, NewBottle};
     use crate::error::PillboxError;
 
-    fn make_bottle(conn: &mut Connection, name: &str) -> i64 {
+    fn make_bottle(conn: &mut Connection, name: &str) -> String {
         bottles::create(
             conn,
             &NewBottle {
@@ -223,7 +223,7 @@ mod tests {
         let rx = open(
             &mut conn,
             &NewPrescription {
-                bottle_id,
+                bottle_id: bottle_id.clone(),
                 title: "Implementar auth".into(),
             },
         )
@@ -244,7 +244,7 @@ mod tests {
         open(
             &mut conn,
             &NewPrescription {
-                bottle_id,
+                bottle_id: bottle_id.clone(),
                 title: "Primera sesión".into(),
             },
         )
@@ -253,7 +253,7 @@ mod tests {
         let err = open(
             &mut conn,
             &NewPrescription {
-                bottle_id,
+                bottle_id: bottle_id.clone(),
                 title: "Segunda sesión".into(),
             },
         )
@@ -273,7 +273,7 @@ mod tests {
         let err = open(
             &mut conn,
             &NewPrescription {
-                bottle_id: 9999,
+                bottle_id: "uuid-inexistente".into(),
                 title: "Sesión".into(),
             },
         )
@@ -323,18 +323,18 @@ mod tests {
 
         let rx1 = open(
             &mut conn,
-            &NewPrescription { bottle_id, title: "Sesión 1".into() },
+            &NewPrescription { bottle_id: bottle_id.clone(), title: "Sesión 1".into() },
         )
         .unwrap();
         close(&mut conn, &rx1.id).unwrap();
 
         open(
             &mut conn,
-            &NewPrescription { bottle_id, title: "Sesión 2".into() },
+            &NewPrescription { bottle_id: bottle_id.clone(), title: "Sesión 2".into() },
         )
         .unwrap();
 
-        let all = list_by_bottle(&conn, bottle_id, 10).unwrap();
+        let all = list_by_bottle(&conn, &bottle_id, 10).unwrap();
         assert_eq!(all.len(), 2);
         let titles: Vec<&str> = all.iter().map(|r| r.title.as_str()).collect();
         assert!(titles.contains(&"Sesión 1"));
@@ -349,13 +349,13 @@ mod tests {
         for i in 0..5 {
             let rx = open(
                 &mut conn,
-                &NewPrescription { bottle_id, title: format!("S{i}") },
+                &NewPrescription { bottle_id: bottle_id.clone(), title: format!("S{i}") },
             )
             .unwrap();
             close(&mut conn, &rx.id).unwrap();
         }
 
-        let limited = list_by_bottle(&conn, bottle_id, 3).unwrap();
+        let limited = list_by_bottle(&conn, &bottle_id, 3).unwrap();
         assert_eq!(limited.len(), 3);
     }
 

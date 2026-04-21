@@ -11,7 +11,7 @@ import IArrowLeft from "~icons/lucide/arrow-left"
 import IFileText from "~icons/lucide/file-text"
 
 const { t } = useI18n()
-const props = defineProps<{ id: string }>()
+const props = defineProps<{ bottle_id: string; rx_id: string; pill_id: string }>()
 const router = useRouter()
 
 const pill = ref<Pill | null>(null)
@@ -20,7 +20,7 @@ const loading = ref(false)
 async function load() {
     loading.value = true
     try {
-        pill.value = await pillsApi.get(Number(props.id))
+        pill.value = await pillsApi.get(Number(props.pill_id), props.bottle_id, props.rx_id)
     } finally {
         loading.value = false
     }
@@ -36,7 +36,7 @@ async function deletePill() {
             cancelButtonText: t("common.cancel"),
             type: "warning",
         })
-        await pillsApi.delete(Number(props.id))
+        await pillsApi.delete(Number(props.pill_id), props.bottle_id, props.rx_id)
         router.back()
     } catch {
         /* cancelled */
@@ -77,7 +77,7 @@ const renderedContent = computed(() => (pill.value ? (marked.parse(pill.value.co
                 <div class="flex gap-2">
                     <button
                         class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg transition-colors"
-                        @click="router.push(`/pills/${id}/edit`)"
+                        @click="router.push(`/bottles/${props.bottle_id}/prescriptions/${props.rx_id}/pills/${props.pill_id}/edit`)"
                     >
                         {{ $t("common.edit") }}
                     </button>

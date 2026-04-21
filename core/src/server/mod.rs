@@ -37,32 +37,35 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
         .allow_headers(Any);
 
     let api = Router::new()
-        // Pills
-        .route("/pills", post(handlers::pill_create))
+        // Pills — búsqueda cross-cutting (bottle_id opcional como filtro)
         .route("/pills/search", get(handlers::pill_search))
-        .route("/pills/:id", get(handlers::pill_get))
-        .route("/pills/:id", patch(handlers::pill_patch))
-        .route("/pills/:id", delete(handlers::pill_delete))
-        // Capsules
+        // Capsules (globales, sin bottle)
         .route("/capsules", get(handlers::capsule_list))
         .route("/capsules", post(handlers::capsule_create))
         .route("/capsules/search", get(handlers::capsule_search))
         .route("/capsules/:id", get(handlers::capsule_get))
         .route("/capsules/:id", patch(handlers::capsule_patch))
         .route("/capsules/:id", delete(handlers::capsule_delete))
-        // Prescriptions
-        .route("/prescriptions", post(handlers::prescription_open))
-        .route("/prescriptions/:id", get(handlers::prescription_get))
-        .route("/prescriptions/:id", patch(handlers::prescription_close))
-        .route("/prescriptions/:id", delete(handlers::prescription_delete))
-        .route("/prescriptions/:id/pills", get(handlers::prescription_pills))
         // Bottles
         .route("/bottles", get(handlers::bottle_list))
         .route("/bottles", post(handlers::bottle_create))
-        .route("/bottles/:id", get(handlers::bottle_get))
-        .route("/bottles/:id/prescriptions", get(handlers::bottle_prescriptions))
-        // Context
-        .route("/context", get(handlers::context_get))
+        .route("/bottles/:bottle_id", get(handlers::bottle_get))
+        .route("/bottles/:bottle_id/context", get(handlers::context_get))
+        // Prescriptions (anidadas bajo bottle)
+        .route("/bottles/:bottle_id/prescriptions", get(handlers::bottle_prescriptions))
+        .route("/bottles/:bottle_id/prescriptions", post(handlers::prescription_open))
+        .route("/bottles/:bottle_id/prescriptions/:rx_id", get(handlers::prescription_get))
+        .route("/bottles/:bottle_id/prescriptions/:rx_id", patch(handlers::prescription_close))
+        .route("/bottles/:bottle_id/prescriptions/:rx_id", delete(handlers::prescription_delete))
+        // Pills (anidadas bajo prescription)
+        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills", get(handlers::prescription_pills))
+        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills", post(handlers::pill_create))
+        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id", get(handlers::pill_get))
+        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id", patch(handlers::pill_patch))
+        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id", delete(handlers::pill_delete))
+        // Registered bottles (gestión de registros rotos)
+        .route("/registered_bottles/:id", patch(handlers::registered_bottle_patch))
+        .route("/registered_bottles/:id", delete(handlers::registered_bottle_delete))
         // Meta
         .route("/version", get(handlers::version_get))
         .with_state(state.clone());

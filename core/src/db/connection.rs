@@ -26,6 +26,21 @@ pub fn open(path: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
+/// Abre una conexión SQLite sin crear el fichero si no existe.
+///
+/// A diferencia de `open`, no llama a `create_dir_all` ni crea el archivo.
+/// Devuelve error si el path no existe en disco.
+pub fn open_existing(path: &Path) -> Result<Connection> {
+    if !path.exists() {
+        anyhow::bail!("DB not found at {:?}", path);
+    }
+    let conn =
+        Connection::open(path).with_context(|| format!("no se pudo abrir la DB en {:?}", path))?;
+    configure(&conn)?;
+    migrations::run(&conn)?;
+    Ok(conn)
+}
+
 /// Abre una conexión en memoria — útil para tests.
 pub fn open_in_memory() -> Result<Connection> {
     let conn = Connection::open_in_memory()?;

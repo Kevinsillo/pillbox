@@ -72,7 +72,13 @@
     "field_display_name_placeholder": "Mi Proyecto",
     "field_directory": "Directorio (ruta absoluta)",
     "field_directory_placeholder": "/home/user/proyecto",
-    "field_scope": "Scope"
+    "field_scope": "Scope",
+    "unlinked_badge": "desvinculado",
+    "update_registration_btn": "Actualizar ruta",
+    "update_registration_hint": "Introduce la ruta completa al fichero pillbox.db del proyecto. Debe terminar en /.pillbox/pillbox.db",
+    "update_registration_invalid": "La ruta debe terminar en /.pillbox/pillbox.db",
+    "delete_registration_btn": "Eliminar registro",
+    "confirm_delete_registration": "El directorio no existe en disco. ¿Eliminar el registro de este bottle?"
   },
   "bottle_detail": {
     "back": "Bottles",

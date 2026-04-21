@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
-use uuid::Uuid;
 
 pub struct RegisteredBottle {
-    pub id: String,
+    pub id: i64,
+    pub bottle_id: String,
     pub name: String,
     pub display_name: String,
     pub db_path: String,
@@ -14,36 +14,75 @@ pub struct RegisteredBottle {
 /// Registra una DB local en la tabla `registered_bottles` de la DB global.
 ///
 /// Idempotente: INSERT OR IGNORE por UNIQUE constraint en db_path.
-pub fn register(conn: &Connection, name: &str, display_name: &str, db_path: &str) -> Result<()> {
-    let id = Uuid::now_v7().to_string();
+pub fn register(
+    conn: &Connection,
+    bottle_id: &str,
+    name: &str,
+    display_name: &str,
+    db_path: &str,
+) -> Result<()> {
     conn.execute(
-        "INSERT OR IGNORE INTO registered_bottles (id, name, display_name, db_path)
+        "INSERT OR IGNORE INTO registered_bottles (bottle_id, name, display_name, db_path)
          VALUES (?1, ?2, ?3, ?4)",
-        params![id, name, display_name, db_path],
+        params![bottle_id, name, display_name, db_path],
     )
     .context("no se pudo registrar el bottle en el registry global")?;
     Ok(())
 }
 
+pub fn update_db_path(conn: &Connection, id: i64, new_db_path: &str) -> Result<bool> {
+    let count = conn
+        .execute(
+            "UPDATE registered_bottles SET db_path = ?1 WHERE id = ?2",
+            params![new_db_path, id],
+        )
+        .context("no se pudo actualizar la ruta del bottle registrado")?;
+    Ok(count > 0)
+}
+
+pub fn unregister(conn: &Connection, id: i64) -> Result<bool> {
+    let count = conn
+        .execute("DELETE FROM registered_bottles WHERE id = ?1", params![id])
+        .context("no se pudo eliminar el bottle del registro global")?;
+    Ok(count > 0)
+}
+
+/// Busca un registro por el UUID del bottle.
+pub fn find_by_bottle_id(conn: &Connection, bottle_id: &str) -> Result<Option<RegisteredBottle>> {
+    match conn.query_row(
+        "SELECT id, bottle_id, name, display_name, db_path, registered_at, last_seen_at
+         FROM registered_bottles WHERE bottle_id = ?1",
+        params![bottle_id],
+        row_to_registered,
+    ) {
+        Ok(r) => Ok(Some(r)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e).context("no se pudo buscar el bottle registrado por bottle_id"),
+    }
+}
+
 pub fn list(conn: &Connection) -> Result<Vec<RegisteredBottle>> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, display_name, db_path, registered_at, last_seen_at
+        "SELECT id, bottle_id, name, display_name, db_path, registered_at, last_seen_at
          FROM registered_bottles ORDER BY registered_at DESC",
     )?;
     let rows = stmt
-        .query_map([], |row| {
-            Ok(RegisteredBottle {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                display_name: row.get(2)?,
-                db_path: row.get(3)?,
-                registered_at: row.get(4)?,
-                last_seen_at: row.get(5)?,
-            })
-        })?
+        .query_map([], row_to_registered)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("no se pudo listar los bottles registrados")?;
     Ok(rows)
+}
+
+fn row_to_registered(row: &rusqlite::Row<'_>) -> rusqlite::Result<RegisteredBottle> {
+    Ok(RegisteredBottle {
+        id: row.get(0)?,
+        bottle_id: row.get(1)?,
+        name: row.get(2)?,
+        display_name: row.get(3)?,
+        db_path: row.get(4)?,
+        registered_at: row.get(5)?,
+        last_seen_at: row.get(6)?,
+    })
 }
 
 #[cfg(test)]
@@ -51,24 +90,27 @@ mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
 
+    const BOTTLE_UUID: &str = "019db1d0-bd9e-7940-aa29-054b250450ec";
+
     #[test]
     fn register_and_list() {
         let conn = open_in_memory().unwrap();
-        register(&conn, "mi-proyecto", "Mi Proyecto", "/home/user/.pillbox/pillbox.db").unwrap();
+        register(&conn, BOTTLE_UUID, "mi-proyecto", "Mi Proyecto", "/home/user/.pillbox/pillbox.db").unwrap();
 
         let rows = list(&conn).unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].name, "mi-proyecto");
         assert_eq!(rows[0].display_name, "Mi Proyecto");
         assert_eq!(rows[0].db_path, "/home/user/.pillbox/pillbox.db");
-        assert!(!rows[0].id.is_empty());
+        assert_eq!(rows[0].bottle_id, BOTTLE_UUID);
+        assert!(rows[0].id > 0);
     }
 
     #[test]
     fn register_idempotent() {
         let conn = open_in_memory().unwrap();
-        register(&conn, "proj", "Proj", "/tmp/proj.db").unwrap();
-        register(&conn, "proj", "Proj", "/tmp/proj.db").unwrap(); // INSERT OR IGNORE
+        register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
+        register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
 
         let rows = list(&conn).unwrap();
         assert_eq!(rows.len(), 1);
@@ -83,10 +125,27 @@ mod tests {
     #[test]
     fn register_multiple_different_paths() {
         let conn = open_in_memory().unwrap();
-        register(&conn, "a", "A", "/tmp/a.db").unwrap();
-        register(&conn, "b", "B", "/tmp/b.db").unwrap();
+        let uuid_b = "019db1d0-bd9e-7940-aa29-054b250450ed";
+        register(&conn, BOTTLE_UUID, "a", "A", "/tmp/a.db").unwrap();
+        register(&conn, uuid_b, "b", "B", "/tmp/b.db").unwrap();
 
         let rows = list(&conn).unwrap();
         assert_eq!(rows.len(), 2);
+    }
+
+    #[test]
+    fn find_by_bottle_id_ok() {
+        let conn = open_in_memory().unwrap();
+        register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
+        let found = find_by_bottle_id(&conn, BOTTLE_UUID).unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().bottle_id, BOTTLE_UUID);
+    }
+
+    #[test]
+    fn find_by_bottle_id_missing() {
+        let conn = open_in_memory().unwrap();
+        let found = find_by_bottle_id(&conn, "uuid-inexistente").unwrap();
+        assert!(found.is_none());
     }
 }

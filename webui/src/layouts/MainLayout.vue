@@ -22,11 +22,17 @@ const { activeBottleId } = useActiveBottle()
 const bottles = ref<Bottle[]>([])
 const appVersion = ref<string>('')
 
+const linkedBottles = computed(() => bottles.value.filter(b => b.linked))
+
 onMounted(async () => {
     try {
         bottles.value = await bottlesApi.list()
-        if (activeBottleId.value === null && bottles.value.length > 0) {
-            activeBottleId.value = bottles.value[0].id
+        // Si el bottle activo ya no existe entre los vinculados, limpiar localStorage
+        if (activeBottleId.value !== null && !linkedBottles.value.find(b => b.id === activeBottleId.value)) {
+            activeBottleId.value = null
+        }
+        if (activeBottleId.value === null && linkedBottles.value.length > 0) {
+            activeBottleId.value = linkedBottles.value[0].id
         }
     } catch {}
     try {
@@ -94,8 +100,8 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                         v-model="activeBottleId"
                         class="w-full bg-(--accent-bg) border border-(--border) rounded-lg text-xs text-(--text-h) px-2 py-1.5 focus:outline-none focus:border-zinc-500 transition-colors"
                     >
-                        <option v-if="bottles.length === 0" :value="null" disabled>{{ $t('sidebar.no_bottles') }}</option>
-                        <option v-for="b in bottles" :key="b.id" :value="b.id">{{ b.display_name }}</option>
+                        <option v-if="linkedBottles.length === 0" :value="null" disabled>{{ $t('sidebar.no_bottles') }}</option>
+                        <option v-for="b in linkedBottles" :key="b.id" :value="b.id">{{ b.display_name }}</option>
                     </select>
                 </div>
 

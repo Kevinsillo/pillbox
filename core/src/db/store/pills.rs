@@ -239,7 +239,7 @@ mod tests {
     use crate::domain::pill::{PillCompound, PillPatch};
     use crate::domain::prescription::NewPrescription;
 
-    fn setup(conn: &mut Connection) -> (i64, String) {
+    fn setup(conn: &mut Connection) -> (String, String) {
         let bottle = bottles::create(
             conn,
             &NewBottle {
@@ -254,7 +254,7 @@ mod tests {
         let rx = prescriptions::open(
             conn,
             &NewPrescription {
-                bottle_id: bottle.id,
+                bottle_id: bottle.id.clone(),
                 title: "Sesión de prueba".into(),
             },
         )

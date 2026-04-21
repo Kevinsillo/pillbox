@@ -103,10 +103,11 @@ function onInput() {
                     {{ $t("search.pills_heading") }} ({{ pillResults.length }})
                 </h2>
                 <div class="space-y-2">
-                    <RouterLink
+                    <component
+                        :is="p.bottle_id && p.prescription_id ? RouterLink : 'div'"
                         v-for="p in pillResults"
                         :key="p.id"
-                        :to="`/pills/${p.id}`"
+                        :to="p.bottle_id && p.prescription_id ? `/bottles/${p.bottle_id}/prescriptions/${p.prescription_id}/pills/${p.id}` : undefined"
                         class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                     >
                         <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
@@ -120,7 +121,7 @@ function onInput() {
                             <p class="text-xs text-zinc-500 line-clamp-2" v-html="p.snippet" />
                             <p class="text-xs text-zinc-600 mt-1">{{ new Date(p.updated_at).toLocaleDateString() }}</p>
                         </div>
-                    </RouterLink>
+                    </component>
                 </div>
             </div>
 

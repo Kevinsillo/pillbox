@@ -10,7 +10,7 @@ import PillCard from '@/components/PillCard.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
 
 const { t } = useI18n()
-const props = defineProps<{ id: string }>()
+const props = defineProps<{ bottle_id: string; rx_id: string }>()
 const router = useRouter()
 
 const rx = ref<Prescription | null>(null)
@@ -21,8 +21,8 @@ async function load() {
     loading.value = true
     try {
         const [r, p] = await Promise.all([
-            prescriptionsApi.get(props.id),
-            prescriptionsApi.pills(props.id),
+            prescriptionsApi.get(props.bottle_id, props.rx_id),
+            prescriptionsApi.pills(props.bottle_id, props.rx_id),
         ])
         rx.value = r
         pills.value = p.sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -46,7 +46,7 @@ async function deletePill(pill: Pill) {
                 type: 'warning',
             }
         )
-        await pillsApi.delete(pill.id)
+        await pillsApi.delete(pill.id, props.bottle_id, props.rx_id)
         pills.value = pills.value.filter(p => p.id !== pill.id)
     } catch { /* cancelled */ }
 }
@@ -62,7 +62,7 @@ async function closeRx() {
                 type: 'warning',
             }
         )
-        const updated = await prescriptionsApi.close(props.id)
+        const updated = await prescriptionsApi.close(props.bottle_id, props.rx_id)
         rx.value = updated
     } catch { /* cancelled */ }
 }
@@ -78,7 +78,7 @@ async function deleteRx() {
                 type: 'warning',
             }
         )
-        await prescriptionsApi.delete(props.id)
+        await prescriptionsApi.delete(props.bottle_id, props.rx_id)
         router.back()
     } catch { /* cancelled */ }
 }
@@ -130,6 +130,7 @@ async function deleteRx() {
                         v-for="pill in pills"
                         :key="pill.id"
                         :pill="pill"
+                        :bottle-id="props.bottle_id"
                         :editable="isOpen"
                         @delete="deletePill(pill)"
                     />

@@ -1,16 +1,19 @@
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
+use uuid::Uuid;
 
 use crate::{domain::bottle::{Bottle, NewBottle}, error::PillboxError};
 
 /// Crea un bottle nuevo en la DB.
 pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
+    let id = Uuid::now_v7().to_string();
     let tx = conn.transaction()?;
 
     tx.execute(
-        "INSERT INTO bottles (name, display_name, directory, scope)
-         VALUES (?1, ?2, ?3, ?4)",
+        "INSERT INTO bottles (id, name, display_name, directory, scope)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
         params![
+            id,
             input.name,
             input.display_name,
             input.directory,
@@ -27,8 +30,6 @@ pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
         }
         anyhow::anyhow!(e).context("no se pudo crear el bottle")
     })?;
-
-    let id = tx.last_insert_rowid();
 
     let bottle = tx
         .query_row(
@@ -58,8 +59,8 @@ pub fn list(conn: &Connection) -> Result<Vec<Bottle>> {
     Ok(bottles)
 }
 
-/// Busca un bottle por su ID.
-pub fn find_by_id(conn: &Connection, id: i64) -> Result<Option<Bottle>> {
+/// Busca un bottle por su ID (UUID).
+pub fn find_by_id(conn: &Connection, id: &str) -> Result<Option<Bottle>> {
     match conn.query_row(
         "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
          FROM bottles WHERE id = ?1",
@@ -87,7 +88,7 @@ pub fn find_by_directory(conn: &Connection, directory: &str) -> Result<Option<Bo
 }
 
 /// Actualiza `last_seen_at` del bottle al momento actual.
-pub fn touch(conn: &Connection, id: i64) -> Result<()> {
+pub fn touch(conn: &Connection, id: &str) -> Result<()> {
     conn.execute(
         "UPDATE bottles SET last_seen_at = datetime('now') WHERE id = ?1",
         params![id],
@@ -105,6 +106,8 @@ fn row_to_bottle(row: &rusqlite::Row<'_>) -> rusqlite::Result<Bottle> {
         scope: row.get(4)?,
         created_at: row.get(5)?,
         last_seen_at: row.get(6)?,
+        linked: true,
+        reg_id: None,
     })
 }
 
@@ -130,8 +133,25 @@ mod tests {
         assert_eq!(b.name, "mi-proyecto");
         assert_eq!(b.scope, "local");
 
-        let found = find_by_id(&conn, b.id).unwrap().unwrap();
+        let found = find_by_id(&conn, &b.id).unwrap().unwrap();
         assert_eq!(found.id, b.id);
+    }
+
+    #[test]
+    fn uuid_is_generated_on_create() {
+        let mut conn = open_in_memory().unwrap();
+        let b = create(&mut conn, &test_bottle("uuid-test", "/tmp/uuid-test")).unwrap();
+        assert!(!b.id.is_empty());
+        assert_eq!(b.id.len(), 36);
+        assert!(b.id.contains('-'));
+    }
+
+    #[test]
+    fn two_bottles_have_different_ids() {
+        let mut conn = open_in_memory().unwrap();
+        let a = create(&mut conn, &test_bottle("a", "/tmp/a")).unwrap();
+        let b = create(&mut conn, &test_bottle("b", "/tmp/b")).unwrap();
+        assert_ne!(a.id, b.id);
     }
 
     #[test]
@@ -163,7 +183,7 @@ mod tests {
     #[test]
     fn find_by_id_missing_returns_none() {
         let conn = open_in_memory().unwrap();
-        assert!(find_by_id(&conn, 9999).unwrap().is_none());
+        assert!(find_by_id(&conn, "id-inexistente").unwrap().is_none());
     }
 
     #[test]
@@ -182,13 +202,9 @@ mod tests {
     fn touch_updates_last_seen_at() {
         let mut conn = open_in_memory().unwrap();
         let b = create(&mut conn, &test_bottle("touch-test", "/tmp/touch")).unwrap();
-        let before = find_by_id(&conn, b.id).unwrap().unwrap().last_seen_at;
-        // touch actualiza el timestamp
-        touch(&conn, b.id).unwrap();
-        let after = find_by_id(&conn, b.id).unwrap().unwrap().last_seen_at;
-        // El campo cambia (o al menos no falla)
-        // En SQLite datetime('now') tiene precisión de segundo, así que ambos pueden
-        // coincidir si el test es rápido — lo importante es que no explota.
+        let before = find_by_id(&conn, &b.id).unwrap().unwrap().last_seen_at;
+        touch(&conn, &b.id).unwrap();
+        let after = find_by_id(&conn, &b.id).unwrap().unwrap().last_seen_at;
         let _ = (before, after);
     }
 }

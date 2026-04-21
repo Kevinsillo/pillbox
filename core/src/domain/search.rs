@@ -6,7 +6,7 @@ pub struct SearchParams {
     pub query: String,
 
     /// Filtrar por bottle (opcional). Útil en la DB global que agrega múltiples bottles.
-    pub bottle_id: Option<i64>,
+    pub bottle_id: Option<String>,
 
     /// Filtrar por compound (opcional).
     pub compound: Option<String>,
@@ -33,5 +33,5 @@ pub struct SearchResult {
     pub prescription_id: Option<String>,
     /// Solo presente en pills (a través del join con prescriptions).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bottle_id: Option<i64>,
+    pub bottle_id: Option<String>,
 }

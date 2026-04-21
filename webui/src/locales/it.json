@@ -72,7 +72,13 @@
     "field_display_name_placeholder": "Mio Progetto",
     "field_directory": "Directory (percorso assoluto)",
     "field_directory_placeholder": "/home/user/progetto",
-    "field_scope": "Ambito"
+    "field_scope": "Ambito",
+    "unlinked_badge": "scollegato",
+    "update_registration_btn": "Aggiorna percorso",
+    "update_registration_hint": "Inserisci il percorso completo al file pillbox.db del progetto. Deve terminare con /.pillbox/pillbox.db",
+    "update_registration_invalid": "Il percorso deve terminare con /.pillbox/pillbox.db",
+    "delete_registration_btn": "Rimuovi registrazione",
+    "confirm_delete_registration": "La directory non esiste più su disco. Rimuovere la registrazione di questa bottle?"
   },
   "bottle_detail": {
     "back": "Bottles",

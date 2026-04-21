@@ -10,7 +10,7 @@ import IArrowLeft from '~icons/lucide/arrow-left'
 import IClipboard from '~icons/lucide/clipboard'
 
 const { t } = useI18n()
-const props = defineProps<{ id: string }>()
+const props = defineProps<{ bottle_id: string }>()
 
 const bottle = ref<Bottle | null>(null)
 const prescriptions = ref<Prescription[]>([])
@@ -20,13 +20,14 @@ async function load() {
     loading.value = true
     try {
         const [b, rx] = await Promise.all([
-            bottlesApi.get(Number(props.id)),
-            bottlesApi.prescriptions(Number(props.id)),
+            bottlesApi.get(props.bottle_id),
+            bottlesApi.prescriptions(props.bottle_id),
         ])
         bottle.value = b
         prescriptions.value = rx
     } finally {
-        loading.value = false }
+        loading.value = false
+    }
 }
 
 onMounted(load)
@@ -44,7 +45,7 @@ async function deleteRx(rx: Prescription) {
                 type: 'warning',
             }
         )
-        await prescriptionsApi.delete(String(rx.id))
+        await prescriptionsApi.delete(props.bottle_id, rx.id)
         prescriptions.value = prescriptions.value.filter(p => p.id !== rx.id)
     } catch { /* cancelled */ }
 }
@@ -77,7 +78,7 @@ async function deleteRx(rx: Prescription) {
                     <RouterLink
                         v-for="rx in prescriptions"
                         :key="rx.id"
-                        :to="`/prescriptions/${rx.id}`"
+                        :to="`/bottles/${props.bottle_id}/prescriptions/${rx.id}`"
                         class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                     >
                         <div class="flex items-center gap-3 min-w-0">

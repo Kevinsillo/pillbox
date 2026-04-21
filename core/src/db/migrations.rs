@@ -4,9 +4,6 @@ use rusqlite::Connection;
 /// Última versión de schema conocida en tiempo de compilación.
 pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
-/// DDL de la migración inicial embebido en el binario.
-/// Los PRAGMAs del archivo se filtran en `apply()` — no son transaccionables
-/// y ya se aplican en `configure()` al abrir la conexión.
 const MIGRATION_001: &str = include_str!("migrations/001_initial.sql");
 
 /// Aplica todas las migraciones pendientes en orden.

@@ -19,18 +19,20 @@ export type CapsuleCompound =
     | 'manual'
 
 export interface Bottle {
-    id: number
+    id: string
     name: string
     display_name: string
     directory: string
     scope: 'local' | 'global'
     created_at: string
     last_seen_at: string
+    linked: boolean
+    reg_id?: number
 }
 
 export interface Prescription {
     id: string
-    bottle_id: number
+    bottle_id: string
     title: string
     started_at: string
     ended_at: string | null
@@ -61,7 +63,7 @@ export interface PillSearchResult {
     updated_at: string
     rank: number
     prescription_id?: string
-    bottle_id?: number
+    bottle_id?: string
 }
 
 export interface Capsule {

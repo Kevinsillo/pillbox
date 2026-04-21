@@ -8,7 +8,7 @@ import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
 
 const { t } = useI18n()
-const props = defineProps<{ id: string }>()
+const props = defineProps<{ bottle_id: string; rx_id: string; pill_id: string }>()
 const router = useRouter()
 
 const loading = ref(false)
@@ -32,7 +32,7 @@ const form = ref({ title: "", content: "", compound: "manual" as PillCompound })
 async function load() {
     loading.value = true
     try {
-        const pill = await pillsApi.get(Number(props.id))
+        const pill = await pillsApi.get(Number(props.pill_id), props.bottle_id, props.rx_id)
         form.value = { title: pill.title, content: pill.content, compound: pill.compound as PillCompound }
     } finally {
         loading.value = false
@@ -45,7 +45,7 @@ async function save() {
     saving.value = true
     error.value = null
     try {
-        await pillsApi.update(Number(props.id), form.value)
+        await pillsApi.update(Number(props.pill_id), form.value, props.bottle_id, props.rx_id)
         router.back()
     } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : t("common.error")

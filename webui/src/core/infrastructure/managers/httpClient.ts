@@ -2,6 +2,15 @@ import { i18n } from '@/core/infrastructure/i18n'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api'
 
+export class ApiError extends Error {
+    code: string
+    constructor(code: string, message: string) {
+        super(message)
+        this.code = code
+        this.name = 'ApiError'
+    }
+}
+
 function translateApiError(code: string): string {
     const key = `api_errors.${code}`
     const msg = i18n.global.t(key)
@@ -15,7 +24,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         body: body ? JSON.stringify(body) : undefined,
     })
     const json = await res.json()
-    if (!json.ok) throw new Error(translateApiError(json.error ?? 'unknown'))
+    if (!json.ok) throw new ApiError(json.error ?? 'unknown', translateApiError(json.error ?? 'unknown'))
     return json.data as T
 }
 

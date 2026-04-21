@@ -57,14 +57,14 @@ pub fn migrate_bottle(
     )
     .context("no se pudo upsert el bottle en destino")?;
 
-    let dst_bottle_id: i64 = tx.query_row(
+    let dst_bottle_id: String = tx.query_row(
         "SELECT id FROM bottles WHERE name = ?1",
         params![bottle_name],
         |r| r.get(0),
     )?;
 
     // ── 2. Prescripciones ─────────────────────────────────────────────────────
-    let src_bottle_id: i64 = src.query_row(
+    let src_bottle_id: String = src.query_row(
         "SELECT id FROM bottles WHERE name = ?1",
         params![bottle_name],
         |r| r.get(0),
@@ -161,7 +161,7 @@ pub fn migrate_bottle(
 
 /// Cuenta los contenidos de un bottle: (prescriptions activas, pills activas).
 pub fn count_bottle_contents(conn: &Connection, bottle_name: &str) -> Result<(usize, usize)> {
-    let bottle_id: i64 = conn.query_row(
+    let bottle_id: String = conn.query_row(
         "SELECT id FROM bottles WHERE name = ?1",
         params![bottle_name],
         |r| r.get(0),
@@ -214,7 +214,7 @@ pub fn list_bottles_with_counts(conn: &Connection) -> Result<Vec<(String, String
 pub fn delete_bottle(conn: &mut Connection, bottle_name: &str) -> Result<()> {
     let tx = conn.transaction()?;
 
-    let bottle_id: i64 = tx
+    let bottle_id: String = tx
         .query_row(
             "SELECT id FROM bottles WHERE name = ?1",
             params![bottle_name],

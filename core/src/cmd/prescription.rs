@@ -50,7 +50,7 @@ pub fn cmd_prescription_list(limit: u32) -> Result<()> {
 
     let (conn, _) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
-    let rxs = prescriptions::list_by_bottle(&conn, bottle.id, limit)?;
+    let rxs = prescriptions::list_by_bottle(&conn, &bottle.id, limit)?;
 
     output::fmt::prescriptions_list(&bottle.name, &rxs, limit);
     Ok(())

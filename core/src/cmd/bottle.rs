@@ -104,36 +104,31 @@ pub fn cmd_bottle_init() -> Result<()> {
 
     output::fmt::bottle_init_created(&bottle.name, &bottle.display_name, &db_path);
 
-    if scope == BottleScope::Local {
-        if current_dir.join(".git").exists() {
-            let add_gi = Confirm::new(&t!("bottle.init.gitignore.prompt"))
-                .with_default(false)
-                .prompt()
-                .unwrap_or(false);
-            if add_gi {
-                add_to_gitignore(&current_dir)?;
-                output::fmt::bottle_init_gitignore();
-            }
+    if scope == BottleScope::Local && current_dir.join(".git").exists() {
+        let add_gi = Confirm::new(&t!("bottle.init.gitignore.prompt"))
+            .with_default(false)
+            .prompt()
+            .unwrap_or(false);
+        if add_gi {
+            add_to_gitignore(&current_dir)?;
+            output::fmt::bottle_init_gitignore();
         }
+    }
 
+    {
         let global_path = pillbox::config::global_db_path();
         let _ = connection::open(&global_path);
-        {
-            let pb2 = spinner(t!("bottle.init.registering"));
-            let local_db_abs = current_dir.join(".pillbox").join("pillbox.db");
-            match register_in_global(
-                &global_path,
-                &name,
-                &display_name,
-                &dir_str,
-                &scope,
-                &local_db_abs,
-            ) {
-                Ok(_) => pb2.finish_with_message(t!("bottle.init.registered_ok").to_string()),
-                Err(e) => {
-                    pb2.finish_and_clear();
-                    eprintln!("{}", t!("bottle.init.register_err", err = e));
-                }
+        let pb2 = spinner(t!("bottle.init.registering"));
+        // Para scope local: registrar la DB local. Para scope global: registrar la DB global.
+        let register_db_path: std::path::PathBuf = match &scope {
+            BottleScope::Local => current_dir.join(".pillbox").join("pillbox.db"),
+            BottleScope::Global => global_path.clone(),
+        };
+        match register_in_global(&global_path, &bottle.id, &name, &display_name, &register_db_path) {
+            Ok(_) => pb2.finish_with_message(t!("bottle.init.registered_ok").to_string()),
+            Err(e) => {
+                pb2.finish_and_clear();
+                eprintln!("{}", t!("bottle.init.register_err", err = e));
             }
         }
     }
@@ -169,35 +164,18 @@ fn add_to_gitignore(dir: &std::path::Path) -> Result<()> {
 
 fn register_in_global(
     global_path: &std::path::Path,
+    bottle_id: &str,
     name: &str,
     display_name: &str,
-    directory: &str,
-    scope: &pillbox::domain::bottle::BottleScope,
     local_db_path: &std::path::Path,
 ) -> Result<()> {
-    use pillbox::db::{
-        connection,
-        store::{bottles, registered_bottles},
-    };
-    use pillbox::domain::bottle::NewBottle;
+    use pillbox::db::{connection, store::registered_bottles};
 
-    let mut conn = connection::open(global_path)?;
-    if bottles::find_by_directory(&conn, directory)?.is_none() {
-        bottles::create(
-            &mut conn,
-            &NewBottle {
-                name: name.to_string(),
-                display_name: display_name.to_string(),
-                directory: directory.to_string(),
-                scope: scope.clone(),
-            },
-        )?;
-    }
-
+    let conn = connection::open(global_path)?;
     let db_path_str = local_db_path
         .to_str()
         .context("la ruta de la DB local contiene caracteres no UTF-8")?;
-    registered_bottles::register(&conn, name, display_name, db_path_str)?;
+    registered_bottles::register(&conn, bottle_id, name, display_name, db_path_str)?;
 
     Ok(())
 }

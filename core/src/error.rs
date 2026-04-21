@@ -33,7 +33,7 @@ pub enum PillboxError {
 
     // ── Bottle ────────────────────────────────────────────────────────────────
     #[error("bottle_not_found: no existe el bottle {bottle_id}")]
-    BottleNotFound { bottle_id: i64 },
+    BottleNotFound { bottle_id: String },
 
     #[error("bottle_already_exists: ya existe un bottle con el nombre '{name}'")]
     BottleAlreadyExists { name: String },
@@ -85,7 +85,7 @@ mod tests {
             PillboxError::PrescriptionNotFound { id: "x".into() }.code(),
             "prescription_not_found"
         );
-        assert_eq!(PillboxError::BottleNotFound { bottle_id: 5 }.code(), "bottle_not_found");
+        assert_eq!(PillboxError::BottleNotFound { bottle_id: "uuid-test".into() }.code(), "bottle_not_found");
         assert_eq!(
             PillboxError::BottleAlreadyExists { name: "n".into() }.code(),
             "bottle_already_exists"

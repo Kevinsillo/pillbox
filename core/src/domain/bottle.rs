@@ -42,14 +42,22 @@ impl std::fmt::Display for BottleScope {
     }
 }
 
+fn default_true() -> bool { true }
+
 /// Bottle tal como se devuelve al listar.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Bottle {
-    pub id: i64,
+    pub id: String,
     pub name: String,
     pub display_name: String,
     pub directory: String,
     pub scope: String,
     pub created_at: String,
     pub last_seen_at: String,
+    /// false cuando el bottle está registrado globalmente pero su DB ya no existe en disco.
+    #[serde(default = "default_true")]
+    pub linked: bool,
+    /// ID del registro en `registered_bottles` (presente en bottles con DB registrada).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reg_id: Option<i64>,
 }
