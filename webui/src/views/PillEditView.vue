@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ElAlert } from "element-plus"
 import type { PillCompound } from "@/core/domain/types"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { onMounted, ref } from "vue"
@@ -94,7 +95,15 @@ async function save() {
                         class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500 resize-y font-mono"
                     />
                 </div>
-                <p v-if="error" class="text-red-400 text-xs">{{ error }}</p>
+                <el-alert
+                    v-if="error"
+                    :title="$t('common.error_saving')"
+                    :description="error"
+                    type="error"
+                    show-icon
+                    closable
+                    @close="error = null"
+                />
                 <div class="flex gap-2">
                     <button
                         type="submit"

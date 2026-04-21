@@ -2,21 +2,18 @@ use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
+use crate::output;
+
 use super::install;
 
 pub fn cmd_skill_install() -> Result<()> {
     let skill_path = pillbox::config::skill_path();
     let skill_dir = skill_path.parent().unwrap().to_path_buf();
 
-    println!("{}", t!("skill.downloading"));
+    println!("\n  {}", t!("skill.downloading").dimmed());
     let version = install::skill::install(&skill_dir)?;
 
-    println!(
-        "{} {}\n",
-        "●".green().bold(),
-        t!("skill.installed", path = skill_path.display())
-    );
-    println!("{} {}\n", "●".green().bold(), version);
+    output::fmt::skill_installed(&skill_path, &version);
     Ok(())
 }
 
@@ -28,9 +25,9 @@ pub fn cmd_skill_uninstall() -> Result<()> {
 
     let removed = install::skill::uninstall(&skill_dir)?;
     if removed {
-        println!("{} {}\n", "●".green().bold(), t!("skill.uninstalled"));
+        output::fmt::skill_uninstalled();
     } else {
-        println!("{}\n", t!("skill.not_installed"));
+        output::fmt::skill_not_installed();
     }
     Ok(())
 }

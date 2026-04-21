@@ -5,8 +5,6 @@ use rust_i18n::t;
 pub fn run() -> Result<()> {
     use inquire::Confirm;
 
-    println!("{}\n", t!("uninstall.title").bold());
-
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
     if mcp_dir.exists() {
         if Confirm::new(&t!("uninstall.mcp.prompt"))
@@ -14,7 +12,7 @@ pub fn run() -> Result<()> {
             .prompt()?
         {
             std::fs::remove_dir_all(&mcp_dir)?;
-            println!("{} {}", "●".green().bold(), t!("uninstall.mcp.done"));
+            println!("\n{} {}\n", "✓".green().bold(), t!("uninstall.mcp.done"));
         }
     }
 
@@ -28,7 +26,7 @@ pub fn run() -> Result<()> {
             .prompt()?
         {
             std::fs::remove_dir_all(&skill_dir)?;
-            println!("{} {}", "●".green().bold(), t!("uninstall.skill.done"));
+            println!("\n{} {}\n", "✓".green().bold(), t!("uninstall.skill.done"));
         }
     }
 
@@ -39,7 +37,7 @@ pub fn run() -> Result<()> {
             .prompt()?
         {
             std::fs::remove_file(&global_db)?;
-            println!("{} {}", "●".green().bold(), t!("uninstall.db.done"));
+            println!("\n{} {}\n", "✓".green().bold(), t!("uninstall.db.done"));
         }
     }
 
@@ -49,7 +47,7 @@ pub fn run() -> Result<()> {
         .prompt()?
     {
         println!(
-            "{}\n",
+            "\n{}\n",
             t!("uninstall.bin.manual", path = bin_path.display())
         );
     }

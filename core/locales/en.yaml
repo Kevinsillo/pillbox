@@ -44,7 +44,6 @@ bottle:
     not_found_short: "No bottle found for this directory."
 
 status:
-  title: "Pillbox Status"
   bin_unknown: "(unknown)"
   labels:
     bin: "Binary"
@@ -83,6 +82,7 @@ serve:
   error:
     already_running: "Server is already running (PID %{pid})."
     no_db: "no Pillbox DB found"
+    start_failed: "Server failed to start. Check the log at ~/.pillbox/pillbox.log"
   stop:
     none: "No server is running."
     dead: "No server is running (PID %{pid} does not exist)."
@@ -113,16 +113,14 @@ prescriptions:
       title: "Title"
       state: "Status"
   msg:
-    opened: "Prescription opened: \"%{title}\""
-    opened_id: "ID: "
-    closed: "Prescription closed: \"%{title}\""
+    opened: "Prescription opened"
+    closed: "Prescription closed"
   error:
     already_open: "A prescription is already open: \"%{title}\" (%{pills} pills, id=%{id}).\nClose it with 'pillbox prescription close' before opening a new one."
     none_open: "No open prescription for bottle '%{name}'."
 
 migrate:
   help:
-    title: "Bottle migration"
     bottle: "Bottle"
     local: "Local"
     global: "Global"
@@ -130,7 +128,6 @@ migrate:
     cmd_local: "Choose a global bottle and move it here"
     no_bottle: "—"
   global:
-    title: "Move bottle to global"
     bottle: "Bottle"
     origin: "Origin"
     dest: "Destination"
@@ -138,7 +135,6 @@ migrate:
     pills: "Pills"
     warning: "The .pillbox/pillbox.db file will be deleted after migration."
   local:
-    title: "Move bottle to local"
     select: "Select the bottle to move here:"
     bottle: "Bottle"
     origin: "Origin"
@@ -169,8 +165,7 @@ migrate:
 mcp:
   node_required: "Node.js ≥ 18 is required for the MCP server."
   downloading: "Downloading MCP..."
-  installed: "MCP installed at %{path}"
-  claude_json: "Add this to your ~/.claude.json:"
+  installed: "MCP installed"
   not_installed: "MCP is not installed."
   uninstalled: "MCP uninstalled."
   error:
@@ -179,14 +174,13 @@ mcp:
 
 skill:
   downloading: "Downloading skill..."
-  installed: "Skill installed at %{path}"
+  installed: "Skill installed"
   not_installed: "Skill is not installed."
   uninstalled: "Skill uninstalled."
   error:
     download: "Error downloading skill from %{url}"
 
 uninstall:
-  title: "Uninstall Pillbox"
   mcp:
     prompt: "Remove the MCP server?"
     done: "MCP removed."

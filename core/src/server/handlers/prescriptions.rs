@@ -6,7 +6,7 @@ use pillbox::{db::store, domain::prescription::NewPrescription, error::PillboxEr
 use serde_json::json;
 use validator::Validate;
 
-use super::{err_409, err_404, err_422, err_500, ok, ok_created, open_conn, ApiResponse, AppState};
+use super::{err_404_prescription, err_409, err_422, err_500, ok, ok_created, open_conn, ApiResponse, AppState};
 
 pub async fn prescription_open(
     State(s): State<AppState>,
@@ -29,9 +29,7 @@ pub async fn prescription_open(
                 pill_count,
             }) => err_409(
                 "prescription_already_open",
-                &format!(
-                    "prescription_already_open: '{title}' (id={id}, iniciada={started_at}, {pill_count} pills)"
-                ),
+                "prescription_already_open",
                 json!({
                     "id": id,
                     "title": title,
@@ -52,7 +50,7 @@ pub async fn prescription_get(State(s): State<AppState>, Path(id): Path<String>)
     };
     match store::prescriptions::read(&conn, &id) {
         Ok(Some(rx)) => ok(rx),
-        Ok(None) => err_404("prescription", &id),
+        Ok(None) => err_404_prescription(&id),
         Err(e) => err_500(e),
     }
 }
@@ -88,7 +86,7 @@ pub async fn prescription_pills(State(s): State<AppState>, Path(id): Path<String
         Err(r) => return r,
     };
     match store::prescriptions::read(&conn, &id) {
-        Ok(None) => return err_404("prescription", &id),
+        Ok(None) => return err_404_prescription(&id),
         Err(e) => return err_500(e),
         Ok(Some(_)) => {}
     }

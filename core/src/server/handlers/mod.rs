@@ -51,6 +51,20 @@ pub(super) fn err(status: StatusCode, error: &str, message: &str) -> ApiResponse
     )
 }
 
+pub(super) fn err_with_context(
+    status: StatusCode,
+    error: &str,
+    context: serde_json::Value,
+) -> ApiResponse {
+    let mut body = json!({ "ok": false, "error": error });
+    if let (Some(obj), Some(extra)) = (body.as_object_mut(), context.as_object()) {
+        for (k, v) in extra {
+            obj.insert(k.clone(), v.clone());
+        }
+    }
+    ApiResponse(status, body)
+}
+
 pub(super) fn err_422(e: impl ToString) -> ApiResponse {
     err(
         StatusCode::UNPROCESSABLE_ENTITY,
@@ -59,12 +73,20 @@ pub(super) fn err_422(e: impl ToString) -> ApiResponse {
     )
 }
 
-pub(super) fn err_404(what: &str, id: impl std::fmt::Display) -> ApiResponse {
-    err(
-        StatusCode::NOT_FOUND,
-        "not_found",
-        &format!("{} {} no encontrado", what, id),
-    )
+pub(super) fn err_404_bottle(id: i64) -> ApiResponse {
+    err_with_context(StatusCode::NOT_FOUND, "bottle_not_found", json!({ "bottle_id": id }))
+}
+
+pub(super) fn err_404_pill(id: i64) -> ApiResponse {
+    err_with_context(StatusCode::NOT_FOUND, "pill_not_found", json!({ "pill_id": id }))
+}
+
+pub(super) fn err_404_prescription(id: &str) -> ApiResponse {
+    err_with_context(StatusCode::NOT_FOUND, "prescription_not_found", json!({ "prescription_id": id }))
+}
+
+pub(super) fn err_404_capsule(id: i64) -> ApiResponse {
+    err_with_context(StatusCode::NOT_FOUND, "capsule_not_found", json!({ "capsule_id": id }))
 }
 
 pub(super) fn err_500(e: anyhow::Error) -> ApiResponse {

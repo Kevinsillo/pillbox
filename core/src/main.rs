@@ -311,13 +311,13 @@ fn render_root_help() -> String {
 fn cmd_root_help() -> Result<()> {
     output::fmt::print_logo(env!("CARGO_PKG_VERSION"));
     let rows = vec![["".to_string(), render_root_help()]];
-    println!("{}\n", output::table::dict(rows));
+    println!("\n{}\n", output::table::dict(rows));
     Ok(())
 }
 
 fn cmd_sub_help(subcmd: &str) -> Result<()> {
     let rows = vec![["".to_string(), render_help(subcmd)]];
-    println!("{}\n", output::table::dict(rows));
+    println!("\n{}\n", output::table::dict(rows));
     Ok(())
 }
 
@@ -349,6 +349,6 @@ fn cmd_serve_info() -> Result<()> {
         [t!("serve.title").bold().to_string(), status],
         ["".to_string(), render_help("serve")],
     ];
-    println!("{}\n", output::table::dict(rows));
+    println!("\n{}\n", output::table::dict(rows));
     Ok(())
 }

@@ -1,4 +1,12 @@
+import { i18n } from '@/core/infrastructure/i18n'
+
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api'
+
+function translateApiError(code: string): string {
+    const key = `api_errors.${code}`
+    const msg = i18n.global.t(key)
+    return msg !== key ? msg : i18n.global.t('api_errors.unknown')
+}
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const res = await fetch(`${BASE}${path}`, {
@@ -7,7 +15,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         body: body ? JSON.stringify(body) : undefined,
     })
     const json = await res.json()
-    if (!json.ok) throw new Error(json.message ?? json.error ?? 'Error desconocido')
+    if (!json.ok) throw new Error(translateApiError(json.error ?? 'unknown'))
     return json.data as T
 }
 

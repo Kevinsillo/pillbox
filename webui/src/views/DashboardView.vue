@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useActiveBottle } from '@/composables/useActiveBottle'
-import { contextApi } from '@/core/infrastructure/repositories/ContextRepository'
-import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
-import type { Context, Bottle, Prescription } from '@/core/domain/types'
+import { ElAlert } from 'element-plus'
 import PillCard from '@/components/PillCard.vue'
+import { useActiveBottle } from '@/composables/useActiveBottle'
+import type { Bottle, Context, Prescription } from '@/core/domain/types'
+import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
+import { contextApi } from '@/core/infrastructure/repositories/ContextRepository'
+import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import IArrowRight from '~icons/lucide/arrow-right'
 import IClipboard from '~icons/lucide/clipboard'
@@ -32,7 +33,7 @@ async function load(id: number) {
         bottle.value = b
         prescriptions.value = rx
     } catch (e: unknown) {
-        error.value = e instanceof Error ? e.message : t('dashboard.error_loading')
+        error.value = e instanceof Error ? e.message : t('common.error')
     } finally {
         loading.value = false
     }
@@ -62,7 +63,14 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
 
         <template v-else>
             <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
-            <div v-else-if="error" class="text-red-400 text-sm">{{ error }}</div>
+            <el-alert
+                v-else-if="error"
+                :title="$t('common.error_loading_title')"
+                :description="error"
+                type="error"
+                show-icon
+                :closable="false"
+            />
 
             <template v-else-if="ctx">
                 <!-- Stats -->

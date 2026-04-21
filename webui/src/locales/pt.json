@@ -27,6 +27,10 @@
     "title": "Título",
     "compound": "Composto",
     "error": "Erro desconhecido",
+    "error_loading_title": "Falha ao carregar",
+    "error_saving": "Não foi possível salvar",
+    "error_not_found": "O recurso solicitado não existe ou foi excluído.",
+    "error_server": "Não foi possível conectar ao servidor. Ele está em execução?",
     "content_md": "Conteúdo (Markdown)"
   },
   "confirm": {
@@ -53,8 +57,7 @@
     "view_link": "Ver",
     "last_prescriptions": "Últimas prescriptions",
     "view_all": "Ver todas",
-    "recent_context": "Contexto recente",
-    "error_loading": "Erro ao carregar contexto"
+    "recent_context": "Contexto recente"
   },
   "bottles": {
     "heading": "Bottles",
@@ -131,5 +134,14 @@
   "pill_card": {
     "edit": "Editar",
     "delete": "Excluir"
+  },
+  "api_errors": {
+    "bottle_not_found": "A bottle selecionada não existe ou foi excluída. Selecione outra na barra lateral.",
+    "pill_not_found": "A pill não existe ou foi excluída.",
+    "prescription_not_found": "A prescription não existe ou foi excluída.",
+    "capsule_not_found": "A capsule não existe ou foi excluída.",
+    "prescription_already_open": "Já há uma prescription aberta. Feche-a antes de abrir uma nova.",
+    "validation_error": "Os dados enviados não são válidos.",
+    "unknown": "Ocorreu um erro inesperado."
   }
 }

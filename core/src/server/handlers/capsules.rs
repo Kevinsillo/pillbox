@@ -9,7 +9,7 @@ use pillbox::{
 use serde::Deserialize;
 use validator::Validate;
 
-use super::{err_404, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse, AppState};
+use super::{err_404_capsule, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse, AppState};
 
 #[derive(Deserialize)]
 pub struct CapsuleListParams {
@@ -48,7 +48,7 @@ pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiR
     };
     match store::capsules::read(&conn, id) {
         Ok(Some(c)) => ok(c),
-        Ok(None) => err_404("capsule", id),
+        Ok(None) => err_404_capsule(id),
         Err(e) => err_500(e),
     }
 }
@@ -67,7 +67,7 @@ pub async fn capsule_patch(
     };
     match store::capsules::revise(&mut conn, id, &patch) {
         Ok(Some(c)) => ok(c),
-        Ok(None) => err_404("capsule", id),
+        Ok(None) => err_404_capsule(id),
         Err(e) => err_500(e),
     }
 }
@@ -79,7 +79,7 @@ pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<i64>) -> A
     };
     match store::capsules::discard(&mut conn, id) {
         Ok(Some(r)) => ok(r),
-        Ok(None) => err_404("capsule", id),
+        Ok(None) => err_404_capsule(id),
         Err(e) => err_500(e),
     }
 }

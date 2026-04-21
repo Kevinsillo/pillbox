@@ -2,7 +2,7 @@
 import CompoundBadge from "@/components/CompoundBadge.vue"
 import type { Capsule, CapsuleCompound } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
-import { ElMessageBox } from "element-plus"
+import { ElAlert, ElMessageBox } from "element-plus"
 import { marked } from "marked"
 import { computed, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
@@ -150,7 +150,15 @@ const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.va
                             class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500 resize-y font-mono"
                         />
                     </div>
-                    <p v-if="formError" class="text-red-400 text-xs">{{ formError }}</p>
+                    <el-alert
+                        v-if="formError"
+                        :title="$t('common.error_saving')"
+                        :description="formError"
+                        type="error"
+                        show-icon
+                        closable
+                        @close="formError = null"
+                    />
                     <div class="flex gap-2">
                         <button
                             type="submit"

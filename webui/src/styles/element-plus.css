@@ -57,4 +57,37 @@
 
   /* Font */
   --el-font-size-base: 13px;
+
+  /* Semantic colors — dark variants for alerts/tags/badges */
+  --el-color-error:         #f87171;
+  --el-color-error-light-3: #ef4444;
+  --el-color-error-light-5: #7f1d1d;
+  --el-color-error-light-7: #450a0a;
+  --el-color-error-light-8: #3b0808;
+  --el-color-error-light-9: #1f0a0a;
+  --el-color-error-dark-2:  #fca5a5;
+
+  --el-color-warning:         #fbbf24;
+  --el-color-warning-light-3: #d97706;
+  --el-color-warning-light-5: #78350f;
+  --el-color-warning-light-7: #451a03;
+  --el-color-warning-light-8: #3a1500;
+  --el-color-warning-light-9: #1c0f00;
+  --el-color-warning-dark-2:  #fcd34d;
+
+  --el-color-info:         #a1a1aa;
+  --el-color-info-light-3: #71717a;
+  --el-color-info-light-5: #52525b;
+  --el-color-info-light-7: #3f3f46;
+  --el-color-info-light-8: #27272a;
+  --el-color-info-light-9: #1c1c1f;
+  --el-color-info-dark-2:  #d4d4d8;
+
+  --el-color-success:         #4ade80;
+  --el-color-success-light-3: #22c55e;
+  --el-color-success-light-5: #14532d;
+  --el-color-success-light-7: #052e16;
+  --el-color-success-light-8: #031f0f;
+  --el-color-success-light-9: #011208;
+  --el-color-success-dark-2:  #86efac;
 }

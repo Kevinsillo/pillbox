@@ -10,8 +10,8 @@ use serde::Deserialize;
 use validator::Validate;
 
 use super::{
-    default_50, err_404, err_422, err_500, ok, ok_created, open_conn, open_global_conn, ApiResponse,
-    AppState,
+    default_50, err_404_bottle, err_422, err_500, ok, ok_created, open_conn, open_global_conn,
+    ApiResponse, AppState,
 };
 
 #[derive(Deserialize)]
@@ -27,7 +27,7 @@ pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiRe
     };
     match store::bottles::find_by_id(&conn, id) {
         Ok(Some(b)) => ok(b),
-        Ok(None) => err_404("bottle", id),
+        Ok(None) => err_404_bottle(id),
         Err(e) => err_500(e),
     }
 }
@@ -111,7 +111,7 @@ pub async fn bottle_prescriptions(
         Err(r) => return r,
     };
     match store::bottles::find_by_id(&conn, id) {
-        Ok(None) => return err_404("bottle", id),
+        Ok(None) => return err_404_bottle(id),
         Err(e) => return err_500(e),
         Ok(Some(_)) => {}
     }

@@ -2,6 +2,8 @@ use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
+use crate::output;
+
 use super::install;
 
 pub fn cmd_mcp_install() -> Result<()> {
@@ -28,20 +30,10 @@ pub fn cmd_mcp_install() -> Result<()> {
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
     let claude_cfg = pillbox::config::claude_config_path();
 
-    println!("{}", t!("mcp.downloading"));
+    println!("\n  {}", t!("mcp.downloading").dimmed());
     let version = install::mcp::install(&mcp_dir, &claude_cfg)?;
 
-    println!(
-        "{} {}\n",
-        "●".green().bold(),
-        t!("mcp.installed", path = mcp_dir.display())
-    );
-    println!(
-        "{} {}\n",
-        "●".green().bold(),
-        t!("mcp.claude_json_updated", path = claude_cfg.display())
-    );
-    println!("{} {}\n", "●".green().bold(), version);
+    output::fmt::mcp_installed(&mcp_dir, &claude_cfg, &version);
     Ok(())
 }
 
@@ -51,9 +43,9 @@ pub fn cmd_mcp_uninstall() -> Result<()> {
 
     let removed = install::mcp::uninstall(&mcp_dir, &claude_cfg)?;
     if removed {
-        println!("{} {}\n", "●".green().bold(), t!("mcp.uninstalled"));
+        output::fmt::mcp_uninstalled();
     } else {
-        println!("{}\n", t!("mcp.not_installed"));
+        output::fmt::mcp_not_installed();
     }
     Ok(())
 }

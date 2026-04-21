@@ -27,6 +27,10 @@
     "title": "Title",
     "compound": "Compound",
     "error": "Unknown error",
+    "error_loading_title": "Failed to load",
+    "error_saving": "Could not save",
+    "error_not_found": "The requested resource does not exist or was deleted.",
+    "error_server": "Could not connect to the server. Is it running?",
     "content_md": "Content (Markdown)"
   },
   "confirm": {
@@ -53,8 +57,7 @@
     "view_link": "View",
     "last_prescriptions": "Latest prescriptions",
     "view_all": "View all",
-    "recent_context": "Recent context",
-    "error_loading": "Error loading context"
+    "recent_context": "Recent context"
   },
   "bottles": {
     "heading": "Bottles",
@@ -131,5 +134,14 @@
   "pill_card": {
     "edit": "Edit",
     "delete": "Delete"
+  },
+  "api_errors": {
+    "bottle_not_found": "The selected bottle does not exist or was deleted. Select another one from the sidebar.",
+    "pill_not_found": "The pill does not exist or was deleted.",
+    "prescription_not_found": "The prescription does not exist or was deleted.",
+    "capsule_not_found": "The capsule does not exist or was deleted.",
+    "prescription_already_open": "There is already an open prescription. Close it before opening a new one.",
+    "validation_error": "The submitted data is not valid.",
+    "unknown": "An unexpected error has occurred."
   }
 }

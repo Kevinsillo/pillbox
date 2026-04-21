@@ -44,7 +44,6 @@ bottle:
     not_found_short: "Nenhuma bottle encontrada para este diretório."
 
 status:
-  title: "Pillbox Status"
   bin_unknown: "(desconhecido)"
   labels:
     bin: "Binário"
@@ -113,16 +112,14 @@ prescriptions:
       title: "Título"
       state: "Status"
   msg:
-    opened: "Prescription aberta: \"%{title}\""
-    opened_id: "ID: "
-    closed: "Prescription fechada: \"%{title}\""
+    opened: "Prescription aberta"
+    closed: "Prescription fechada"
   error:
     already_open: "Uma prescription já está aberta: \"%{title}\" (%{pills} pills, id=%{id}).\nFeche-a com 'pillbox prescription close' antes de abrir uma nova."
     none_open: "Nenhuma prescription aberta para a bottle '%{name}'."
 
 migrate:
   help:
-    title: "Migração de bottle"
     bottle: "Bottle"
     local: "Local"
     global: "Global"
@@ -130,7 +127,6 @@ migrate:
     cmd_local: "Escolher uma bottle global e movê-la aqui"
     no_bottle: "—"
   global:
-    title: "Mover bottle para global"
     bottle: "Bottle"
     origin: "Origem"
     dest: "Destino"
@@ -138,7 +134,6 @@ migrate:
     pills: "Pills"
     warning: "O arquivo .pillbox/pillbox.db será excluído após a migração."
   local:
-    title: "Mover bottle para local"
     select: "Selecione a bottle a mover aqui:"
     bottle: "Bottle"
     origin: "Origem"
@@ -169,8 +164,7 @@ migrate:
 mcp:
   node_required: "Node.js ≥ 18 é necessário para o servidor MCP."
   downloading: "Baixando MCP..."
-  installed: "MCP instalado em %{path}"
-  claude_json: "Adicione isso ao seu ~/.claude.json:"
+  installed: "MCP instalado"
   not_installed: "O MCP não está instalado."
   uninstalled: "MCP desinstalado."
   error:
@@ -179,14 +173,13 @@ mcp:
 
 skill:
   downloading: "Baixando skill..."
-  installed: "Skill instalada em %{path}"
+  installed: "Skill instalada"
   not_installed: "A skill não está instalada."
   uninstalled: "Skill desinstalada."
   error:
     download: "Erro ao baixar a skill de %{url}"
 
 uninstall:
-  title: "Desinstalar Pillbox"
   mcp:
     prompt: "Remover o servidor MCP?"
     done: "MCP removido."

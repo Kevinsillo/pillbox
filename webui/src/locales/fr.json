@@ -27,6 +27,10 @@
     "title": "Titre",
     "compound": "Composé",
     "error": "Erreur inconnue",
+    "error_loading_title": "Échec du chargement",
+    "error_saving": "Impossible d'enregistrer",
+    "error_not_found": "La ressource demandée n'existe pas ou a été supprimée.",
+    "error_server": "Impossible de se connecter au serveur. Est-il en cours d'exécution ?",
     "content_md": "Contenu (Markdown)"
   },
   "confirm": {
@@ -53,8 +57,7 @@
     "view_link": "Voir",
     "last_prescriptions": "Dernières prescriptions",
     "view_all": "Voir tout",
-    "recent_context": "Contexte récent",
-    "error_loading": "Erreur lors du chargement du contexte"
+    "recent_context": "Contexte récent"
   },
   "bottles": {
     "heading": "Bottles",
@@ -131,5 +134,14 @@
   "pill_card": {
     "edit": "Modifier",
     "delete": "Supprimer"
+  },
+  "api_errors": {
+    "bottle_not_found": "La bottle sélectionnée n'existe pas ou a été supprimée. Sélectionnez-en une autre dans la barre latérale.",
+    "pill_not_found": "La pill n'existe pas ou a été supprimée.",
+    "prescription_not_found": "La prescription n'existe pas ou a été supprimée.",
+    "capsule_not_found": "La capsule n'existe pas ou a été supprimée.",
+    "prescription_already_open": "Il y a déjà une prescription ouverte. Fermez-la avant d'en ouvrir une nouvelle.",
+    "validation_error": "Les données soumises ne sont pas valides.",
+    "unknown": "Une erreur inattendue s'est produite."
   }
 }

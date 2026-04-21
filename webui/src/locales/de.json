@@ -27,6 +27,10 @@
     "title": "Titel",
     "compound": "Wirkstoff",
     "error": "Unbekannter Fehler",
+    "error_loading_title": "Fehler beim Laden",
+    "error_saving": "Speichern fehlgeschlagen",
+    "error_not_found": "Die angeforderte Ressource existiert nicht oder wurde gelöscht.",
+    "error_server": "Verbindung zum Server fehlgeschlagen. Läuft er?",
     "content_md": "Inhalt (Markdown)"
   },
   "confirm": {
@@ -53,8 +57,7 @@
     "view_link": "Ansehen",
     "last_prescriptions": "Letzte Prescriptions",
     "view_all": "Alle ansehen",
-    "recent_context": "Aktueller Kontext",
-    "error_loading": "Fehler beim Laden des Kontexts"
+    "recent_context": "Aktueller Kontext"
   },
   "bottles": {
     "heading": "Bottles",
@@ -131,5 +134,14 @@
   "pill_card": {
     "edit": "Bearbeiten",
     "delete": "Löschen"
+  },
+  "api_errors": {
+    "bottle_not_found": "Die ausgewählte Bottle existiert nicht oder wurde gelöscht. Wähle eine andere in der Seitenleiste.",
+    "pill_not_found": "Die Pill existiert nicht oder wurde gelöscht.",
+    "prescription_not_found": "Die Prescription existiert nicht oder wurde gelöscht.",
+    "capsule_not_found": "Die Capsule existiert nicht oder wurde gelöscht.",
+    "prescription_already_open": "Es gibt bereits eine offene Prescription. Schließe sie, bevor du eine neue öffnest.",
+    "validation_error": "Die übermittelten Daten sind ungültig.",
+    "unknown": "Ein unerwarteter Fehler ist aufgetreten."
   }
 }

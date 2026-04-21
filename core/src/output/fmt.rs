@@ -53,17 +53,35 @@ pub fn print_logo(version: &str) {
     println!();
 }
 
+// ─── Pattern helpers ──────────────────────────────────────────────────────────
+
+/// Pattern A — confirmation with inline key-value details.
+fn print_a(action: &str, details: &[(&str, &str)]) {
+    let key_width = details.iter().map(|(k, _)| k.len()).max().unwrap_or(0) + 1;
+    println!("\n{} {}", "✓".green().bold(), action);
+    for (key, val) in details {
+        println!("   {:<width$}│  {}", key.dimmed(), val, width = key_width);
+    }
+    println!();
+}
+
+/// Pattern B — simple one-line confirmation.
+fn print_b(action: &str) {
+    println!("\n{} {}\n", "✓".green().bold(), action);
+}
+
 // ─── Bottles ──────────────────────────────────────────────────────────────────
 
 pub fn bottles_list(bottles: &[Bottle]) {
+    let count = bottles.len();
+    println!("\nBottles    {}", count.to_string().bold());
+
     if bottles.is_empty() {
-        println!("{}\n", t!("bottles.none"));
+        println!("\n  {}\n", t!("bottles.none").dimmed());
         return;
     }
-    println!(
-        "{}\n",
-        t!("bottles.list.title", count = bottles.len()).bold()
-    );
+
+    println!();
     let rows = bottles
         .iter()
         .enumerate()
@@ -78,7 +96,7 @@ pub fn bottles_list(bottles: &[Bottle]) {
         .collect();
     println!(
         "{}\n",
-        table::list(
+        table::plain_list(
             &[
                 t!("bottles.list.col.num").as_ref(),
                 t!("bottles.list.col.name").as_ref(),
@@ -121,7 +139,7 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
         ],
         [t!("bottle.status.labels.rx").bold().to_string(), rx_val],
     ];
-    println!("{}\n", table::dict(rows));
+    println!("\n{}\n", table::dict(rows));
 }
 
 // ─── Status ───────────────────────────────────────────────────────────────────
@@ -144,7 +162,6 @@ pub fn status(
     mcp_path: &std::path::Path,
     skill_path: &std::path::Path,
 ) {
-    println!("{}\n", t!("status.title").bold());
 
     let db_val = |s: StatusDb, bottle: Option<StatusBottle>, is_local: bool| -> String {
         let mut val = match s.result {
@@ -225,7 +242,6 @@ pub fn status(
 }
 
 pub fn serve_status(running: bool, pid: Option<u32>, port: u16) {
-    println!("{}\n", t!("serve.title").bold());
     let estado = if running {
         format!("{} {}", "●".green(), t!("serve.running"))
     } else {
@@ -260,39 +276,44 @@ pub fn component_status_with_help(path: &std::path::Path, help: &str) {
         rest
     );
     let rows = vec![["".to_string(), content]];
-    println!("{}\n", table::dict(rows));
+    println!("\n{}\n", table::dict(rows));
 }
 
 pub fn db_not_found() {
-    println!("{}\n", t!("db.not_found"));
+    eprintln!("\n{} {}\n", "✗".red().bold(), t!("db.not_found"));
 }
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
 
 pub fn pills_list(bottle_name: &str, pills: &[(i64, String, String, String)]) {
-    println!("{}\n", t!("pills.list.title", bottle = bottle_name).bold());
-    let rows = if pills.is_empty() {
-        vec![vec![
-            "".into(),
-            t!("pills.none").dimmed().to_string(),
-            "".into(),
-        ]]
-    } else {
-        pills
-            .iter()
-            .enumerate()
-            .map(|(i, (_, compound, title, _))| {
-                vec![
-                    (i + 1).to_string(),
-                    truncate(compound, 16),
-                    truncate(title, 50),
-                ]
-            })
-            .collect()
-    };
+    let count = pills.len();
+    println!(
+        "\nPills  {}  {}    {}",
+        "·".dimmed(),
+        bottle_name.dimmed(),
+        count.to_string().bold()
+    );
+
+    if pills.is_empty() {
+        println!("\n  {}\n", t!("pills.none").dimmed());
+        return;
+    }
+
+    println!();
+    let rows = pills
+        .iter()
+        .enumerate()
+        .map(|(i, (_, compound, title, _))| {
+            vec![
+                (i + 1).to_string(),
+                truncate(compound, 16),
+                truncate(title, 50),
+            ]
+        })
+        .collect();
     println!(
         "{}\n",
-        table::list(
+        table::plain_list(
             &[
                 t!("pills.list.col.num").as_ref(),
                 t!("pills.list.col.compound").as_ref(),
@@ -305,20 +326,21 @@ pub fn pills_list(bottle_name: &str, pills: &[(i64, String, String, String)]) {
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────
 
-pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], limit: u32) {
+pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], _limit: u32) {
+    let count = rxs.len();
     println!(
-        "{}\n",
-        t!(
-            "prescriptions.list.title",
-            bottle = bottle_name,
-            limit = limit
-        )
-        .bold()
+        "\nPrescriptions  {}  {}    {}",
+        "·".dimmed(),
+        bottle_name.dimmed(),
+        count.to_string().bold()
     );
+
     if rxs.is_empty() {
-        println!("  {}\n", t!("prescriptions.none").dimmed());
+        println!("\n  {}\n", t!("prescriptions.none").dimmed());
         return;
     }
+
+    println!();
     let rows = rxs
         .iter()
         .map(|rx| {
@@ -333,7 +355,7 @@ pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], limit: u32) {
         .collect();
     println!(
         "{}\n",
-        table::list(
+        table::plain_list(
             &[
                 t!("prescriptions.list.col.id").as_ref(),
                 t!("prescriptions.list.col.title").as_ref(),
@@ -345,67 +367,85 @@ pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], limit: u32) {
 }
 
 pub fn prescription_opened(id: &str, title: &str) {
-    println!(
-        "{} {}",
-        "●".green().bold(),
-        t!("prescriptions.msg.opened", title = title)
-    );
-    println!("  {}{}\n", t!("prescriptions.msg.opened_id"), id.dimmed());
-}
-
-pub fn prescription_closed(title: &str) {
-    println!(
-        "{} {}\n",
-        "●".green().bold(),
-        t!("prescriptions.msg.closed", title = title)
+    let short_id = &id[..id.len().min(8)];
+    print_a(
+        &t!("prescriptions.msg.opened"),
+        &[("title", title), ("id", short_id)],
     );
 }
 
-// ─── Bottle init ─────────────────────────────────────────────────────────────
+pub fn prescription_closed(_title: &str) {
+    print_b(&t!("prescriptions.msg.closed"));
+}
+
+// ─── Bottle init ──────────────────────────────────────────────────────────────
 
 pub fn bottle_init_start(dir: &str) {
-    println!("{}\n", t!("bottle.init.start", dir = dir));
+    println!("\n{}\n", t!("bottle.init.start", dir = dir));
 }
 
 pub fn bottle_init_created(name: &str, display_name: &str, db_path: &std::path::Path) {
-    println!(
-        "{} {}\n",
-        "●".green().bold(),
-        t!("bottle.init.created", name = name)
+    let db_str = db_path.display().to_string();
+    let action = t!("bottle.init.created", name = name).to_string();
+    let slug_label = t!("bottle.init.col.slug").to_string();
+    let display_label = t!("bottle.init.col.display").to_string();
+    let db_label = t!("bottle.init.col.db").to_string();
+    print_a(
+        &action,
+        &[
+            (&slug_label, name),
+            (&display_label, display_name),
+            (&db_label, &db_str),
+        ],
     );
-    let rows = vec![
-        [
-            t!("bottle.init.col.slug").bold().to_string(),
-            name.to_string(),
-        ],
-        [
-            t!("bottle.init.col.display").bold().to_string(),
-            display_name.to_string(),
-        ],
-        [
-            t!("bottle.init.col.db").bold().to_string(),
-            db_path.display().to_string(),
-        ],
-    ];
-    println!("{}\n", table::dict(rows));
 }
 
 pub fn bottle_init_gitignore() {
-    println!(
-        "{} {}",
-        "●".green().bold(),
-        t!("bottle.init.gitignore.done")
-    );
+    print_b(&t!("bottle.init.gitignore.done"));
 }
 
 pub fn bottle_init_done() {
-    println!("{}\n", t!("bottle.init.done"));
+    println!("   {}  {}\n", "→".dimmed(), t!("bottle.init.done").dimmed());
+}
+
+// ─── MCP / Skill install ──────────────────────────────────────────────────────
+
+pub fn mcp_installed(path: &std::path::Path, config: &std::path::Path, version: &str) {
+    let path_val = path.display().to_string().cyan().to_string();
+    let cfg_val = config.display().to_string().cyan().to_string();
+    print_a(
+        &t!("mcp.installed"),
+        &[("path", &path_val), ("config", &cfg_val), ("version", version)],
+    );
+}
+
+pub fn mcp_uninstalled() {
+    print_b(&t!("mcp.uninstalled"));
+}
+
+pub fn mcp_not_installed() {
+    println!("\n{}\n", t!("mcp.not_installed").dimmed());
+}
+
+pub fn skill_installed(path: &std::path::Path, version: &str) {
+    let path_val = path.display().to_string().cyan().to_string();
+    print_a(
+        &t!("skill.installed"),
+        &[("path", &path_val), ("version", version)],
+    );
+}
+
+pub fn skill_uninstalled() {
+    print_b(&t!("skill.uninstalled"));
+}
+
+pub fn skill_not_installed() {
+    println!("\n{}\n", t!("skill.not_installed").dimmed());
 }
 
 // ─── Migrate ──────────────────────────────────────────────────────────────────
 
 pub fn migrate_help(bottle_name: Option<&str>, local_path: &str, global_path: &str) {
-    println!("{}\n", t!("migrate.help.title").bold());
     let bottle_val = bottle_name
         .map(|n| n.to_string())
         .unwrap_or_else(|| t!("migrate.help.no_bottle").to_string());
@@ -439,7 +479,6 @@ pub fn migrate_confirm_global(
     prescriptions: usize,
     pills: usize,
 ) {
-    println!("{}\n", t!("migrate.global.title").bold());
     let rows = vec![
         [
             t!("migrate.global.bottle").bold().to_string(),
@@ -474,7 +513,6 @@ pub fn migrate_confirm_local(
     pills: usize,
     will_create: bool,
 ) {
-    println!("{}\n", t!("migrate.local.title").bold());
     let dest_val = if will_create {
         format!("{}  {}", local_path, t!("migrate.local.dest_new").dimmed())
     } else {
@@ -504,41 +542,17 @@ pub fn migrate_confirm_local(
 }
 
 pub fn migrate_result_global(prescriptions: usize, pills: usize) {
-    println!("{} {}\n", "●".green().bold(), t!("migrate.result.done"));
-    let rows = vec![
-        [
-            t!("migrate.result.prescriptions").bold().to_string(),
-            prescriptions.to_string(),
-        ],
-        [
-            t!("migrate.result.pills").bold().to_string(),
-            pills.to_string(),
-        ],
-    ];
-    println!("{}\n", table::dict(rows));
-    println!(
-        "{} {}\n",
-        "●".green().bold(),
-        t!("migrate.result.removed_local")
-    );
+    let p = prescriptions.to_string();
+    let pi = pills.to_string();
+    let done = t!("migrate.result.done").to_string();
+    let deleted = t!("migrate.result.removed_local").to_string();
+    print_a(&done, &[("prescriptions", &p), ("pills", &pi), ("deleted", &deleted)]);
 }
 
 pub fn migrate_result_local(prescriptions: usize, pills: usize) {
-    println!("{} {}\n", "●".green().bold(), t!("migrate.result.done"));
-    let rows = vec![
-        [
-            t!("migrate.result.prescriptions").bold().to_string(),
-            prescriptions.to_string(),
-        ],
-        [
-            t!("migrate.result.pills").bold().to_string(),
-            pills.to_string(),
-        ],
-    ];
-    println!("{}\n", table::dict(rows));
-    println!(
-        "{} {}\n",
-        "●".green().bold(),
-        t!("migrate.result.removed_global")
-    );
+    let p = prescriptions.to_string();
+    let pi = pills.to_string();
+    let done = t!("migrate.result.done").to_string();
+    let removed = t!("migrate.result.removed_global").to_string();
+    print_a(&done, &[("prescriptions", &p), ("pills", &pi), ("removed", &removed)]);
 }

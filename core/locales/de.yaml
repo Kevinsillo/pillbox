@@ -44,7 +44,6 @@ bottle:
     not_found_short: "Kein Bottle für dieses Verzeichnis gefunden."
 
 status:
-  title: "Pillbox Status"
   bin_unknown: "(unbekannt)"
   labels:
     bin: "Binär"
@@ -113,16 +112,14 @@ prescriptions:
       title: "Titel"
       state: "Status"
   msg:
-    opened: "Prescription geöffnet: \"%{title}\""
-    opened_id: "ID: "
-    closed: "Prescription geschlossen: \"%{title}\""
+    opened: "Prescription geöffnet"
+    closed: "Prescription geschlossen"
   error:
     already_open: "Eine Prescription ist bereits geöffnet: \"%{title}\" (%{pills} Pills, id=%{id}).\nSchließe sie mit 'pillbox prescription close' bevor du eine neue öffnest."
     none_open: "Keine offene Prescription für Bottle '%{name}'."
 
 migrate:
   help:
-    title: "Bottle-Migration"
     bottle: "Bottle"
     local: "Lokal"
     global: "Global"
@@ -130,7 +127,6 @@ migrate:
     cmd_local: "Globale Bottle auswählen und hierher verschieben"
     no_bottle: "—"
   global:
-    title: "Bottle nach global verschieben"
     bottle: "Bottle"
     origin: "Quelle"
     dest: "Ziel"
@@ -138,7 +134,6 @@ migrate:
     pills: "Pills"
     warning: "Die Datei .pillbox/pillbox.db wird nach der Migration gelöscht."
   local:
-    title: "Bottle nach lokal verschieben"
     select: "Wähle die zu verschiebende Bottle:"
     bottle: "Bottle"
     origin: "Quelle"
@@ -169,8 +164,7 @@ migrate:
 mcp:
   node_required: "Node.js ≥ 18 wird für den MCP-Server benötigt."
   downloading: "MCP wird heruntergeladen..."
-  installed: "MCP installiert unter %{path}"
-  claude_json: "Füge dies zu deiner ~/.claude.json hinzu:"
+  installed: "MCP installiert"
   not_installed: "MCP ist nicht installiert."
   uninstalled: "MCP deinstalliert."
   error:
@@ -179,14 +173,13 @@ mcp:
 
 skill:
   downloading: "Skill wird heruntergeladen..."
-  installed: "Skill installiert unter %{path}"
+  installed: "Skill installiert"
   not_installed: "Skill ist nicht installiert."
   uninstalled: "Skill deinstalliert."
   error:
     download: "Fehler beim Herunterladen der Skill von %{url}"
 
 uninstall:
-  title: "Pillbox deinstallieren"
   mcp:
     prompt: "MCP-Server entfernen?"
     done: "MCP entfernt."

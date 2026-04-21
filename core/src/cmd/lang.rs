@@ -25,7 +25,7 @@ pub fn cmd_lang_show(render_help: &str) -> Result<()> {
         .unwrap_or(&current);
 
     println!(
-        "{}: {} ({})\n",
+        "\n{}: {} ({})\n",
         t!("lang.current").bold(),
         current_name,
         current
@@ -51,8 +51,8 @@ pub fn cmd_lang_set(code: String) -> Result<()> {
     i18n::save(&code)?;
     rust_i18n::set_locale(&code);
     println!(
-        "{} {}\n",
-        "●".green().bold(),
+        "\n{} {}\n",
+        "✓".green().bold(),
         t!("lang.set.ok", lang = code)
     );
     Ok(())

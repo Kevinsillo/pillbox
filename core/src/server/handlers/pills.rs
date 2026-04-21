@@ -11,7 +11,7 @@ use pillbox::{
 };
 use validator::Validate;
 
-use super::{err_404, err_422, err_500, ok, ok_created, open_conn, ApiResponse, AppState};
+use super::{err_404_pill, err_422, err_500, ok, ok_created, open_conn, ApiResponse, AppState};
 
 pub async fn pill_create(State(s): State<AppState>, Json(input): Json<NewPill>) -> ApiResponse {
     if let Err(e) = input.validate() {
@@ -34,7 +34,7 @@ pub async fn pill_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResp
     };
     match store::pills::read(&conn, id) {
         Ok(Some(p)) => ok(p),
-        Ok(None) => err_404("pill", id),
+        Ok(None) => err_404_pill(id),
         Err(e) => err_500(e),
     }
 }
@@ -53,7 +53,7 @@ pub async fn pill_patch(
     };
     match store::pills::revise(&mut conn, id, &patch) {
         Ok(Some(p)) => ok(p),
-        Ok(None) => err_404("pill", id),
+        Ok(None) => err_404_pill(id),
         Err(e) => err_500(e),
     }
 }
@@ -65,7 +65,7 @@ pub async fn pill_delete(State(s): State<AppState>, Path(id): Path<i64>) -> ApiR
     };
     match store::pills::discard(&mut conn, id) {
         Ok(Some(r)) => ok(r),
-        Ok(None) => err_404("pill", id),
+        Ok(None) => err_404_pill(id),
         Err(e) => err_500(e),
     }
 }
