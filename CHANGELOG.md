@@ -1,3 +1,26 @@
+## [0.4.1] - 2026-04-21
+
+### 🐛 Bug Fixes
+
+- Corregir logos invertidos en modo claro y oscuro
+- Renombrar pillbox-logo.png a pillbox-logo-light.png
+
+### 🚜 Refactor
+
+- *(cli,webui,server)* Unificar output CLI, mejorar errores y i18n
+- *(core,webui)* Migrar bottles.id a UUID y rutas REST anidadas
+
+### 📚 Documentation
+
+- Mencionar soporte multilenguaje en README
+
+### 🧪 Testing
+
+- *(core)* Ampliar cobertura de 40 a 99 tests en 11 módulos
+
+### ⚙️ Miscellaneous Tasks
+
+- Reorganizar estructura multirepo y actualizar assets
 ## [0.4.0] - 2026-04-19
 
 ### 🚀 Features
@@ -57,4 +80,4 @@
 - Commit inicial con documentación de diseño y skills de Claude
 - Añadir autoformato con cargo fmt y prettier
 - *(webui)* Añadir scaffold Vue + lockfile MCP
-- *(roadmap)* Marcar fase 6 como completada
+- *(release)* V0.4.0
