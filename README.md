@@ -37,6 +37,10 @@ The result is an agent that feels like it was already there — one that remembe
 | **Prescription** | A work session within a bottle. Has a title describing the task. |
 | **Pill** | A piece of project knowledge saved within a prescription. |
 | **Capsule** | A piece of personal knowledge — global, not tied to any project. |
+## Multilingual
+
+CLI and web interface fully localized in **6 languages**: English, Spanish, French, German, Italian, and Portuguese. Auto-detected from your system locale.
+
 ## Quick install
 
 ```bash
