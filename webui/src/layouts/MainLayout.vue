@@ -1,26 +1,30 @@
 <script setup lang="ts">
-import { bottlesApi } from "@/core/infrastructure/repositories/BottlesRepository"
-import { metaApi } from "@/core/infrastructure/repositories/MetaRepository"
-import type { Bottle } from "@/core/domain/types"
 import { useActiveBottle } from "@/composables/useActiveBottle"
 import { useLocale } from "@/composables/useLocale"
+import { useTheme } from "@/composables/useTheme"
+import type { Bottle } from "@/core/domain/types"
+import { bottlesApi } from "@/core/infrastructure/repositories/BottlesRepository"
+import { metaApi } from "@/core/infrastructure/repositories/MetaRepository"
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from "element-plus"
 import { computed, onMounted, ref } from "vue"
-import { RouterLink, RouterView, useRoute } from "vue-router"
 import { useI18n } from "vue-i18n"
-import { ElDropdown, ElDropdownMenu, ElDropdownItem } from "element-plus"
-import ILayoutDashboard from "~icons/lucide/layout-dashboard"
+import { RouterLink, RouterView, useRoute } from "vue-router"
 import IBox from "~icons/lucide/box"
+import ILayoutDashboard from "~icons/lucide/layout-dashboard"
+import IMoon from "~icons/lucide/moon"
 import IPill from "~icons/lucide/pill"
 import ISearch from "~icons/lucide/search"
+import ISun from "~icons/lucide/sun"
 
 const { t } = useI18n()
 const { availableLocales, currentLocale, setLocale } = useLocale()
+const { theme, toggleTheme } = useTheme()
 
 const route = useRoute()
 const { activeBottleId } = useActiveBottle()
 
 const bottles = ref<Bottle[]>([])
-const appVersion = ref<string>('')
+const appVersion = ref<string>("")
 
 const linkedBottles = computed(() => bottles.value.filter(b => b.linked))
 
@@ -58,49 +62,83 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
 
 <template>
     <div class="flex flex-col h-screen overflow-hidden bg-(--bg)">
-
         <!-- Navbar -->
         <header class="h-12 shrink-0 border-b border-(--border) flex items-center justify-between px-4">
             <div class="flex items-center gap-2.5">
-                <img src="/logo.svg" alt="Pillbox" class="w-8 h-8" />
+                <svg viewBox="0 0 64 64" class="w-8 h-8" shape-rendering="geometricPrecision" aria-label="Pillbox">
+                    <path
+                        d="M16 14 L8 14 L8 50 L16 50"
+                        fill="none"
+                        :stroke="theme === 'dark' ? '#FAFAF7' : '#141414'"
+                        stroke-width="4"
+                        stroke-linecap="square"
+                        stroke-linejoin="miter"
+                    />
+                    <path
+                        d="M48 14 L56 14 L56 50 L48 50"
+                        fill="none"
+                        :stroke="theme === 'dark' ? '#FAFAF7' : '#141414'"
+                        stroke-width="4"
+                        stroke-linecap="square"
+                        stroke-linejoin="miter"
+                    />
+                    <defs>
+                        <clipPath id="logo-cap"><rect x="22" y="18" width="20" height="28" rx="10" /></clipPath>
+                    </defs>
+                    <g clip-path="url(#logo-cap)">
+                        <rect x="22" y="18" width="20" height="14" :fill="theme === 'dark' ? '#FAFAF7' : '#141414'" />
+                        <rect x="22" y="32" width="20" height="14" fill="#E8412A" />
+                    </g>
+                </svg>
                 <span class="text-(--text-h) font-bold tracking-wide text-base">Pillbox</span>
             </div>
 
-            <!-- Language dropdown -->
-            <ElDropdown trigger="click" @command="setLocale">
-                <button class="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-(--accent-bg) transition-colors">
-                    <component :is="currentFlag" class="w-5 h-3.5" />
+            <div class="flex items-center gap-1">
+                <!-- Theme toggle -->
+                <button
+                    @click="toggleTheme"
+                    class="flex items-center px-2 py-1 rounded-md hover:bg-(--accent-bg) transition-colors text-(--text)"
+                    :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+                >
+                    <ISun v-if="theme === 'dark'" class="w-4 h-4" />
+                    <IMoon v-else class="w-4 h-4" />
                 </button>
-                <template #dropdown>
-                    <ElDropdownMenu>
-                        <ElDropdownItem
-                            v-for="loc in availableLocales"
-                            :key="loc.code"
-                            :command="loc.code"
-                            :class="{ 'font-medium text-(--text-h)': loc.code === currentLocale }"
-                        >
-                            <span class="flex items-center gap-2">
-                                <component :is="loc.flag" class="w-5 h-3.5 shrink-0" />
-                                {{ loc.name }}
-                            </span>
-                        </ElDropdownItem>
-                    </ElDropdownMenu>
-                </template>
-            </ElDropdown>
+
+                <!-- Language dropdown -->
+                <ElDropdown trigger="click" @command="setLocale">
+                    <button class="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-(--accent-bg) transition-colors">
+                        <component :is="currentFlag" class="w-5 h-3.5" />
+                    </button>
+                    <template #dropdown>
+                        <ElDropdownMenu>
+                            <ElDropdownItem
+                                v-for="loc in availableLocales"
+                                :key="loc.code"
+                                :command="loc.code"
+                                :class="{ 'font-medium text-(--text-h)': loc.code === currentLocale }"
+                            >
+                                <span class="flex items-center gap-2">
+                                    <component :is="loc.flag" class="w-5 h-3.5 shrink-0" />
+                                    {{ loc.name }}
+                                </span>
+                            </ElDropdownItem>
+                        </ElDropdownMenu>
+                    </template>
+                </ElDropdown>
+            </div>
         </header>
 
         <div class="flex flex-1 overflow-hidden">
             <!-- Sidebar -->
             <aside class="w-56 shrink-0 border-r border-(--border) flex flex-col">
-
                 <!-- Bottle selector -->
                 <div class="px-3 py-3 border-b border-(--border)">
-                    <p class="text-xs text-zinc-600 mb-1 uppercase tracking-wider">{{ $t('sidebar.active_bottle_label') }}</p>
+                    <p class="text-xs text-zinc-600 mb-1 uppercase tracking-wider">{{ $t("sidebar.active_bottle_label") }}</p>
                     <select
                         v-model="activeBottleId"
                         class="w-full bg-(--accent-bg) border border-(--border) rounded-lg text-xs text-(--text-h) px-2 py-1.5 focus:outline-none focus:border-zinc-500 transition-colors"
                     >
-                        <option v-if="linkedBottles.length === 0" :value="null" disabled>{{ $t('sidebar.no_bottles') }}</option>
+                        <option v-if="linkedBottles.length === 0" :value="null" disabled>{{ $t("sidebar.no_bottles") }}</option>
                         <option v-for="b in linkedBottles" :key="b.id" :value="b.id">{{ b.display_name }}</option>
                     </select>
                 </div>

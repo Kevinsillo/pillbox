@@ -82,7 +82,7 @@ onMounted(load)
                             <div class="flex items-center gap-2">
                                 <span class="text-(--text-h) font-medium">{{ b.display_name }}</span>
                                 <span class="text-xs text-zinc-600 font-mono">{{ b.name }}</span>
-                                <span class="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">{{ b.scope }}</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded bg-(--accent-bg) text-(--text)">{{ b.scope }}</span>
                                 <span v-if="b.id === activeBottleId" class="text-xs text-green-500">● {{ $t('bottles.active_badge') }}</span>
                             </div>
                             <p class="text-xs text-zinc-600 mt-0.5 truncate">{{ b.directory }}</p>
@@ -99,29 +99,29 @@ onMounted(load)
                 <!-- Bottle desvinculado -->
                 <div
                     v-else
-                    class="flex items-center justify-between bg-(--bg-surface) border border-red-900/40 rounded-lg p-3"
+                    class="flex items-center justify-between bg-(--bg-surface) border border-(--chip-error-border) rounded-lg p-3"
                 >
                     <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-9 h-9 rounded-lg bg-red-950/40 flex items-center justify-center shrink-0">
+                        <div class="w-9 h-9 rounded-lg bg-(--icon-error-bg) flex items-center justify-center shrink-0">
                             <IAlertTriangle class="w-4 h-4 text-red-500" />
                         </div>
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="text-(--text-h) font-medium">{{ b.display_name }}</span>
                                 <span class="text-xs text-zinc-600 font-mono">{{ b.name }}</span>
-                                <span class="text-xs px-1.5 py-0.5 rounded bg-red-950 text-red-500">{{ $t('bottles.unlinked_badge') }}</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded bg-(--chip-error-bg) text-(--chip-error-text)">{{ $t('bottles.unlinked_badge') }}</span>
                             </div>
-                            <p class="text-xs text-red-800 mt-0.5 truncate" :title="b.directory">{{ b.directory }}</p>
+                            <p class="text-xs text-(--text-error) mt-0.5 truncate" :title="b.directory">{{ b.directory }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3 ml-4 shrink-0">
                         <button
-                            class="text-xs text-zinc-400 hover:text-(--text-h) transition-colors"
+                            class="border border-(--border) px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-(--text-h) transition-colors"
                             @click="updateRegistration(b)">
                             {{ $t('bottles.update_registration_btn') }}
                         </button>
                         <button
-                            class="text-xs text-red-500 hover:text-red-400 transition-colors"
+                            class="border border-red-900/40 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-300 transition-colors"
                             @click="deleteRegistration(b)">
                             {{ $t('bottles.delete_registration_btn') }}
                         </button>

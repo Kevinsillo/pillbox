@@ -41,7 +41,10 @@
     "delete_pill_title": "Delete pill",
     "delete_pill_msg": "«{title}» will be permanently deleted. This action cannot be undone.",
     "close_prescription_title": "Close prescription",
-    "close_prescription_msg": "The prescription will be closed and no more pills can be added."
+    "close_prescription_msg": "The prescription will be closed and no more pills can be added.",
+    "delete_bottle_title": "Delete bottle",
+    "delete_bottle_msg": "This will permanently delete the bottle, all its prescriptions and pills. Type **{name}** to confirm.",
+    "delete_bottle_prompt": "Type the bottle slug to confirm"
   },
   "dashboard": {
     "heading": "Dashboard",
@@ -57,7 +60,7 @@
     "view_link": "View",
     "last_prescriptions": "Latest prescriptions",
     "view_all": "View all",
-    "recent_context": "Recent context"
+    "recent_context": "Recent pills"
   },
   "bottles": {
     "heading": "Bottles",
@@ -135,8 +138,13 @@
     "message": "Page not found",
     "back_link": "Back to dashboard"
   },
-  "pill_detail": { "created_at": "Created", "updated_at": "Updated" },
-  "pill_edit": { "heading": "Editing pill" },
+  "pill_detail": {
+    "created_at": "Created",
+    "updated_at": "Updated"
+  },
+  "pill_edit": {
+    "heading": "Editing pill"
+  },
   "pill_card": {
     "edit": "Edit",
     "delete": "Delete"

@@ -87,6 +87,30 @@ pub fn find_by_directory(conn: &Connection, directory: &str) -> Result<Option<Bo
     }
 }
 
+/// Elimina un bottle y en cascada sus prescriptions y pills.
+pub fn delete(conn: &mut Connection, id: &str) -> Result<bool> {
+    let tx = conn.transaction()?;
+
+    tx.execute(
+        "DELETE FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)",
+        params![id],
+    )
+    .context("no se pudieron eliminar las pills del bottle")?;
+
+    tx.execute(
+        "DELETE FROM prescriptions WHERE bottle_id = ?1",
+        params![id],
+    )
+    .context("no se pudieron eliminar las prescriptions del bottle")?;
+
+    let count = tx
+        .execute("DELETE FROM bottles WHERE id = ?1", params![id])
+        .context("no se pudo eliminar el bottle")?;
+
+    tx.commit()?;
+    Ok(count > 0)
+}
+
 /// Actualiza `last_seen_at` del bottle al momento actual.
 pub fn touch(conn: &Connection, id: &str) -> Result<()> {
     conn.execute(

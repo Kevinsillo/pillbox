@@ -1,6 +1,55 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
+/* Light mode (default) */
 :root {
+  --bg: #fafafa;
+  --bg-surface: #ffffff;
+  --border: #e4e4e7;
+  --accent-bg: #f4f4f5;
+  --code-bg: #f4f4f5;
+  --text: #71717a;
+  --text-h: #18181b;
+
+  /* Badge compound colors */
+  --badge-blue-bg: #dbeafe;
+  --badge-blue-text: #1d4ed8;
+  --badge-purple-bg: #f3e8ff;
+  --badge-purple-text: #7e22ce;
+  --badge-red-bg: #fee2e2;
+  --badge-red-text: #b91c1c;
+  --badge-yellow-bg: #fef9c3;
+  --badge-yellow-text: #a16207;
+  --badge-teal-bg: #ccfbf1;
+  --badge-teal-text: #0f766e;
+  --badge-cyan-bg: #cffafe;
+  --badge-cyan-text: #0e7490;
+  --badge-orange-bg: #ffedd5;
+  --badge-orange-text: #c2410c;
+  --badge-zinc-bg: #f4f4f5;
+  --badge-zinc-text: #52525b;
+  --badge-zinc-alt-text: #71717a;
+  --badge-indigo-bg: #e0e7ff;
+  --badge-indigo-text: #4338ca;
+  --badge-pink-bg: #fce7f3;
+  --badge-pink-text: #be185d;
+  --badge-green-bg: #dcfce7;
+  --badge-green-text: #15803d;
+  --badge-sky-bg: #e0f2fe;
+  --badge-sky-text: #0369a1;
+  --badge-amber-bg: #fef3c7;
+  --badge-amber-text: #b45309;
+
+  /* Error chip (unlinked bottle) */
+  --chip-error-bg: #fee2e2;
+  --chip-error-text: #dc2626;
+  --chip-error-border: #fca5a5;
+  --icon-error-bg: #fee2e2;
+  --text-error: #ef4444;
+}
+
+/* Dark mode */
+.dark {
   --bg: #111113;
   --bg-surface: #18181b;
   --border: #27272a;
@@ -8,13 +57,52 @@
   --code-bg: #1c1c1f;
   --text: #a1a1aa;
   --text-h: #e4e4e7;
+
+  /* Badge compound colors */
+  --badge-blue-bg: rgba(30, 58, 138, 0.5);
+  --badge-blue-text: #93c5fd;
+  --badge-purple-bg: rgba(88, 28, 135, 0.5);
+  --badge-purple-text: #d8b4fe;
+  --badge-red-bg: rgba(127, 29, 29, 0.5);
+  --badge-red-text: #fca5a5;
+  --badge-yellow-bg: rgba(113, 63, 18, 0.5);
+  --badge-yellow-text: #fde047;
+  --badge-teal-bg: rgba(19, 78, 74, 0.5);
+  --badge-teal-text: #5eead4;
+  --badge-cyan-bg: rgba(22, 78, 99, 0.5);
+  --badge-cyan-text: #67e8f9;
+  --badge-orange-bg: rgba(124, 45, 18, 0.5);
+  --badge-orange-text: #fdba74;
+  --badge-zinc-bg: rgba(63, 63, 70, 0.5);
+  --badge-zinc-text: #d4d4d8;
+  --badge-zinc-alt-text: #a1a1aa;
+  --badge-indigo-bg: rgba(55, 48, 163, 0.5);
+  --badge-indigo-text: #a5b4fc;
+  --badge-pink-bg: rgba(131, 24, 67, 0.5);
+  --badge-pink-text: #f9a8d4;
+  --badge-green-bg: rgba(20, 83, 45, 0.5);
+  --badge-green-text: #86efac;
+  --badge-sky-bg: rgba(12, 74, 110, 0.5);
+  --badge-sky-text: #7dd3fc;
+  --badge-amber-bg: rgba(120, 53, 15, 0.5);
+  --badge-amber-text: #fcd34d;
+
+  /* Error chip (unlinked bottle) */
+  --chip-error-bg: rgba(127, 29, 29, 0.4);
+  --chip-error-text: #f87171;
+  --chip-error-border: rgba(127, 29, 29, 0.4);
+  --icon-error-bg: rgba(127, 29, 29, 0.4);
+  --text-error: #7f1d1d;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   background-color: var(--bg);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, sans-serif;
@@ -32,24 +120,66 @@ button {
   color: var(--text);
   line-height: 1.6;
 
-  h1, h2, h3, h4, h5, h6 {
+  h1 { font-size: 1.5em; }
+  h2 { font-size: 1.25em; }
+  h3 { font-size: 1.1em; }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     color: var(--text-h);
     font-weight: 600;
     margin-top: 1.25em;
     margin-bottom: 0.5em;
   }
-  p { margin-bottom: 0.75em; }
-  ul, ol { padding-left: 1.5em; margin-bottom: 0.75em; }
-  li { margin-bottom: 0.25em; }
-  strong { color: var(--text-h); }
-  a { color: var(--text-h); text-decoration: underline; }
-  hr { border-color: var(--border); margin: 1em 0; }
+
+  p {
+    margin-bottom: 0.75em;
+  }
+
+  ul {
+    list-style-type: disc;
+    padding-left: 1.5em;
+    margin-bottom: 0.75em;
+  }
+
+  ol {
+    list-style-type: decimal;
+    padding-left: 1.5em;
+    margin-bottom: 0.75em;
+  }
+
+  ul ul { list-style-type: circle; }
+  ul ul ul { list-style-type: square; }
+
+  li {
+    margin-bottom: 0.25em;
+  }
+
+  strong {
+    color: var(--text-h);
+  }
+
+  a {
+    color: var(--text-h);
+    text-decoration: underline;
+  }
+
+  hr {
+    border-color: var(--border);
+    margin: 1em 0;
+  }
+
   blockquote {
     border-left: 3px solid var(--border);
     padding-left: 1em;
     color: var(--text);
     margin: 0.75em 0;
   }
+
   code {
     background: var(--border);
     color: var(--text-h);
@@ -57,6 +187,7 @@ button {
     border-radius: 3px;
     font-size: 0.875em;
   }
+
   pre {
     background: var(--bg);
     color: var(--text-h);
@@ -65,7 +196,10 @@ button {
     overflow-x: auto;
     margin-bottom: 0.75em;
 
-    code { background: none; padding: 0; }
+    code {
+      background: none;
+      padding: 0;
+    }
   }
 }
 

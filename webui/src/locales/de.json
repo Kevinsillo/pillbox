@@ -41,7 +41,10 @@
     "delete_pill_title": "Pill löschen",
     "delete_pill_msg": "«{title}» wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
     "close_prescription_title": "Prescription schließen",
-    "close_prescription_msg": "Die Prescription wird geschlossen und es können keine weiteren Pills hinzugefügt werden."
+    "close_prescription_msg": "Die Prescription wird geschlossen und es können keine weiteren Pills hinzugefügt werden.",
+    "delete_bottle_title": "Bottle löschen",
+    "delete_bottle_msg": "Dadurch werden das Bottle und alle Prescriptions und Pills dauerhaft gelöscht. Gib **{name}** ein, um zu bestätigen.",
+    "delete_bottle_prompt": "Gib den Bottle-Slug ein, um zu bestätigen"
   },
   "dashboard": {
     "heading": "Dashboard",
@@ -57,7 +60,7 @@
     "view_link": "Ansehen",
     "last_prescriptions": "Letzte Prescriptions",
     "view_all": "Alle ansehen",
-    "recent_context": "Aktueller Kontext"
+    "recent_context": "Neueste Pills"
   },
   "bottles": {
     "heading": "Bottles",
@@ -135,8 +138,13 @@
     "message": "Seite nicht gefunden",
     "back_link": "Zurück zum Dashboard"
   },
-  "pill_detail": { "created_at": "Erstellt", "updated_at": "Aktualisiert" },
-  "pill_edit": { "heading": "Pill bearbeiten" },
+  "pill_detail": {
+    "created_at": "Erstellt",
+    "updated_at": "Aktualisiert"
+  },
+  "pill_edit": {
+    "heading": "Pill bearbeiten"
+  },
   "pill_card": {
     "edit": "Bearbeiten",
     "delete": "Löschen"

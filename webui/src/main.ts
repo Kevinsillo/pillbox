@@ -1,3 +1,7 @@
+// Apply theme before Vue mounts to avoid flash
+const savedTheme = JSON.parse(localStorage.getItem('pillbox:theme') ?? '"dark"')
+document.documentElement.classList.toggle('dark', savedTheme === 'dark')
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from '@/App.vue'

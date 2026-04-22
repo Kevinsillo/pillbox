@@ -4,25 +4,25 @@ import type { PillCompound, CapsuleCompound } from '@/core/domain/types'
 defineProps<{ compound: PillCompound | CapsuleCompound }>()
 
 const colors: Record<string, string> = {
-    decision:             'bg-blue-900/50 text-blue-300',
-    architecture:         'bg-purple-900/50 text-purple-300',
-    bugfix:               'bg-red-900/50 text-red-300',
-    pattern:              'bg-yellow-900/50 text-yellow-300',
-    discovery:            'bg-teal-900/50 text-teal-300',
-    learning:             'bg-cyan-900/50 text-cyan-300',
-    feedback:             'bg-orange-900/50 text-orange-300',
-    prescription_summary: 'bg-zinc-700/50 text-zinc-300',
-    manual:               'bg-zinc-700/50 text-zinc-400',
-    convention:           'bg-indigo-900/50 text-indigo-300',
-    workflow:             'bg-pink-900/50 text-pink-300',
-    environment:          'bg-green-900/50 text-green-300',
-    context:              'bg-sky-900/50 text-sky-300',
-    goal:                 'bg-amber-900/50 text-amber-300',
+    decision:             'bg-(--badge-blue-bg) text-(--badge-blue-text)',
+    architecture:         'bg-(--badge-purple-bg) text-(--badge-purple-text)',
+    bugfix:               'bg-(--badge-red-bg) text-(--badge-red-text)',
+    pattern:              'bg-(--badge-yellow-bg) text-(--badge-yellow-text)',
+    discovery:            'bg-(--badge-teal-bg) text-(--badge-teal-text)',
+    learning:             'bg-(--badge-cyan-bg) text-(--badge-cyan-text)',
+    feedback:             'bg-(--badge-orange-bg) text-(--badge-orange-text)',
+    prescription_summary: 'bg-(--badge-zinc-bg) text-(--badge-zinc-text)',
+    manual:               'bg-(--badge-zinc-bg) text-(--badge-zinc-alt-text)',
+    convention:           'bg-(--badge-indigo-bg) text-(--badge-indigo-text)',
+    workflow:             'bg-(--badge-pink-bg) text-(--badge-pink-text)',
+    environment:          'bg-(--badge-green-bg) text-(--badge-green-text)',
+    context:              'bg-(--badge-sky-bg) text-(--badge-sky-text)',
+    goal:                 'bg-(--badge-amber-bg) text-(--badge-amber-text)',
 }
 </script>
 
 <template>
-    <span :class="['inline-block text-xs font-medium px-1.5 py-0.5 rounded', colors[compound] ?? 'bg-zinc-700 text-zinc-400']">
+    <span :class="['inline-block text-xs font-medium px-1.5 py-0.5 rounded', colors[compound] ?? 'bg-(--badge-zinc-bg) text-(--badge-zinc-alt-text)']">
         {{ compound }}
     </span>
 </template>

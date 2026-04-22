@@ -41,7 +41,10 @@
     "delete_pill_title": "Supprimer la pill",
     "delete_pill_msg": "«{title}» sera supprimée définitivement. Cette action est irréversible.",
     "close_prescription_title": "Fermer la prescription",
-    "close_prescription_msg": "La prescription sera fermée et il ne sera plus possible d'ajouter des pills."
+    "close_prescription_msg": "La prescription sera fermée et il ne sera plus possible d'ajouter des pills.",
+    "delete_bottle_title": "Supprimer le bottle",
+    "delete_bottle_msg": "Cela supprimera définitivement le bottle, toutes ses prescriptions et pills. Saisissez **{name}** pour confirmer.",
+    "delete_bottle_prompt": "Saisissez le slug du bottle pour confirmer"
   },
   "dashboard": {
     "heading": "Dashboard",
@@ -57,7 +60,7 @@
     "view_link": "Voir",
     "last_prescriptions": "Dernières prescriptions",
     "view_all": "Voir tout",
-    "recent_context": "Contexte récent"
+    "recent_context": "Pills récentes"
   },
   "bottles": {
     "heading": "Bottles",
@@ -135,8 +138,13 @@
     "message": "Page non trouvée",
     "back_link": "Retour au tableau de bord"
   },
-  "pill_detail": { "created_at": "Créée", "updated_at": "Mise à jour" },
-  "pill_edit": { "heading": "Modifier la pill" },
+  "pill_detail": {
+    "created_at": "Créée",
+    "updated_at": "Mise à jour"
+  },
+  "pill_edit": {
+    "heading": "Modifier la pill"
+  },
   "pill_card": {
     "edit": "Modifier",
     "delete": "Supprimer"

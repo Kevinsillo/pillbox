@@ -50,6 +50,7 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
         .route("/bottles", get(handlers::bottle_list))
         .route("/bottles", post(handlers::bottle_create))
         .route("/bottles/:bottle_id", get(handlers::bottle_get))
+        .route("/bottles/:bottle_id", delete(handlers::bottle_delete))
         .route("/bottles/:bottle_id/context", get(handlers::context_get))
         // Prescriptions (anidadas bajo bottle)
         .route("/bottles/:bottle_id/prescriptions", get(handlers::bottle_prescriptions))

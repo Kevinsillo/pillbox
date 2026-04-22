@@ -5,11 +5,13 @@ import { ElMessageBox } from 'element-plus'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
 import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
 import type { Bottle, Prescription } from '@/core/domain/types'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import IArrowLeft from '~icons/lucide/arrow-left'
 import IClipboard from '~icons/lucide/clipboard'
+import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
+const router = useRouter()
 const props = defineProps<{ bottle_id: string }>()
 
 const bottle = ref<Bottle | null>(null)
@@ -33,6 +35,33 @@ async function load() {
 onMounted(load)
 
 const isOpen = (rx: Prescription) => rx.ended_at === null && rx.deleted_at === null
+
+async function deleteBottle() {
+    if (!bottle.value) return
+    const slug = bottle.value.name
+    let result
+    try {
+        result = await ElMessageBox.prompt(
+            t('confirm.delete_bottle_msg', { name: slug }),
+            t('confirm.delete_bottle_title'),
+            {
+                inputPlaceholder: slug,
+                inputValidator: (v: string) => v === slug || t('confirm.delete_bottle_prompt'),
+                confirmButtonText: t('common.delete'),
+                cancelButtonText: t('common.cancel'),
+                type: 'warning',
+                confirmButtonClass: 'el-button--danger',
+            }
+        )
+    } catch { return }
+    if (result.value !== slug) return
+    try {
+        await bottlesApi.deleteBottle(props.bottle_id)
+        router.push('/bottles')
+    } catch (e: unknown) {
+        ElMessageBox.alert(e instanceof Error ? e.message : t('common.error'), { type: 'error' })
+    }
+}
 
 async function deleteRx(rx: Prescription) {
     try {
@@ -58,14 +87,23 @@ async function deleteRx(rx: Prescription) {
         <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
 
         <template v-else-if="bottle">
-            <div class="flex items-start justify-between">
+            <div class="space-y-3">
                 <div>
                     <h1 class="text-2xl font-bold text-(--text-h)">{{ bottle.display_name }}</h1>
                     <p class="text-xs text-zinc-500 font-mono mt-0.5">{{ bottle.directory }}</p>
                     <div class="flex gap-2 mt-2">
-                        <span class="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">{{ bottle.scope }}</span>
-                        <span class="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 font-mono">{{ bottle.name }}</span>
+                        <span class="text-xs px-1.5 py-0.5 rounded bg-(--accent-bg) text-(--text)">{{ bottle.scope }}</span>
+                        <span class="text-xs px-1.5 py-0.5 rounded bg-(--accent-bg) text-(--text) font-mono">{{ bottle.name }}</span>
                     </div>
+                </div>
+                <div class="flex gap-2">
+                    <button
+                        @click="deleteBottle"
+                        class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                    >
+                        <ITrash2 class="w-3.5 h-3.5" />
+                        {{ $t('common.delete') }}
+                    </button>
                 </div>
             </div>
 

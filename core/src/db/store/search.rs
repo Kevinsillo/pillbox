@@ -89,7 +89,7 @@ fn fuzzy_expand<'a>(terms: &'a [String], vocab: &[String]) -> HashMap<&'a str, V
 /// Los grupos se unen con AND implícito (espacio).
 ///
 /// Ejemplo: query "hexagnol auth" con fuzzy "hexagonal" →
-/// `("hexagnol"* OR "hexagonal") "auth"*`
+/// `("hexagnol"* OR "hexagonal") AND "auth"*`
 fn build_fts_query(terms: &[String], fuzzy_map: &HashMap<&str, Vec<String>>) -> String {
     terms
         .iter()
@@ -109,7 +109,7 @@ fn build_fts_query(terms: &[String], fuzzy_map: &HashMap<&str, Vec<String>>) -> 
             }
         })
         .collect::<Vec<_>>()
-        .join(" ")
+        .join(" AND ")
 }
 
 // ─── Sanitización simple (para queries sin fuzzy) ────────────────────────────
@@ -591,7 +591,51 @@ mod tests {
         fuzzy_map.insert("auth", vec![]);
 
         let query = build_fts_query(&terms, &fuzzy_map);
-        assert_eq!(query, "(\"hexagnol\"* OR \"hexagonal\") \"auth\"*");
+        assert_eq!(query, "(\"hexagnol\"* OR \"hexagonal\") AND \"auth\"*");
+    }
+
+    #[test]
+    fn pill_find_mixed_fuzzy_and_bare_terms() {
+        // Regresión: FTS5 no acepta `"bare"* (group)` con AND implícito.
+        // Una query donde un término tiene expansión fuzzy y otro no debe
+        // funcionar sin error (usamos AND explícito entre grupos).
+        let mut conn = open_in_memory().unwrap();
+        setup_with_pills(&mut conn);
+
+        // "jwt" (3 chars, sin fuzzy) + "tokenizr" (typo, con fuzzy) = bare + group
+        let results = pill_find(
+            &conn,
+            &SearchParams {
+                query: "jwt tokenizr".into(),
+                bottle_id: None,
+                compound: None,
+                limit: Some(10),
+            },
+        );
+
+        // No debe producir error de sintaxis FTS5
+        assert!(results.is_ok(), "no debe fallar con bare+group: {:?}", results.err());
+    }
+
+    #[test]
+    fn pill_find_multiple_fuzzy_terms() {
+        // Regresión: dos términos con expansión fuzzy generan (group) AND (group),
+        // que tampoco es válido con AND implícito en FTS5.
+        let mut conn = open_in_memory().unwrap();
+        setup_with_pills(&mut conn);
+
+        // Ambos términos con typos → ambos generan grupos
+        let results = pill_find(
+            &conn,
+            &SearchParams {
+                query: "tokenizr concurente".into(),
+                bottle_id: None,
+                compound: None,
+                limit: Some(10),
+            },
+        );
+
+        assert!(results.is_ok(), "no debe fallar con group AND group: {:?}", results.err());
     }
 
     #[test]

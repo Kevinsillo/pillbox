@@ -9,5 +9,6 @@ export const bottlesApi = {
     prescriptions: (id: string, limit = 50) =>
         api.get<Prescription[]>(`/bottles/${id}/prescriptions?limit=${limit}`),
     updateRegistration: (regId: number, db_path: string) => api.patch<null>(`/registered_bottles/${regId}`, { db_path }),
+    deleteBottle: (id: string) => api.delete<null>(`/bottles/${id}`),
     deleteRegistration: (regId: number) => api.delete<null>(`/registered_bottles/${regId}`),
 }
