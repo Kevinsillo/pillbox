@@ -66,42 +66,21 @@ pillbox bottle init
 **2. The agent takes it from here**
 
 The installer configures the MCP server automatically. Once connected, the agent opens prescriptions, saves pills, and retrieves context on its own — guided by the Pillbox skill.
+
 ## CLI reference
 
 <!-- screenshot: terminal running `pillbox status` showing all components active -->
 <!-- replace with: resources/screenshots/cli-status.png -->
 
+```bash
+pillbox status                    # Global status
+pillbox serve start [--port N]    # Start HTTP server
+pillbox mcp install               # Install MCP server
+pillbox skill install             # Install the Pillbox skill
+pillbox bottle init               # Initialize a project
 ```
-pillbox status                         Global status: DBs, active bottle, server, MCP, skill
-pillbox serve start [--port N]         Start the HTTP server
-pillbox serve stop                     Stop the background server
-pillbox serve status                   Show server status
 
-pillbox bottle init                    Initialize a bottle (interactive wizard)
-pillbox bottle status                  Status of the current bottle
-pillbox bottle list                    List all registered bottles
-pillbox bottle migrate [--reverse]     Migrate local ↔ global
-
-pillbox pills list                     List pills in the current bottle
-
-pillbox prescription open <title>      Open a work session
-pillbox prescription list [-l N]       List prescriptions
-pillbox prescription close             Close the open prescription
-
-pillbox mcp install                    Install the MCP server
-pillbox mcp uninstall                  Remove the MCP server
-
-pillbox skills install                 Install community skills
-pillbox skills uninstall               Remove community skills
-
-pillbox skill install                  Install the Pillbox skill
-pillbox skill uninstall                Remove the Pillbox skill
-
-pillbox lang                           Show current language and available options
-pillbox lang set <code>                Set CLI language (es, en, de, it, pt, fr)
-
-pillbox uninstall                      Remove Pillbox components
-```
+Full reference → [pillbox.dev/reference/cli](https://kevinsillo.github.io/pillbox/reference/cli)
 
 ## Web interface
 
