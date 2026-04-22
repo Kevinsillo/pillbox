@@ -1,3 +1,13 @@
+## [0.5.0] - 2026-04-22
+
+### 🚀 Features
+
+- *(cli)* Rediseñar list/detail — bottle list, pill show, capsule show, prescription show
+
+### 📚 Documentation
+
+- *(readme)* Eliminar secciones Built with e History (movidas a la documentación)
+- *(readme)* Simplificar CLI reference y apuntar a la documentación
 ## [0.4.1] - 2026-04-21
 
 ### 🐛 Bug Fixes
@@ -21,6 +31,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Reorganizar estructura multirepo y actualizar assets
+- *(release)* V0.4.1
 ## [0.4.0] - 2026-04-19
 
 ### 🚀 Features
