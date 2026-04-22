@@ -150,12 +150,15 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
     Ok(())
 }
 
-/// Lee una prescription por ID (no descartada).
+/// Lee una prescription por ID exacto o prefijo de UUID (no descartada).
 pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
+    let pattern = format!("{}%", id);
     match conn.query_row(
         "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
-         FROM prescriptions WHERE id = ?1 AND deleted_at IS NULL",
-        params![id],
+         FROM prescriptions
+         WHERE (id = ?1 OR id LIKE ?2) AND deleted_at IS NULL
+         ORDER BY started_at DESC LIMIT 1",
+        params![id, pattern],
         row_to_prescription,
     ) {
         Ok(rx) => Ok(Some(rx)),

@@ -1,12 +1,12 @@
 bottles:
   none: "Aucune bottle enregistrée."
+  unlinked: "[non lié]"
   list:
     title: "Bottles enregistrées (%{count})"
     col:
-      num: "#"
       name: "Nom"
-      display: "Affichage"
       dir: "Répertoire"
+      scope: "Portée"
 
 bottle:
   status:
@@ -82,6 +82,7 @@ serve:
   error:
     already_running: "Le serveur est déjà en cours d'exécution (PID %{pid})."
     no_db: "aucun DB Pillbox trouvé"
+    start_failed: "Le serveur n'a pas pu démarrer. Vérifiez le journal : ~/.pillbox/pillbox.log"
   stop:
     none: "Aucun serveur en cours d'exécution."
     dead: "Aucun serveur en cours d'exécution (PID %{pid} n'existe pas)."
@@ -100,6 +101,26 @@ pills:
       compound: "Composé"
       title: "Titre"
 
+pill:
+  detail:
+    id: "ID"
+    compound: "Composé"
+    title: "Titre"
+    prescription: "Prescription"
+    created: "Créée"
+  error:
+    not_found: "Pilule #%{id} introuvable."
+
+capsule:
+  detail:
+    id: "ID"
+    compound: "Composé"
+    title: "Titre"
+    created: "Créée"
+    updated: "Révisée"
+  error:
+    not_found: "Capsule #%{id} introuvable."
+
 prescriptions:
   none: "(aucune)"
   state:
@@ -117,6 +138,14 @@ prescriptions:
   error:
     already_open: "Une prescription est déjà ouverte : \"%{title}\" (%{pills} pills, id=%{id}).\nFermez-la avec 'pillbox prescription close' avant d'en ouvrir une nouvelle."
     none_open: "Aucune prescription ouverte pour la bottle '%{name}'."
+    not_found: "Prescription '%{id}' introuvable."
+
+prescription:
+  show:
+    id: "ID"
+    title: "Titre"
+    state: "État"
+    started: "Démarrée"
 
 migrate:
   help:

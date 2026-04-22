@@ -1,8 +1,9 @@
 pub mod bottle;
+pub mod capsule;
 pub mod install;
 pub mod lang;
 pub mod mcp;
-pub mod pills;
+pub mod pill;
 pub mod prescription;
 pub mod serve;
 pub mod shared;

@@ -1,9 +1,11 @@
 use anyhow::Result;
+use owo_colors::OwoColorize;
 use rust_i18n::t;
 
 use crate::output;
 
-use super::shared::{find_current_bottle, open_resolved_db};
+use super::shared::open_resolved_db;
+use super::shared::find_current_bottle;
 
 pub fn cmd_prescription_open(title: String) -> Result<()> {
     use pillbox::db::store::prescriptions;
@@ -48,11 +50,33 @@ pub fn cmd_prescription_open(title: String) -> Result<()> {
 pub fn cmd_prescription_list(limit: u32) -> Result<()> {
     use pillbox::db::store::prescriptions;
 
-    let (conn, _) = open_resolved_db()?;
+    let (conn, db_path) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
     let rxs = prescriptions::list_by_bottle(&conn, &bottle.id, limit)?;
 
-    output::fmt::prescriptions_list(&bottle.name, &rxs, limit);
+    output::fmt::prescriptions_list(&bottle.name, &db_path.display().to_string(), &rxs, limit);
+    Ok(())
+}
+
+pub fn cmd_prescription_show(id: String) -> Result<()> {
+    use pillbox::db::store::{pills, prescriptions};
+
+    let (conn, _) = open_resolved_db()?;
+
+    let rx = match prescriptions::read(&conn, &id)? {
+        Some(rx) => rx,
+        None => {
+            eprintln!(
+                "\n{} {}\n",
+                "✗".red(),
+                t!("prescriptions.error.not_found", id = &id[..id.len().min(8)])
+            );
+            return Ok(());
+        }
+    };
+
+    let pill_list = pills::list_by_prescription(&conn, &rx.id)?;
+    output::fmt::prescription_show(&rx, &pill_list);
     Ok(())
 }
 

@@ -50,16 +50,22 @@ enum Command {
         cmd: Option<BottleCommand>,
     },
 
-    /// Operaciones sobre pills del bottle actual.
-    Pills {
-        #[command(subcommand)]
-        cmd: Option<PillsCommand>,
-    },
-
     /// Operaciones sobre prescriptions del bottle actual.
     Prescription {
         #[command(subcommand)]
         cmd: Option<PrescriptionCommand>,
+    },
+
+    /// Operaciones sobre pills.
+    Pill {
+        #[command(subcommand)]
+        cmd: Option<PillCommand>,
+    },
+
+    /// Operaciones sobre capsules.
+    Capsule {
+        #[command(subcommand)]
+        cmd: Option<CapsuleCommand>,
     },
 
     /// Gestiona el servidor MCP.
@@ -139,14 +145,31 @@ enum PrescriptionCommand {
         #[arg(short, long, default_value = "10")]
         limit: u32,
     },
+    /// Muestra el detalle de una prescription y sus pills.
+    Show {
+        /// ID (o prefijo) de la prescription.
+        id: String,
+    },
     /// Cierra la prescripción abierta del bottle actual.
     Close,
 }
 
 #[derive(Subcommand)]
-enum PillsCommand {
-    /// Lista todas las pills del bottle actual.
-    List,
+enum PillCommand {
+    /// Muestra el detalle de una pill por su ID numérico.
+    Show {
+        /// ID numérico de la pill (visible en `prescription show`).
+        id: i64,
+    },
+}
+
+#[derive(Subcommand)]
+enum CapsuleCommand {
+    /// Muestra el detalle de una capsule por ID.
+    Show {
+        /// ID numérico de la capsule.
+        id: i64,
+    },
 }
 
 #[derive(Subcommand)]
@@ -218,9 +241,13 @@ async fn main() -> Result<()> {
             },
             None => cmd_sub_help("bottle"),
         },
-        Some(Command::Pills { cmd }) => match cmd {
-            Some(PillsCommand::List) => cmd::pills::cmd_pills_list(),
-            None => cmd_sub_help("pills"),
+        Some(Command::Pill { cmd }) => match cmd {
+            Some(PillCommand::Show { id }) => cmd::pill::cmd_pill_show(id),
+            None => cmd_sub_help("pill"),
+        },
+        Some(Command::Capsule { cmd }) => match cmd {
+            Some(CapsuleCommand::Show { id }) => cmd::capsule::cmd_capsule_show(id),
+            None => cmd_sub_help("capsule"),
         },
         Some(Command::Prescription { cmd }) => match cmd {
             Some(PrescriptionCommand::Open { title }) => {
@@ -228,6 +255,9 @@ async fn main() -> Result<()> {
             }
             Some(PrescriptionCommand::List { limit }) => {
                 cmd::prescription::cmd_prescription_list(limit)
+            }
+            Some(PrescriptionCommand::Show { id }) => {
+                cmd::prescription::cmd_prescription_show(id)
             }
             Some(PrescriptionCommand::Close) => cmd::prescription::cmd_prescription_close(),
             None => cmd_sub_help("prescription"),

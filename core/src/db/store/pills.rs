@@ -83,7 +83,7 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
     })
 }
 
-/// Lee una pill completa por ID (no descartada).
+/// Lee una pill completa por ID numérico (no descartada).
 pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     match conn.query_row(
         "SELECT id, sync_id, compound, title, content, prescription_id,
@@ -95,6 +95,23 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
         Ok(p) => Ok(Some(p)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
         Err(e) => Err(e).context("no se pudo leer la pill"),
+    }
+}
+
+/// Busca una pill por prefijo de sync_id (UUID v7). Devuelve la primera coincidencia.
+pub fn find_by_sync_id_prefix(conn: &Connection, prefix: &str) -> Result<Option<Pill>> {
+    let pattern = format!("{}%", prefix);
+    match conn.query_row(
+        "SELECT id, sync_id, compound, title, content, prescription_id,
+                dispenser, author_name, author_email, created_at, updated_at
+         FROM pills WHERE sync_id LIKE ?1 AND deleted_at IS NULL
+         ORDER BY created_at DESC LIMIT 1",
+        params![pattern],
+        row_to_pill,
+    ) {
+        Ok(p) => Ok(Some(p)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e).context("no se pudo buscar la pill por sync_id"),
     }
 }
 

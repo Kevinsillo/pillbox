@@ -6,17 +6,59 @@ use crate::output;
 use super::shared::{find_current_bottle, open_resolved_db, spinner};
 
 pub fn cmd_bottle_list() -> Result<()> {
-    use pillbox::db::{connection, store::bottles};
+    use pillbox::db::{connection, store::{bottles, registered_bottles}};
 
-    let path = pillbox::config::global_db_path();
-    if !path.exists() {
+    let global_path = pillbox::config::global_db_path();
+    if !global_path.exists() {
         output::fmt::db_not_found();
         return Ok(());
     }
 
-    let conn = connection::open(&path)?;
-    let all = bottles::list(&conn)?;
-    output::fmt::bottles_list(&all);
+    let global_conn = connection::open(&global_path)?;
+    let registered = registered_bottles::list(&global_conn)?;
+
+    let current = std::env::current_dir().ok();
+    let mut rows: Vec<output::fmt::BottleListRow> = Vec::new();
+
+    for reg in registered {
+        let db_path = std::path::Path::new(&reg.db_path);
+        if !db_path.exists() {
+            let directory = db_path
+                .parent()
+                .and_then(|p| p.parent())
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| reg.db_path.clone());
+            rows.push(output::fmt::BottleListRow {
+                name: reg.display_name,
+                directory,
+                scope: "local".to_string(),
+                linked: false,
+                is_active: false,
+            });
+            continue;
+        }
+
+        let db_conn = match connection::open(db_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        for bottle in bottles::list(&db_conn).unwrap_or_default() {
+            let is_active = current
+                .as_ref()
+                .map(|c| c.starts_with(&bottle.directory))
+                .unwrap_or(false);
+            rows.push(output::fmt::BottleListRow {
+                name: bottle.display_name,
+                directory: bottle.directory,
+                scope: bottle.scope,
+                linked: true,
+                is_active,
+            });
+        }
+    }
+
+    rows.sort_by(|a, b| a.name.cmp(&b.name));
+    output::fmt::bottles_registered_list(&rows);
     Ok(())
 }
 

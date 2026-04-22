@@ -1,6 +1,6 @@
 use super::{table, truncate};
 use owo_colors::OwoColorize;
-use pillbox::domain::{bottle::Bottle, prescription::Prescription};
+use pillbox::domain::{bottle::Bottle, capsule::Capsule, pill::Pill, prescription::Prescription};
 use rust_i18n::t;
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -72,38 +72,67 @@ fn print_b(action: &str) {
 
 // ─── Bottles ──────────────────────────────────────────────────────────────────
 
-pub fn bottles_list(bottles: &[Bottle]) {
-    let count = bottles.len();
+pub struct BottleListRow {
+    pub name: String,
+    pub directory: String,
+    pub scope: String,
+    pub linked: bool,
+    pub is_active: bool,
+}
+
+pub fn bottles_registered_list(rows: &[BottleListRow]) {
+    let count = rows.len();
     println!("\nBottles    {}", count.to_string().bold());
 
-    if bottles.is_empty() {
+    if rows.is_empty() {
         println!("\n  {}\n", t!("bottles.none").dimmed());
         return;
     }
 
     println!();
-    let rows = bottles
+    let table_rows = rows
         .iter()
-        .enumerate()
-        .map(|(i, b)| {
-            vec![
-                (i + 1).to_string(),
-                truncate(&b.name, 22),
-                truncate(&b.display_name, 22),
-                b.directory.clone(),
-            ]
+        .map(|r| {
+            let estado = if !r.linked {
+                "✗".red().to_string()
+            } else if r.is_active {
+                "●".green().to_string()
+            } else {
+                "○".dimmed().to_string()
+            };
+
+            let name_cell = if r.linked {
+                r.name.clone()
+            } else {
+                r.name.dimmed().to_string()
+            };
+
+            let dir_cell = if r.linked {
+                truncate(&r.directory, 50)
+            } else {
+                format!(
+                    "{}  {}",
+                    truncate(&r.directory, 40),
+                    t!("bottles.unlinked").red()
+                )
+            };
+
+            let scope_cell = r.scope.dimmed().to_string();
+
+            vec![estado, name_cell, dir_cell, scope_cell]
         })
         .collect();
+
     println!(
         "{}\n",
         table::plain_list(
             &[
-                t!("bottles.list.col.num").as_ref(),
+                " ",
                 t!("bottles.list.col.name").as_ref(),
-                t!("bottles.list.col.display").as_ref(),
                 t!("bottles.list.col.dir").as_ref(),
+                t!("bottles.list.col.scope").as_ref(),
             ],
-            rows
+            table_rows,
         )
     );
 }
@@ -283,50 +312,9 @@ pub fn db_not_found() {
     eprintln!("\n{} {}\n", "✗".red().bold(), t!("db.not_found"));
 }
 
-// ─── Pills ────────────────────────────────────────────────────────────────────
-
-pub fn pills_list(bottle_name: &str, pills: &[(i64, String, String, String)]) {
-    let count = pills.len();
-    println!(
-        "\nPills  {}  {}    {}",
-        "·".dimmed(),
-        bottle_name.dimmed(),
-        count.to_string().bold()
-    );
-
-    if pills.is_empty() {
-        println!("\n  {}\n", t!("pills.none").dimmed());
-        return;
-    }
-
-    println!();
-    let rows = pills
-        .iter()
-        .enumerate()
-        .map(|(i, (_, compound, title, _))| {
-            vec![
-                (i + 1).to_string(),
-                truncate(compound, 16),
-                truncate(title, 50),
-            ]
-        })
-        .collect();
-    println!(
-        "{}\n",
-        table::plain_list(
-            &[
-                t!("pills.list.col.num").as_ref(),
-                t!("pills.list.col.compound").as_ref(),
-                t!("pills.list.col.title").as_ref(),
-            ],
-            rows
-        )
-    );
-}
-
 // ─── Prescriptions ────────────────────────────────────────────────────────────
 
-pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], _limit: u32) {
+pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription], _limit: u32) {
     let count = rxs.len();
     println!(
         "\nPrescriptions  {}  {}    {}",
@@ -334,6 +322,7 @@ pub fn prescriptions_list(bottle_name: &str, rxs: &[Prescription], _limit: u32) 
         bottle_name.dimmed(),
         count.to_string().bold()
     );
+    println!("  {}", db_path.dimmed());
 
     if rxs.is_empty() {
         println!("\n  {}\n", t!("prescriptions.none").dimmed());
@@ -555,4 +544,102 @@ pub fn migrate_result_local(prescriptions: usize, pills: usize) {
     let done = t!("migrate.result.done").to_string();
     let removed = t!("migrate.result.removed_global").to_string();
     print_a(&done, &[("prescriptions", &p), ("pills", &pi), ("removed", &removed)]);
+}
+
+// ─── Prescription show ────────────────────────────────────────────────────────
+
+pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill]) {
+    let estado = if rx.ended_at.is_some() {
+        t!("prescriptions.state.closed").dimmed().to_string()
+    } else {
+        t!("prescriptions.state.open").green().to_string()
+    };
+    let short_id = &rx.id[..rx.id.len().min(8)];
+    let rows = vec![
+        [t!("prescription.show.id").bold().to_string(), short_id.cyan().to_string()],
+        [t!("prescription.show.title").bold().to_string(), rx.title.clone()],
+        [t!("prescription.show.state").bold().to_string(), estado],
+        [t!("prescription.show.started").bold().to_string(), rx.started_at.clone()],
+    ];
+    println!("\n{}", table::dict(rows));
+
+    let count = pills.len();
+    println!(
+        "\nPills  {}  {}    {}",
+        "·".dimmed(),
+        short_id.dimmed(),
+        count.to_string().bold()
+    );
+
+    if pills.is_empty() {
+        println!("\n  {}\n", t!("pills.none").dimmed());
+        return;
+    }
+
+    println!();
+    let table_rows = pills
+        .iter()
+        .map(|p| {
+            vec![
+                p.id.to_string(),
+                truncate(&p.compound, 16),
+                truncate(&p.title, 50),
+            ]
+        })
+        .collect();
+    println!(
+        "{}\n",
+        table::plain_list(
+            &[
+                t!("pills.list.col.num").as_ref(),
+                t!("pills.list.col.compound").as_ref(),
+                t!("pills.list.col.title").as_ref(),
+            ],
+            table_rows,
+        )
+    );
+}
+
+// ─── Pill detail ──────────────────────────────────────────────────────────────
+
+pub fn pill_detail(pill: &Pill) {
+    let short_id = format!("#{}", pill.id);
+    let rx_short = &pill.prescription_id[..pill.prescription_id.len().min(8)];
+    let rows = vec![
+        [t!("pill.detail.id").bold().to_string(), short_id],
+        [t!("pill.detail.compound").bold().to_string(), pill.compound.clone()],
+        [t!("pill.detail.title").bold().to_string(), pill.title.clone()],
+        [t!("pill.detail.prescription").bold().to_string(), rx_short.cyan().to_string()],
+        [t!("pill.detail.created").bold().to_string(), pill.created_at.clone()],
+    ];
+    println!("\n{}", table::dict(rows));
+    println!();
+    for line in pill.content.lines() {
+        println!("  {}", line);
+    }
+    println!();
+}
+
+// ─── Capsule detail ───────────────────────────────────────────────────────────
+
+pub fn capsule_detail(capsule: &Capsule) {
+    let short_id = format!("#{}", capsule.id);
+    let updated = if capsule.updated_at != capsule.created_at {
+        capsule.updated_at.dimmed().to_string()
+    } else {
+        "—".dimmed().to_string()
+    };
+    let rows = vec![
+        [t!("capsule.detail.id").bold().to_string(), short_id],
+        [t!("capsule.detail.compound").bold().to_string(), capsule.compound.clone()],
+        [t!("capsule.detail.title").bold().to_string(), capsule.title.clone()],
+        [t!("capsule.detail.created").bold().to_string(), capsule.created_at.clone()],
+        [t!("capsule.detail.updated").bold().to_string(), updated],
+    ];
+    println!("\n{}", table::dict(rows));
+    println!();
+    for line in capsule.content.lines() {
+        println!("  {}", line);
+    }
+    println!();
 }

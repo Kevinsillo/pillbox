@@ -1,12 +1,12 @@
 bottles:
   none: "No bottles registered."
+  unlinked: "[unlinked]"
   list:
     title: "Registered bottles (%{count})"
     col:
-      num: "#"
       name: "Name"
-      display: "Display"
       dir: "Directory"
+      scope: "Scope"
 
 bottle:
   status:
@@ -101,6 +101,26 @@ pills:
       compound: "Compound"
       title: "Title"
 
+pill:
+  detail:
+    id: "ID"
+    compound: "Compound"
+    title: "Title"
+    prescription: "Prescription"
+    created: "Created"
+  error:
+    not_found: "Pill #%{id} not found."
+
+capsule:
+  detail:
+    id: "ID"
+    compound: "Compound"
+    title: "Title"
+    created: "Created"
+    updated: "Revised"
+  error:
+    not_found: "Capsule #%{id} not found."
+
 prescriptions:
   none: "(none)"
   state:
@@ -118,6 +138,14 @@ prescriptions:
   error:
     already_open: "A prescription is already open: \"%{title}\" (%{pills} pills, id=%{id}).\nClose it with 'pillbox prescription close' before opening a new one."
     none_open: "No open prescription for bottle '%{name}'."
+    not_found: "Prescription '%{id}' not found."
+
+prescription:
+  show:
+    id: "ID"
+    title: "Title"
+    state: "Status"
+    started: "Started"
 
 migrate:
   help:
