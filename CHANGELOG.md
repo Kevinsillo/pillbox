@@ -1,3 +1,12 @@
+## [0.6.0] - 2026-04-22
+
+### 🚀 Features
+
+- *(webui)* Añadir tema claro/oscuro y mejorar consistencia visual
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.6.0
 ## [0.5.0] - 2026-04-22
 
 ### 🚀 Features
@@ -8,6 +17,10 @@
 
 - *(readme)* Eliminar secciones Built with e History (movidas a la documentación)
 - *(readme)* Simplificar CLI reference y apuntar a la documentación
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.5.0
 ## [0.4.1] - 2026-04-21
 
 ### 🐛 Bug Fixes
