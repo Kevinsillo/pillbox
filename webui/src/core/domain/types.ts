@@ -95,6 +95,17 @@ export interface Context {
     pill_count: number
 }
 
+export interface DayCount {
+    date: string
+    count: number
+}
+
+export interface BottleStats {
+    open_rx_pill_count: number
+    closed_rx_count: number
+    pills_per_day: DayCount[]
+}
+
 export interface ApiOk<T> {
     ok: true
     data: T

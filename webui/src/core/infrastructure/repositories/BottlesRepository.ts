@@ -1,5 +1,5 @@
 import { api } from '@/core/infrastructure/managers/httpClient'
-import type { Bottle, Prescription } from '@/core/domain/types'
+import type { Bottle, BottleStats, Prescription } from '@/core/domain/types'
 
 export const bottlesApi = {
     list: () => api.get<Bottle[]>('/bottles'),
@@ -11,4 +11,5 @@ export const bottlesApi = {
     updateRegistration: (regId: number, db_path: string) => api.patch<null>(`/registered_bottles/${regId}`, { db_path }),
     deleteBottle: (id: string) => api.delete<null>(`/bottles/${id}`),
     deleteRegistration: (regId: number) => api.delete<null>(`/registered_bottles/${regId}`),
+    stats: (id: string, days = 30) => api.get<BottleStats>(`/bottles/${id}/stats?days=${days}`),
 }

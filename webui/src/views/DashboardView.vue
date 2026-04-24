@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ElAlert } from 'element-plus'
 import PillCard from '@/components/PillCard.vue'
+import PillsActivityChart from '@/components/PillsActivityChart.vue'
 import { useActiveBottle } from '@/composables/useActiveBottle'
-import type { Bottle, Context, Prescription } from '@/core/domain/types'
+import type { Bottle, BottleStats, Context, Prescription } from '@/core/domain/types'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
 import { contextApi } from '@/core/infrastructure/repositories/ContextRepository'
 import { ApiError } from '@/core/infrastructure/managers/httpClient'
@@ -19,6 +20,7 @@ const { activeBottleId } = useActiveBottle()
 const ctx = ref<Context | null>(null)
 const bottle = ref<Bottle | null>(null)
 const prescriptions = ref<Prescription[]>([])
+const stats = ref<BottleStats | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -26,14 +28,16 @@ async function load(id: string) {
     loading.value = true
     error.value = null
     try {
-        const [c, b, rx] = await Promise.all([
+        const [c, b, rx, s] = await Promise.all([
             contextApi.get(id, { prescription_limit: 5, pill_limit: 8 }),
             bottlesApi.get(id),
             bottlesApi.prescriptions(id, 5),
+            bottlesApi.stats(id),
         ])
         ctx.value = c
         bottle.value = b
         prescriptions.value = rx
+        stats.value = s
     } catch (e: unknown) {
         if (e instanceof ApiError && e.code === 'bottle_not_found') {
             activeBottleId.value = null
@@ -79,23 +83,18 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
             />
 
             <template v-else-if="ctx">
-                <!-- Stats -->
+                <!-- Stats + chart -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 text-center">
+                    <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center">
                         <p class="text-2xl font-bold text-(--text-h)">{{ ctx.pill_count }}</p>
                         <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_pills') }}</p>
                     </div>
-                    <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 text-center">
+                    <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center">
                         <p class="text-2xl font-bold text-(--text-h)">{{ ctx.prescription_count }}</p>
                         <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_prescriptions') }}</p>
                     </div>
-                    <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 text-center flex flex-col items-center gap-1">
-                        <PrescriptionStatusBadge :open="!!openRx" />
-                        <p class="text-xs text-zinc-500">{{ $t('dashboard.stat_rx_label') }}</p>
-                    </div>
-                    <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 text-center">
-                        <p class="text-2xl font-bold text-(--text-h)">{{ ctx.context.length }}</p>
-                        <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_context') }}</p>
+                    <div class="sm:col-span-2">
+                        <PillsActivityChart v-if="activeBottleId" :bottle-id="activeBottleId" />
                     </div>
                 </div>
 
