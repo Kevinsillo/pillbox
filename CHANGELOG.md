@@ -1,3 +1,13 @@
+## [unreleased]
+
+### 🎨 Styling
+
+- *(webui)* Rediseñar indicadores de estado en bottles y prescriptions
+
+### ⚙️ Miscellaneous Tasks
+
+- Añadir cliff.toml con salto de línea entre releases
+
 ## [0.6.0] - 2026-04-22
 
 ### 🚀 Features
@@ -7,6 +17,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* V0.6.0
+
 ## [0.5.0] - 2026-04-22
 
 ### 🚀 Features
@@ -21,6 +32,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* V0.5.0
+
 ## [0.4.1] - 2026-04-21
 
 ### 🐛 Bug Fixes
@@ -45,6 +57,7 @@
 
 - Reorganizar estructura multirepo y actualizar assets
 - *(release)* V0.4.1
+
 ## [0.4.0] - 2026-04-19
 
 ### 🚀 Features
@@ -105,3 +118,4 @@
 - Añadir autoformato con cargo fmt y prettier
 - *(webui)* Añadir scaffold Vue + lockfile MCP
 - *(release)* V0.4.0
+
