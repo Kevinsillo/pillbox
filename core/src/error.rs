@@ -43,14 +43,14 @@ impl PillboxError {
     /// Código de error estable para clientes MCP/HTTP — sin parsear strings.
     pub fn code(&self) -> &'static str {
         match self {
-            Self::PillNotFound { .. }                  => "pill_not_found",
-            Self::CapsuleNotFound { .. }               => "capsule_not_found",
-            Self::PrescriptionRequired { .. }          => "prescription_required",
-            Self::PrescriptionAlreadyOpen { .. }       => "prescription_already_open",
-            Self::PrescriptionNotFoundOrClosed { .. }  => "prescription_not_found_or_closed",
-            Self::PrescriptionNotFound { .. }          => "prescription_not_found",
-            Self::BottleNotFound { .. }                => "bottle_not_found",
-            Self::BottleAlreadyExists { .. }           => "bottle_already_exists",
+            Self::PillNotFound { .. } => "pill_not_found",
+            Self::CapsuleNotFound { .. } => "capsule_not_found",
+            Self::PrescriptionRequired { .. } => "prescription_required",
+            Self::PrescriptionAlreadyOpen { .. } => "prescription_already_open",
+            Self::PrescriptionNotFoundOrClosed { .. } => "prescription_not_found_or_closed",
+            Self::PrescriptionNotFound { .. } => "prescription_not_found",
+            Self::BottleNotFound { .. } => "bottle_not_found",
+            Self::BottleAlreadyExists { .. } => "bottle_already_exists",
         }
     }
 }
@@ -61,10 +61,19 @@ mod tests {
 
     #[test]
     fn code_matches_each_variant() {
-        assert_eq!(PillboxError::PillNotFound { id: 1 }.code(), "pill_not_found");
-        assert_eq!(PillboxError::CapsuleNotFound { id: 2 }.code(), "capsule_not_found");
         assert_eq!(
-            PillboxError::PrescriptionRequired { prescription_id: "x".into() }.code(),
+            PillboxError::PillNotFound { id: 1 }.code(),
+            "pill_not_found"
+        );
+        assert_eq!(
+            PillboxError::CapsuleNotFound { id: 2 }.code(),
+            "capsule_not_found"
+        );
+        assert_eq!(
+            PillboxError::PrescriptionRequired {
+                prescription_id: "x".into()
+            }
+            .code(),
             "prescription_required"
         );
         assert_eq!(
@@ -85,7 +94,13 @@ mod tests {
             PillboxError::PrescriptionNotFound { id: "x".into() }.code(),
             "prescription_not_found"
         );
-        assert_eq!(PillboxError::BottleNotFound { bottle_id: "uuid-test".into() }.code(), "bottle_not_found");
+        assert_eq!(
+            PillboxError::BottleNotFound {
+                bottle_id: "uuid-test".into()
+            }
+            .code(),
+            "bottle_not_found"
+        );
         assert_eq!(
             PillboxError::BottleAlreadyExists { name: "n".into() }.code(),
             "bottle_already_exists"
@@ -98,7 +113,9 @@ mod tests {
         assert!(err.to_string().contains("pill_not_found"));
         assert!(err.to_string().contains("42"));
 
-        let err = PillboxError::BottleAlreadyExists { name: "my-proj".into() };
+        let err = PillboxError::BottleAlreadyExists {
+            name: "my-proj".into(),
+        };
         assert!(err.to_string().contains("bottle_already_exists"));
         assert!(err.to_string().contains("my-proj"));
 
@@ -115,8 +132,7 @@ mod tests {
 
     #[test]
     fn error_is_std_error() {
-        let err: Box<dyn std::error::Error> =
-            Box::new(PillboxError::PillNotFound { id: 1 });
+        let err: Box<dyn std::error::Error> = Box::new(PillboxError::PillNotFound { id: 1 });
         assert!(err.to_string().contains("pill_not_found"));
     }
 }
