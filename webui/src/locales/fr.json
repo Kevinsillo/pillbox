@@ -22,6 +22,8 @@
     "edit": "Modifier",
     "delete": "Supprimer",
     "back": "Retour",
+    "status_open": "Ouvert",
+    "status_closed": "Fermé",
     "open": "Ouvrir",
     "opening": "Ouverture",
     "title": "Titre",

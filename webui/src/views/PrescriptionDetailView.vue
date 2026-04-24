@@ -7,6 +7,7 @@ import { prescriptionsApi } from '@/core/infrastructure/repositories/Prescriptio
 import { pillsApi } from '@/core/infrastructure/repositories/PillsRepository'
 import type { Prescription, Pill } from '@/core/domain/types'
 import PillCard from '@/components/PillCard.vue'
+import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
 
 const { t } = useI18n()
@@ -96,9 +97,8 @@ async function deleteRx() {
             <!-- Header -->
             <div class="space-y-3">
                 <div>
-                    <div class="flex items-center gap-2 mb-1">
-                        <span v-if="isOpen" class="text-xs text-green-500">● {{ $t('prescription_detail.status_open') }}</span>
-                        <span v-else class="text-xs text-zinc-600">● {{ $t('prescription_detail.status_closed') }}</span>
+                    <div class="mb-1">
+                        <PrescriptionStatusBadge :open="isOpen" />
                     </div>
                     <h1 class="text-xl font-bold text-(--text-h)">{{ rx.title }}</h1>
                     <p class="text-xs text-zinc-500 mt-0.5">

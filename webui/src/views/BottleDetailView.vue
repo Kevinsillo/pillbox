@@ -9,10 +9,14 @@ import { RouterLink, useRouter } from 'vue-router'
 import IArrowLeft from '~icons/lucide/arrow-left'
 import IClipboard from '~icons/lucide/clipboard'
 import ITrash2 from '~icons/lucide/trash-2'
+import IZap from '~icons/lucide/zap'
+import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
+import { useActiveBottle } from '@/composables/useActiveBottle'
 
 const { t } = useI18n()
 const router = useRouter()
 const props = defineProps<{ bottle_id: string }>()
+const { activeBottleId } = useActiveBottle()
 
 const bottle = ref<Bottle | null>(null)
 const prescriptions = ref<Prescription[]>([])
@@ -89,11 +93,17 @@ async function deleteRx(rx: Prescription) {
         <template v-else-if="bottle">
             <div class="space-y-3">
                 <div>
-                    <h1 class="text-2xl font-bold text-(--text-h)">{{ bottle.display_name }}</h1>
-                    <p class="text-xs text-zinc-500 font-mono mt-0.5">{{ bottle.directory }}</p>
-                    <div class="flex gap-2 mt-2">
-                        <span class="text-xs px-1.5 py-0.5 rounded bg-(--accent-bg) text-(--text)">{{ bottle.scope }}</span>
-                        <span class="text-xs px-1.5 py-0.5 rounded bg-(--accent-bg) text-(--text) font-mono">{{ bottle.name }}</span>
+                    <div class="flex items-center gap-2">
+                        <span v-if="bottle.id === activeBottleId"
+                              class="inline-flex items-center justify-center p-1 rounded-md bg-green-500/10 border border-green-500/20">
+                            <IZap class="w-3 h-3 text-green-500" />
+                        </span>
+                        <h1 class="text-2xl font-bold text-(--text-h)">{{ bottle.display_name }}</h1>
+                        <span class="text-sm text-zinc-600 font-mono">{{ bottle.name }}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 mt-0.5">
+                        <span class="text-[11px] text-zinc-600 border border-(--border) px-1.5 py-0 rounded shrink-0">{{ bottle.scope }}</span>
+                        <span class="text-xs text-zinc-500 truncate">{{ bottle.directory }}</span>
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -125,10 +135,8 @@ async function deleteRx(rx: Prescription) {
                             </div>
                             <div class="space-y-1 min-w-0">
                                 <div class="flex items-center gap-2">
+                                    <PrescriptionStatusBadge :open="isOpen(rx)" />
                                     <span class="text-(--text-h) text-sm font-medium">{{ rx.title }}</span>
-                                    <span v-if="isOpen(rx)" class="text-xs text-green-500">● {{ $t('bottle_detail.status_open') }}</span>
-                                    <span v-else-if="rx.deleted_at" class="text-xs text-red-400">● {{ $t('bottle_detail.status_deleted') }}</span>
-                                    <span v-else class="text-xs text-zinc-600">● {{ $t('bottle_detail.status_closed') }}</span>
                                 </div>
                                 <p class="text-xs text-zinc-600">{{ new Date(rx.started_at).toLocaleString() }}</p>
                             </div>

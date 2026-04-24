@@ -11,6 +11,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import IArrowRight from '~icons/lucide/arrow-right'
 import IClipboard from '~icons/lucide/clipboard'
+import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 
 const { t } = useI18n()
 const { activeBottleId } = useActiveBottle()
@@ -88,11 +89,9 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                         <p class="text-2xl font-bold text-(--text-h)">{{ ctx.prescription_count }}</p>
                         <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_prescriptions') }}</p>
                     </div>
-                    <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 text-center">
-                        <p class="text-2xl font-bold" :class="openRx ? 'text-green-500' : 'text-zinc-600'">
-                            {{ openRx ? ('● ' + $t('dashboard.stat_rx_open')) : ('● ' + $t('dashboard.stat_rx_closed')) }}
-                        </p>
-                        <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_rx_label') }}</p>
+                    <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 text-center flex flex-col items-center gap-1">
+                        <PrescriptionStatusBadge :open="!!openRx" />
+                        <p class="text-xs text-zinc-500">{{ $t('dashboard.stat_rx_label') }}</p>
                     </div>
                     <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 text-center">
                         <p class="text-2xl font-bold text-(--text-h)">{{ ctx.context.length }}</p>
@@ -122,7 +121,10 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                                 <IClipboard class="w-4 h-4 text-zinc-400" />
                             </div>
                             <div class="space-y-1 min-w-0">
-                                <p class="text-sm text-(--text-h) font-medium">{{ rx.title }}</p>
+                                <div class="flex items-center gap-2">
+                                    <PrescriptionStatusBadge :open="false" />
+                                    <p class="text-sm text-(--text-h) font-medium">{{ rx.title }}</p>
+                                </div>
                                 <p class="text-xs text-zinc-600">{{ new Date(rx.ended_at!).toLocaleDateString() }}</p>
                             </div>
                         </RouterLink>

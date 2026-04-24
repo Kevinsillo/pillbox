@@ -75,17 +75,23 @@ onMounted(load)
                     class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                 >
                     <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
-                            <IBox class="w-4 h-4 text-zinc-400" />
+                        <div class="relative shrink-0">
+                            <div :class="b.id === activeBottleId ? 'bg-green-500/5 border border-green-500/50' : 'bg-(--accent-bg)'"
+                                 class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors">
+                                <IBox :class="b.id === activeBottleId ? 'text-green-500' : 'text-zinc-400'" class="w-4 h-4" />
+                            </div>
+                            <span v-if="b.id === activeBottleId"
+                                  class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-(--bg-surface)" />
                         </div>
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-baseline gap-2">
                                 <span class="text-(--text-h) font-medium">{{ b.display_name }}</span>
-                                <span class="text-xs text-zinc-600 font-mono">{{ b.name }}</span>
-                                <span class="text-xs px-1.5 py-0.5 rounded bg-(--accent-bg) text-(--text)">{{ b.scope }}</span>
-                                <span v-if="b.id === activeBottleId" class="text-xs text-green-500">● {{ $t('bottles.active_badge') }}</span>
+                                <span class="text-sm text-zinc-600 font-mono">{{ b.name }}</span>
                             </div>
-                            <p class="text-xs text-zinc-600 mt-0.5 truncate">{{ b.directory }}</p>
+                            <div class="flex items-center gap-1.5 mt-0.5 min-w-0">
+                                <span class="text-[11px] text-zinc-600 border border-(--border) px-1.5 py-0 rounded shrink-0">{{ b.scope }}</span>
+                                <span class="text-xs text-zinc-600 truncate">{{ b.directory }}</span>
+                            </div>
                         </div>
                     </div>
                     <button
