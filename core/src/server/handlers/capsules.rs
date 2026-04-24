@@ -9,7 +9,9 @@ use pillbox::{
 use serde::Deserialize;
 use validator::Validate;
 
-use super::{err_404_capsule, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse, AppState};
+use super::{
+    err_404_capsule, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
+};
 
 #[derive(Deserialize)]
 pub struct CapsuleListParams {
@@ -92,7 +94,12 @@ pub async fn capsule_search(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::search::capsule_find(&conn, &params.query, params.compound.as_deref(), params.limit) {
+    match store::search::capsule_find(
+        &conn,
+        &params.query,
+        params.compound.as_deref(),
+        params.limit,
+    ) {
         Ok(results) => ok(results),
         Err(e) => err_500(e),
     }

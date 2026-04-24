@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, default_50, err_404_bottle, err_404_registered_bottle, err_422, err_500,
-    ok, ok_created, open_global_conn, ApiResponse, AppState,
+    conn_for_bottle, default_30, default_50, err_404_bottle, err_404_registered_bottle, err_422,
+    err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
 };
 
 #[derive(Deserialize)]
@@ -20,10 +20,7 @@ pub struct BottlePrescriptionsParams {
     pub limit: u32,
 }
 
-pub async fn bottle_get(
-    State(s): State<AppState>,
-    Path(id): Path<String>,
-) -> ApiResponse {
+pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
     let conn = match conn_for_bottle(&s, &id) {
         Ok(c) => c,
         Err(r) => return r,
@@ -165,10 +162,7 @@ pub async fn registered_bottle_delete(
     }
 }
 
-pub async fn bottle_delete(
-    State(s): State<AppState>,
-    Path(id): Path<String>,
-) -> ApiResponse {
+pub async fn bottle_delete(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
     let mut conn = match conn_for_bottle(&s, &id) {
         Ok(c) => c,
         Err(r) => return r,
@@ -183,6 +177,44 @@ pub async fn bottle_delete(
         Ok(false) => err_404_bottle(&id),
         Err(e) => err_500(e),
     }
+}
+
+#[derive(Deserialize)]
+pub struct BottleStatsParams {
+    #[serde(default = "default_30")]
+    pub days: u32,
+}
+
+pub async fn bottle_stats(
+    State(s): State<AppState>,
+    Path(id): Path<String>,
+    Query(params): Query<BottleStatsParams>,
+) -> ApiResponse {
+    let conn = match conn_for_bottle(&s, &id) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    let open_rx_pill_count = match store::pills::open_rx_pill_count(&conn) {
+        Ok(n) => n,
+        Err(e) => return err_500(e),
+    };
+    let closed_rx_count: i64 = match conn.query_row(
+        "SELECT COUNT(*) FROM prescriptions WHERE ended_at IS NOT NULL AND deleted_at IS NULL",
+        [],
+        |row| row.get(0),
+    ) {
+        Ok(n) => n,
+        Err(e) => return err_500(anyhow::anyhow!(e)),
+    };
+    let pills_per_day = match store::pills::activity_by_day(&conn, params.days) {
+        Ok(v) => v,
+        Err(e) => return err_500(e),
+    };
+    ok(serde_json::json!({
+        "open_rx_pill_count": open_rx_pill_count,
+        "closed_rx_count": closed_rx_count,
+        "pills_per_day": pills_per_day,
+    }))
 }
 
 pub async fn bottle_prescriptions(

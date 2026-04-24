@@ -75,23 +75,43 @@ pub(super) fn err_422(e: impl ToString) -> ApiResponse {
 }
 
 pub(super) fn err_404_bottle(id: &str) -> ApiResponse {
-    err_with_context(StatusCode::NOT_FOUND, "bottle_not_found", json!({ "bottle_id": id }))
+    err_with_context(
+        StatusCode::NOT_FOUND,
+        "bottle_not_found",
+        json!({ "bottle_id": id }),
+    )
 }
 
 pub(super) fn err_404_registered_bottle(id: &str) -> ApiResponse {
-    err_with_context(StatusCode::NOT_FOUND, "registered_bottle_not_found", json!({ "reg_id": id }))
+    err_with_context(
+        StatusCode::NOT_FOUND,
+        "registered_bottle_not_found",
+        json!({ "reg_id": id }),
+    )
 }
 
 pub(super) fn err_404_pill(id: i64) -> ApiResponse {
-    err_with_context(StatusCode::NOT_FOUND, "pill_not_found", json!({ "pill_id": id }))
+    err_with_context(
+        StatusCode::NOT_FOUND,
+        "pill_not_found",
+        json!({ "pill_id": id }),
+    )
 }
 
 pub(super) fn err_404_prescription(id: &str) -> ApiResponse {
-    err_with_context(StatusCode::NOT_FOUND, "prescription_not_found", json!({ "prescription_id": id }))
+    err_with_context(
+        StatusCode::NOT_FOUND,
+        "prescription_not_found",
+        json!({ "prescription_id": id }),
+    )
 }
 
 pub(super) fn err_404_capsule(id: i64) -> ApiResponse {
-    err_with_context(StatusCode::NOT_FOUND, "capsule_not_found", json!({ "capsule_id": id }))
+    err_with_context(
+        StatusCode::NOT_FOUND,
+        "capsule_not_found",
+        json!({ "capsule_id": id }),
+    )
 }
 
 pub(super) fn err_500(e: anyhow::Error) -> ApiResponse {
@@ -107,7 +127,10 @@ pub(super) fn err_409(error: &str, message: &str, data: serde_json::Value) -> Ap
 
 /// Abre la DB local del bottle identificado por UUID.
 /// Busca la ruta en registered_bottles de la DB global.
-pub(super) fn conn_for_bottle(s: &AppState, bottle_id: &str) -> Result<rusqlite::Connection, ApiResponse> {
+pub(super) fn conn_for_bottle(
+    s: &AppState,
+    bottle_id: &str,
+) -> Result<rusqlite::Connection, ApiResponse> {
     let global = db::connection::open(&s.global_db_path).map_err(err_500)?;
     let reg = registered_bottles::find_by_bottle_id(&global, bottle_id)
         .map_err(err_500)?
@@ -119,6 +142,12 @@ pub(super) fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection,
     db::connection::open(&state.global_db_path).map_err(err_500)
 }
 
-pub(super) fn default_5() -> u32 { 5 }
-pub(super) fn default_30() -> u32 { 30 }
-pub(super) fn default_50() -> u32 { 50 }
+pub(super) fn default_5() -> u32 {
+    5
+}
+pub(super) fn default_30() -> u32 {
+    30
+}
+pub(super) fn default_50() -> u32 {
+    50
+}

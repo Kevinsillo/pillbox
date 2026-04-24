@@ -52,21 +52,58 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
         .route("/bottles/:bottle_id", get(handlers::bottle_get))
         .route("/bottles/:bottle_id", delete(handlers::bottle_delete))
         .route("/bottles/:bottle_id/context", get(handlers::context_get))
+        .route("/bottles/:bottle_id/stats", get(handlers::bottle_stats))
         // Prescriptions (anidadas bajo bottle)
-        .route("/bottles/:bottle_id/prescriptions", get(handlers::bottle_prescriptions))
-        .route("/bottles/:bottle_id/prescriptions", post(handlers::prescription_open))
-        .route("/bottles/:bottle_id/prescriptions/:rx_id", get(handlers::prescription_get))
-        .route("/bottles/:bottle_id/prescriptions/:rx_id", patch(handlers::prescription_close))
-        .route("/bottles/:bottle_id/prescriptions/:rx_id", delete(handlers::prescription_delete))
+        .route(
+            "/bottles/:bottle_id/prescriptions",
+            get(handlers::bottle_prescriptions),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions",
+            post(handlers::prescription_open),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id",
+            get(handlers::prescription_get),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id",
+            patch(handlers::prescription_close),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id",
+            delete(handlers::prescription_delete),
+        )
         // Pills (anidadas bajo prescription)
-        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills", get(handlers::prescription_pills))
-        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills", post(handlers::pill_create))
-        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id", get(handlers::pill_get))
-        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id", patch(handlers::pill_patch))
-        .route("/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id", delete(handlers::pill_delete))
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id/pills",
+            get(handlers::prescription_pills),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id/pills",
+            post(handlers::pill_create),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id",
+            get(handlers::pill_get),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id",
+            patch(handlers::pill_patch),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id",
+            delete(handlers::pill_delete),
+        )
         // Registered bottles (gestión de registros rotos)
-        .route("/registered_bottles/:id", patch(handlers::registered_bottle_patch))
-        .route("/registered_bottles/:id", delete(handlers::registered_bottle_delete))
+        .route(
+            "/registered_bottles/:id",
+            patch(handlers::registered_bottle_patch),
+        )
+        .route(
+            "/registered_bottles/:id",
+            delete(handlers::registered_bottle_delete),
+        )
         // Meta
         .route("/version", get(handlers::version_get))
         .with_state(state.clone());
@@ -112,7 +149,7 @@ fn register_mdns(port: u16) -> Option<ServiceDaemon> {
     let mdns = match ServiceDaemon::new() {
         Ok(d) => d,
         Err(e) => {
-            tracing::warn!("mDNS: no se pudo crear el daemon: {}", e);
+            tracing::warn!("mDNS: failed to create daemon: {}", e);
             return None;
         }
     };
@@ -131,7 +168,7 @@ fn register_mdns(port: u16) -> Option<ServiceDaemon> {
     ) {
         Ok(i) => i,
         Err(e) => {
-            tracing::warn!("mDNS: no se pudo crear ServiceInfo: {}", e);
+            tracing::warn!("mDNS: failed to create ServiceInfo: {}", e);
             return None;
         }
     };
@@ -142,7 +179,7 @@ fn register_mdns(port: u16) -> Option<ServiceDaemon> {
             Some(mdns)
         }
         Err(e) => {
-            tracing::warn!("mDNS: no se pudo registrar el servicio: {}", e);
+            tracing::warn!("mDNS: failed to register service: {}", e);
             None
         }
     }

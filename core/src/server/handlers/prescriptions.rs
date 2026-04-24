@@ -8,8 +8,8 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, err_404_prescription, err_409, err_422, err_500, ok, ok_created,
-    ApiResponse, AppState,
+    conn_for_bottle, err_404_prescription, err_409, err_422, err_500, ok, ok_created, ApiResponse,
+    AppState,
 };
 
 #[derive(Deserialize, Validate)]
@@ -30,7 +30,10 @@ pub async fn prescription_open(
         Ok(c) => c,
         Err(r) => return r,
     };
-    let new_rx = NewPrescription { bottle_id, title: input.title };
+    let new_rx = NewPrescription {
+        bottle_id,
+        title: input.title,
+    };
     match store::prescriptions::open(&mut conn, &new_rx) {
         Ok(rx) => ok_created(rx),
         Err(e) => match e.downcast::<PillboxError>() {

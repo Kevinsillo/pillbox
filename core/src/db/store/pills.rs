@@ -38,7 +38,7 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
             params![input.prescription_id],
             |row| row.get(0),
         )
-        .context("error al verificar la prescription")?;
+        .context("failed to check prescription status")?;
 
     if !rx_open {
         return Err(PillboxError::PrescriptionRequired {
@@ -65,7 +65,7 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
             input.author_email,
         ],
     )
-    .context("no se pudo insertar la pill")?;
+    .context("failed to insert pill")?;
 
     let id = tx.last_insert_rowid();
 
@@ -94,7 +94,7 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     ) {
         Ok(p) => Ok(Some(p)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("no se pudo leer la pill"),
+        Err(e) => Err(e).context("failed to read pill"),
     }
 }
 
@@ -111,7 +111,7 @@ pub fn find_by_sync_id_prefix(conn: &Connection, prefix: &str) -> Result<Option<
     ) {
         Ok(p) => Ok(Some(p)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("no se pudo buscar la pill por sync_id"),
+        Err(e) => Err(e).context("failed to find pill by sync_id"),
     }
 }
 
@@ -135,7 +135,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
                 id,
             ],
         )
-        .context("no se pudo actualizar la pill")?;
+        .context("failed to update pill")?;
 
     if affected == 0 {
         return Ok(None);
@@ -166,7 +166,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
             params![id],
             row_to_pill,
         )
-        .context("no se pudo leer la pill revisada")?;
+        .context("failed to read revised pill")?;
 
     tx.commit()?;
     Ok(Some(pill))
@@ -183,7 +183,7 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<PillDiscardResul
          WHERE id = ?1 AND deleted_at IS NULL",
             params![id],
         )
-        .context("no se pudo descartar la pill")?;
+        .context("failed to discard pill")?;
 
     if affected == 0 {
         return Ok(None);
@@ -227,8 +227,59 @@ pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<
     let pills = stmt
         .query_map(params![prescription_id], row_to_pill)?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("no se pudo listar las pills de la prescription")?;
+        .context("failed to list pills for prescription")?;
     Ok(pills)
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, serde::Serialize)]
+pub struct DayCount {
+    pub date: String,
+    pub count: i64,
+}
+
+/// Pills creadas por día en los últimos `days` días (incluyendo días con 0).
+pub fn activity_by_day(conn: &Connection, days: u32) -> Result<Vec<DayCount>> {
+    let days = days.max(1) as i64;
+    let mut stmt = conn.prepare(
+        "WITH RECURSIVE dates(d) AS (
+             SELECT date('now', 'localtime', '-' || (?1 - 1) || ' days')
+             UNION ALL
+             SELECT date(d, '+1 day') FROM dates WHERE d < date('now', 'localtime')
+         )
+         SELECT d AS date,
+                COUNT(p.id) AS count
+         FROM dates
+         LEFT JOIN pills p
+             ON date(p.created_at, 'localtime') = d
+             AND p.deleted_at IS NULL
+         GROUP BY d
+         ORDER BY d",
+    )?;
+    let rows = stmt
+        .query_map(params![days], |row| {
+            Ok(DayCount {
+                date: row.get(0)?,
+                count: row.get(1)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("failed to query pill activity")?;
+    Ok(rows)
+}
+
+/// Pills en la prescription actualmente abierta (0 si no hay ninguna).
+pub fn open_rx_pill_count(conn: &Connection) -> Result<i64> {
+    conn.query_row(
+        "SELECT COUNT(*) FROM pills p
+         JOIN prescriptions rx ON p.prescription_id = rx.id
+         WHERE rx.ended_at IS NULL AND rx.deleted_at IS NULL
+           AND p.deleted_at IS NULL",
+        [],
+        |row| row.get(0),
+    )
+    .context("failed to count pills in open rx")
 }
 
 fn row_to_pill(row: &rusqlite::Row<'_>) -> rusqlite::Result<Pill> {
@@ -375,7 +426,11 @@ mod tests {
         let result = revise(
             &mut conn,
             9999,
-            &PillPatch { title: Some("x".into()), content: None, compound: None },
+            &PillPatch {
+                title: Some("x".into()),
+                content: None,
+                compound: None,
+            },
         )
         .unwrap();
         assert!(result.is_none());
@@ -391,7 +446,11 @@ mod tests {
         let result = revise(
             &mut conn,
             pill.id,
-            &PillPatch { title: Some("nuevo".into()), content: None, compound: None },
+            &PillPatch {
+                title: Some("nuevo".into()),
+                content: None,
+                compound: None,
+            },
         )
         .unwrap();
         assert!(result.is_none());

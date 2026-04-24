@@ -13,8 +13,8 @@ use serde::Deserialize;
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, err_404_pill, err_422, err_500, ok, ok_created, open_global_conn,
-    ApiResponse, AppState,
+    conn_for_bottle, err_404_pill, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse,
+    AppState,
 };
 
 #[derive(Deserialize, Validate)]
@@ -137,7 +137,11 @@ pub async fn pill_search(
                 }
             }
         }
-        all_results.sort_by(|a, b| a.rank.partial_cmp(&b.rank).unwrap_or(std::cmp::Ordering::Equal));
+        all_results.sort_by(|a, b| {
+            a.rank
+                .partial_cmp(&b.rank)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         ok(all_results)
     }
 }
