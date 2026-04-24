@@ -1,4 +1,15 @@
-## [unreleased]
+## [0.7.0] - 2026-04-24
+
+### 🚀 Features
+
+- *(cli)* Añadir comandos bottle delete y bottle repair
+- *(server)* Añadir endpoint GET /bottles/:id/stats
+- *(webui)* Añadir PillsActivityChart y estadísticas en dashboard
+- *(webui)* ConfirmDialog personalizado y migrar ElMessageBox
+
+### 🐛 Bug Fixes
+
+- *(webui)* Resaltar nombres en confirmaciones de borrado
 
 ### 🎨 Styling
 
@@ -7,6 +18,10 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Añadir cliff.toml con salto de línea entre releases
+- Regenerar CHANGELOG.md con saltos de línea entre releases
+- *(core)* Traducir mensajes de error internos a inglés
+- Actualizar install.sh — pasar --install-dir como argumento
+- *(core)* Formatear error.rs
 
 ## [0.6.0] - 2026-04-22
 
