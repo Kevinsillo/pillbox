@@ -37,15 +37,15 @@
   },
   "confirm": {
     "delete_capsule_title": "Capsule löschen",
-    "delete_capsule_msg": "«{title}» wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "delete_capsule_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
     "delete_prescription_title": "Prescription löschen",
     "delete_prescription_msg": "Die Prescription und alle ihre Pills werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
     "delete_pill_title": "Pill löschen",
-    "delete_pill_msg": "«{title}» wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "delete_pill_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
     "close_prescription_title": "Prescription schließen",
     "close_prescription_msg": "Die Prescription wird geschlossen und es können keine weiteren Pills hinzugefügt werden.",
     "delete_bottle_title": "Bottle löschen",
-    "delete_bottle_msg": "Dadurch werden das Bottle und alle Prescriptions und Pills dauerhaft gelöscht. Gib **{name}** ein, um zu bestätigen.",
+    "delete_bottle_msg": "Dadurch werden das Bottle und alle Prescriptions und Pills dauerhaft gelöscht. Gib «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» ein, um zu bestätigen.",
     "delete_bottle_prompt": "Gib den Bottle-Slug ein, um zu bestätigen"
   },
   "dashboard": {
@@ -54,15 +54,15 @@
     "manage_bottles": "Bottles verwalten",
     "stat_pills": "Pills gesamt",
     "stat_prescriptions": "Prescriptions",
-    "stat_rx_open": "Offen",
-    "stat_rx_closed": "Geschlossen",
-    "stat_rx_label": "Aktive Prescription",
-    "stat_context": "Pills im Kontext",
     "open_rx_label": "Offene Prescription",
-    "view_link": "Ansehen",
     "last_prescriptions": "Letzte Prescriptions",
     "view_all": "Alle ansehen",
-    "recent_context": "Neueste Pills"
+    "recent_context": "Neueste Pills",
+    "chart_title": "Aktivität",
+    "chart_period_1d": "1 Tag",
+    "chart_period_1w": "1 Woche",
+    "chart_period_1m": "1 Monat",
+    "chart_period_1y": "1 Jahr"
   },
   "bottles": {
     "heading": "Bottles",

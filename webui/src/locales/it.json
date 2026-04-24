@@ -37,15 +37,15 @@
   },
   "confirm": {
     "delete_capsule_title": "Elimina capsule",
-    "delete_capsule_msg": "«{title}» verrà eliminata definitivamente. Questa azione non può essere annullata.",
+    "delete_capsule_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» verrà eliminata definitivamente. Questa azione non può essere annullata.",
     "delete_prescription_title": "Elimina prescription",
     "delete_prescription_msg": "La prescription e tutte le sue pills verranno eliminate definitivamente. Questa azione non può essere annullata.",
     "delete_pill_title": "Elimina pill",
-    "delete_pill_msg": "«{title}» verrà eliminata definitivamente. Questa azione non può essere annullata.",
+    "delete_pill_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» verrà eliminata definitivamente. Questa azione non può essere annullata.",
     "close_prescription_title": "Chiudi prescription",
     "close_prescription_msg": "La prescription verrà chiusa e non sarà possibile aggiungere altre pills.",
     "delete_bottle_title": "Elimina bottle",
-    "delete_bottle_msg": "Questa azione eliminerà definitivamente il bottle, tutte le prescription e le pill. Scrivi **{name}** per confermare.",
+    "delete_bottle_msg": "Questa azione eliminerà definitivamente il bottle, tutte le prescription e le pill. Scrivi «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» per confermare.",
     "delete_bottle_prompt": "Scrivi lo slug del bottle per confermare"
   },
   "dashboard": {
@@ -54,15 +54,15 @@
     "manage_bottles": "Gestisci bottles",
     "stat_pills": "Pills totali",
     "stat_prescriptions": "Prescriptions",
-    "stat_rx_open": "Aperta",
-    "stat_rx_closed": "Chiusa",
-    "stat_rx_label": "Prescription attiva",
-    "stat_context": "Pills nel contesto",
     "open_rx_label": "Prescription aperta",
-    "view_link": "Vedi",
     "last_prescriptions": "Ultime prescriptions",
     "view_all": "Vedi tutte",
-    "recent_context": "Pill recenti"
+    "recent_context": "Pill recenti",
+    "chart_title": "Attività",
+    "chart_period_1d": "1 giorno",
+    "chart_period_1w": "1 settimana",
+    "chart_period_1m": "1 mese",
+    "chart_period_1y": "1 anno"
   },
   "bottles": {
     "heading": "Bottles",

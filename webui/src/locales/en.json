@@ -37,15 +37,15 @@
   },
   "confirm": {
     "delete_capsule_title": "Delete capsule",
-    "delete_capsule_msg": "«{title}» will be permanently deleted. This action cannot be undone.",
+    "delete_capsule_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» will be permanently deleted. This action cannot be undone.",
     "delete_prescription_title": "Delete prescription",
     "delete_prescription_msg": "The prescription and all its pills will be permanently deleted. This action cannot be undone.",
     "delete_pill_title": "Delete pill",
-    "delete_pill_msg": "«{title}» will be permanently deleted. This action cannot be undone.",
+    "delete_pill_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» will be permanently deleted. This action cannot be undone.",
     "close_prescription_title": "Close prescription",
     "close_prescription_msg": "The prescription will be closed and no more pills can be added.",
     "delete_bottle_title": "Delete bottle",
-    "delete_bottle_msg": "This will permanently delete the bottle, all its prescriptions and pills. Type **{name}** to confirm.",
+    "delete_bottle_msg": "This will permanently delete the bottle, all its prescriptions and pills. Type «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» to confirm.",
     "delete_bottle_prompt": "Type the bottle slug to confirm"
   },
   "dashboard": {
@@ -54,15 +54,15 @@
     "manage_bottles": "Manage bottles",
     "stat_pills": "Total pills",
     "stat_prescriptions": "Prescriptions",
-    "stat_rx_open": "Open",
-    "stat_rx_closed": "Closed",
-    "stat_rx_label": "Active prescription",
-    "stat_context": "Pills in context",
     "open_rx_label": "Open prescription",
-    "view_link": "View",
     "last_prescriptions": "Latest prescriptions",
     "view_all": "View all",
-    "recent_context": "Recent pills"
+    "recent_context": "Recent pills",
+    "chart_title": "Activity",
+    "chart_period_1d": "1 day",
+    "chart_period_1w": "1 week",
+    "chart_period_1m": "1 month",
+    "chart_period_1y": "1 year"
   },
   "bottles": {
     "heading": "Bottles",

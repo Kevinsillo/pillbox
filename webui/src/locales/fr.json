@@ -37,15 +37,15 @@
   },
   "confirm": {
     "delete_capsule_title": "Supprimer la capsule",
-    "delete_capsule_msg": "«{title}» sera supprimée définitivement. Cette action est irréversible.",
+    "delete_capsule_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» sera supprimée définitivement. Cette action est irréversible.",
     "delete_prescription_title": "Supprimer la prescription",
     "delete_prescription_msg": "La prescription et toutes ses pills seront supprimées définitivement. Cette action est irréversible.",
     "delete_pill_title": "Supprimer la pill",
-    "delete_pill_msg": "«{title}» sera supprimée définitivement. Cette action est irréversible.",
+    "delete_pill_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» sera supprimée définitivement. Cette action est irréversible.",
     "close_prescription_title": "Fermer la prescription",
     "close_prescription_msg": "La prescription sera fermée et il ne sera plus possible d'ajouter des pills.",
     "delete_bottle_title": "Supprimer le bottle",
-    "delete_bottle_msg": "Cela supprimera définitivement le bottle, toutes ses prescriptions et pills. Saisissez **{name}** pour confirmer.",
+    "delete_bottle_msg": "Cela supprimera définitivement le bottle, toutes ses prescriptions et pills. Saisissez «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» pour confirmer.",
     "delete_bottle_prompt": "Saisissez le slug du bottle pour confirmer"
   },
   "dashboard": {
@@ -54,15 +54,15 @@
     "manage_bottles": "Gérer les bottles",
     "stat_pills": "Pills totales",
     "stat_prescriptions": "Prescriptions",
-    "stat_rx_open": "Ouverte",
-    "stat_rx_closed": "Fermée",
-    "stat_rx_label": "Prescription active",
-    "stat_context": "Pills dans le contexte",
     "open_rx_label": "Prescription ouverte",
-    "view_link": "Voir",
     "last_prescriptions": "Dernières prescriptions",
     "view_all": "Voir tout",
-    "recent_context": "Pills récentes"
+    "recent_context": "Pills récentes",
+    "chart_title": "Activité",
+    "chart_period_1d": "1 jour",
+    "chart_period_1w": "1 semaine",
+    "chart_period_1m": "1 mois",
+    "chart_period_1y": "1 an"
   },
   "bottles": {
     "heading": "Bottles",
