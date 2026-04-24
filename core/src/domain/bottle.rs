@@ -42,7 +42,9 @@ impl std::fmt::Display for BottleScope {
     }
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 /// Bottle tal como se devuelve al listar.
 #[derive(Debug, Serialize, Deserialize)]

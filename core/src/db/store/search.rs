@@ -11,7 +11,7 @@ use crate::domain::search::{SearchParams, SearchResult};
 
 const FUZZY_MIN_LEN: usize = 4;
 const FUZZY_THRESHOLD_SHORT: f64 = 0.85; // 4–6 chars
-const FUZZY_THRESHOLD_LONG: f64 = 0.80;  // 7+ chars
+const FUZZY_THRESHOLD_LONG: f64 = 0.80; // 7+ chars
 const FUZZY_MAX_LEN_DIFF: usize = 2;
 
 // ─── Pipeline de query FTS5 + fuzzy ─────────────────────────────────────────
@@ -40,7 +40,7 @@ fn fetch_vocab(conn: &Connection, fts_table: &str) -> Result<Vec<String>> {
     let vocab = stmt
         .query_map([], |row| row.get::<_, String>(0))?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("error al leer vocabulario FTS5")?;
+        .context("failed to read FTS5 vocabulary")?;
 
     Ok(vocab)
 }
@@ -95,7 +95,10 @@ fn build_fts_query(terms: &[String], fuzzy_map: &HashMap<&str, Vec<String>>) -> 
         .iter()
         .map(|term| {
             let prefix = format!("\"{}\"*", term);
-            let fuzzy = fuzzy_map.get(term.as_str()).map(|v| v.as_slice()).unwrap_or(&[]);
+            let fuzzy = fuzzy_map
+                .get(term.as_str())
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
 
             if fuzzy.is_empty() {
                 prefix
@@ -169,7 +172,7 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
             |row| row_to_search_result(row, true),
         )?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("error en búsqueda FTS5 de pills")?;
+        .context("FTS5 pill search failed")?;
 
     Ok(results)
 }
@@ -216,7 +219,7 @@ pub fn capsule_find(
             row_to_search_result(row, false)
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("error en búsqueda FTS5 de capsules")?;
+        .context("FTS5 capsule search failed")?;
 
     Ok(results)
 }
@@ -263,7 +266,7 @@ pub fn pill_context(
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("error al cargar prescriptions para contexto")?;
+        .context("failed to load prescriptions for context")?;
 
     struct PillEntry {
         compound: String,
@@ -289,7 +292,7 @@ pub fn pill_context(
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("error al cargar pills para contexto")?;
+        .context("failed to load pills for context")?;
 
     let prescription_count = prescriptions.len();
     let pill_count = pills.len();
@@ -298,7 +301,11 @@ pub fn pill_context(
     if !prescriptions.is_empty() {
         md.push_str("## Recent Prescriptions\n\n");
         for rx in &prescriptions {
-            let status = if rx.ended_at.is_some() { "closed" } else { "open" };
+            let status = if rx.ended_at.is_some() {
+                "closed"
+            } else {
+                "open"
+            };
             let date = rx.started_at.get(..10).unwrap_or(&rx.started_at);
             md.push_str(&format!(
                 "- **{}** ({}, {}) [{} pills]\n",
@@ -358,12 +365,15 @@ pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Ve
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("error al cargar pills recientes")?;
+        .context("failed to load recent pills")?;
 
     Ok(pills)
 }
 
-fn row_to_search_result(row: &rusqlite::Row<'_>, has_prescription_id: bool) -> rusqlite::Result<SearchResult> {
+fn row_to_search_result(
+    row: &rusqlite::Row<'_>,
+    has_prescription_id: bool,
+) -> rusqlite::Result<SearchResult> {
     Ok(SearchResult {
         id: row.get(0)?,
         sync_id: row.get(1)?,
@@ -373,8 +383,16 @@ fn row_to_search_result(row: &rusqlite::Row<'_>, has_prescription_id: bool) -> r
         created_at: row.get(5)?,
         updated_at: row.get(6)?,
         rank: row.get(7)?,
-        prescription_id: if has_prescription_id { row.get(8)? } else { None },
-        bottle_id: if has_prescription_id { row.get(9)? } else { None },
+        prescription_id: if has_prescription_id {
+            row.get(8)?
+        } else {
+            None
+        },
+        bottle_id: if has_prescription_id {
+            row.get(9)?
+        } else {
+            None
+        },
     })
 }
 
@@ -502,7 +520,10 @@ mod tests {
         )
         .unwrap();
 
-        assert!(!results.is_empty(), "fuzzy debe encontrar 'tokenizer' desde 'tokenizr'");
+        assert!(
+            !results.is_empty(),
+            "fuzzy debe encontrar 'tokenizer' desde 'tokenizr'"
+        );
     }
 
     #[test]
@@ -579,7 +600,10 @@ mod tests {
             sanitize_fts_query("fix auth bug"),
             "\"fix\"* \"auth\"* \"bug\"*"
         );
-        assert_eq!(sanitize_fts_query("AND OR NOT"), "\"AND\"* \"OR\"* \"NOT\"*");
+        assert_eq!(
+            sanitize_fts_query("AND OR NOT"),
+            "\"AND\"* \"OR\"* \"NOT\"*"
+        );
         assert_eq!(sanitize_fts_query(""), "");
     }
 
@@ -614,7 +638,11 @@ mod tests {
         );
 
         // No debe producir error de sintaxis FTS5
-        assert!(results.is_ok(), "no debe fallar con bare+group: {:?}", results.err());
+        assert!(
+            results.is_ok(),
+            "no debe fallar con bare+group: {:?}",
+            results.err()
+        );
     }
 
     #[test]
@@ -635,7 +663,11 @@ mod tests {
             },
         );
 
-        assert!(results.is_ok(), "no debe fallar con group AND group: {:?}", results.err());
+        assert!(
+            results.is_ok(),
+            "no debe fallar con group AND group: {:?}",
+            results.err()
+        );
     }
 
     #[test]

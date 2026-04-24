@@ -18,12 +18,17 @@ rust_i18n::i18n!("locales", fallback = "en");
     name = "pillbox",
     version,
     about = "Persistent knowledge memory for AI agents",
-    disable_help_subcommand = true
+    disable_help_subcommand = true,
+    disable_help_flag = true
 )]
 struct Cli {
     /// Inicializa la DB global (~/.pillbox/pillbox.db). Llamado por install.sh.
     #[arg(long, hide = true)]
     init_global: bool,
+
+    /// Muestra esta ayuda.
+    #[arg(short, long)]
+    help: bool,
 
     #[command(subcommand)]
     command: Option<Command>,
@@ -90,7 +95,6 @@ enum Command {
     Uninstall,
 
     /// Muestra esta ayuda.
-    #[command(hide = true)]
     Help,
 }
 
@@ -228,6 +232,10 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    if cli.help {
+        return cmd_root_help();
+    }
+
     match cli.command {
         None => cmd_root_help(),
         Some(Command::Status) => cmd::status::run(),
@@ -268,9 +276,7 @@ async fn main() -> Result<()> {
             Some(PrescriptionCommand::List { limit }) => {
                 cmd::prescription::cmd_prescription_list(limit)
             }
-            Some(PrescriptionCommand::Show { id }) => {
-                cmd::prescription::cmd_prescription_show(id)
-            }
+            Some(PrescriptionCommand::Show { id }) => cmd::prescription::cmd_prescription_show(id),
             Some(PrescriptionCommand::Close) => cmd::prescription::cmd_prescription_close(),
             None => cmd_sub_help("prescription"),
         },

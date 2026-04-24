@@ -41,7 +41,11 @@ pub fn detect() -> String {
                 .next()
                 .unwrap_or("")
                 .to_lowercase();
-            if is_supported(&code) { Some(code) } else { None }
+            if is_supported(&code) {
+                Some(code)
+            } else {
+                None
+            }
         })
         .unwrap_or_else(|| "en".to_string());
     let _ = save(&detected);

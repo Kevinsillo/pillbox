@@ -136,7 +136,10 @@ mod tests {
         assert_eq!(PillCompound::Discovery.as_str(), "discovery");
         assert_eq!(PillCompound::Learning.as_str(), "learning");
         assert_eq!(PillCompound::Feedback.as_str(), "feedback");
-        assert_eq!(PillCompound::PrescriptionSummary.as_str(), "prescription_summary");
+        assert_eq!(
+            PillCompound::PrescriptionSummary.as_str(),
+            "prescription_summary"
+        );
         assert_eq!(PillCompound::Manual.as_str(), "manual");
     }
 

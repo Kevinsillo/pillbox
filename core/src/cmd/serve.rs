@@ -69,8 +69,7 @@ async fn cmd_serve_run(port: u16) -> Result<()> {
 
 pub fn cmd_serve_stop() -> Result<()> {
     let pid_path = pillbox::config::pid_path();
-    let pid =
-        read_pid(&pid_path).ok_or_else(|| anyhow::anyhow!("{}", t!("serve.stop.none")))?;
+    let pid = read_pid(&pid_path).ok_or_else(|| anyhow::anyhow!("{}", t!("serve.stop.none")))?;
 
     if !process_alive(pid) {
         let _ = std::fs::remove_file(&pid_path);

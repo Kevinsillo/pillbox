@@ -2,7 +2,10 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 use uuid::Uuid;
 
-use crate::{domain::bottle::{Bottle, NewBottle}, error::PillboxError};
+use crate::{
+    domain::bottle::{Bottle, NewBottle},
+    error::PillboxError,
+};
 
 /// Crea un bottle nuevo en la DB.
 pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
@@ -28,7 +31,7 @@ pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
                 });
             }
         }
-        anyhow::anyhow!(e).context("no se pudo crear el bottle")
+        anyhow::anyhow!(e).context("failed to create bottle")
     })?;
 
     let bottle = tx
@@ -38,7 +41,7 @@ pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
             params![id],
             row_to_bottle,
         )
-        .context("no se pudo leer el bottle recién creado")?;
+        .context("failed to read newly created bottle")?;
 
     tx.commit()?;
     Ok(bottle)
@@ -54,7 +57,7 @@ pub fn list(conn: &Connection) -> Result<Vec<Bottle>> {
     let bottles = stmt
         .query_map([], row_to_bottle)?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("no se pudo listar los bottles")?;
+        .context("failed to list bottles")?;
 
     Ok(bottles)
 }
@@ -69,7 +72,7 @@ pub fn find_by_id(conn: &Connection, id: &str) -> Result<Option<Bottle>> {
     ) {
         Ok(b) => Ok(Some(b)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("no se pudo buscar el bottle por id"),
+        Err(e) => Err(e).context("failed to find bottle by id"),
     }
 }
 
@@ -83,7 +86,7 @@ pub fn find_by_directory(conn: &Connection, directory: &str) -> Result<Option<Bo
     ) {
         Ok(b) => Ok(Some(b)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("no se pudo buscar el bottle por directorio"),
+        Err(e) => Err(e).context("failed to find bottle by directory"),
     }
 }
 
@@ -95,17 +98,17 @@ pub fn delete(conn: &mut Connection, id: &str) -> Result<bool> {
         "DELETE FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)",
         params![id],
     )
-    .context("no se pudieron eliminar las pills del bottle")?;
+    .context("failed to delete bottle pills")?;
 
     tx.execute(
         "DELETE FROM prescriptions WHERE bottle_id = ?1",
         params![id],
     )
-    .context("no se pudieron eliminar las prescriptions del bottle")?;
+    .context("failed to delete bottle prescriptions")?;
 
     let count = tx
         .execute("DELETE FROM bottles WHERE id = ?1", params![id])
-        .context("no se pudo eliminar el bottle")?;
+        .context("failed to delete bottle")?;
 
     tx.commit()?;
     Ok(count > 0)
@@ -117,7 +120,7 @@ pub fn touch(conn: &Connection, id: &str) -> Result<()> {
         "UPDATE bottles SET last_seen_at = datetime('now') WHERE id = ?1",
         params![id],
     )
-    .context("no se pudo actualizar last_seen_at del bottle")?;
+    .context("failed to update bottle last_seen_at")?;
     Ok(())
 }
 
@@ -213,7 +216,9 @@ mod tests {
     #[test]
     fn find_by_directory_missing_returns_none() {
         let conn = open_in_memory().unwrap();
-        assert!(find_by_directory(&conn, "/ruta/inexistente").unwrap().is_none());
+        assert!(find_by_directory(&conn, "/ruta/inexistente")
+            .unwrap()
+            .is_none());
     }
 
     #[test]

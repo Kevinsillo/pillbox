@@ -15,11 +15,11 @@ pub fn latest_version(repo: &str) -> Result<String> {
         .get(&url)
         .header("User-Agent", "pillbox-cli")
         .send()
-        .with_context(|| format!("no se pudo conectar con GitHub para {}", repo))?
+        .with_context(|| format!("failed to connect to GitHub for {}", repo))?
         .error_for_status()
-        .with_context(|| format!("GitHub devolvió error para {}", repo))?
+        .with_context(|| format!("GitHub returned an error for {}", repo))?
         .json()
-        .context("respuesta de GitHub no es JSON válido")?;
+        .context("GitHub response is not valid JSON")?;
     Ok(release.tag_name)
 }
 
@@ -33,11 +33,11 @@ pub fn download_asset(repo: &str, version: &str, asset: &str) -> Result<Vec<u8>>
         .get(&url)
         .header("User-Agent", "pillbox-cli")
         .send()
-        .with_context(|| format!("no se pudo descargar {}", url))?
+        .with_context(|| format!("failed to download {}", url))?
         .error_for_status()
-        .with_context(|| format!("error al descargar {}", url))?
+        .with_context(|| format!("download failed for {}", url))?
         .bytes()
-        .context("error leyendo el cuerpo de la descarga")?;
+        .context("failed to read download body")?;
     Ok(bytes.to_vec())
 }
 
@@ -46,6 +46,6 @@ pub fn fetch_manifest(repo: &str) -> Result<(String, Manifest)> {
     let version = latest_version(repo)?;
     let bytes = download_asset(repo, &version, "pillbox.json")?;
     let manifest: Manifest =
-        serde_json::from_slice(&bytes).context("pillbox.json inválido o formato desconocido")?;
+        serde_json::from_slice(&bytes).context("pillbox.json is invalid or has unknown format")?;
     Ok((version, manifest))
 }

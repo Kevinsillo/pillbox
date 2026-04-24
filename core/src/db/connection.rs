@@ -13,12 +13,12 @@ pub fn open(path: &Path) -> Result<Connection> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
             std::fs::create_dir_all(parent)
-                .with_context(|| format!("no se pudo crear el directorio {:?}", parent))?;
+                .with_context(|| format!("failed to create directory {:?}", parent))?;
         }
     }
 
     let conn =
-        Connection::open(path).with_context(|| format!("no se pudo abrir la DB en {:?}", path))?;
+        Connection::open(path).with_context(|| format!("failed to open DB at {:?}", path))?;
 
     configure(&conn)?;
     migrations::run(&conn)?;
@@ -35,7 +35,7 @@ pub fn open_existing(path: &Path) -> Result<Connection> {
         anyhow::bail!("DB not found at {:?}", path);
     }
     let conn =
-        Connection::open(path).with_context(|| format!("no se pudo abrir la DB en {:?}", path))?;
+        Connection::open(path).with_context(|| format!("failed to open DB at {:?}", path))?;
     configure(&conn)?;
     migrations::run(&conn)?;
     Ok(conn)
@@ -61,7 +61,7 @@ fn configure(conn: &Connection) -> Result<()> {
          PRAGMA foreign_keys  = ON;
          PRAGMA auto_vacuum   = INCREMENTAL;",
     )
-    .context("error al configurar PRAGMA")?;
+    .context("failed to configure SQLite PRAGMAs")?;
     Ok(())
 }
 

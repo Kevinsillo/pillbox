@@ -16,7 +16,7 @@ pub fn run(conn: &Connection) -> Result<()> {
 
     if current > CURRENT_SCHEMA_VERSION {
         anyhow::bail!(
-            "DB schema v{} encontrado, v{} esperado. La versión de pillbox es más antigua que la DB.",
+            "DB schema v{} found, v{} expected. The pillbox binary is older than the DB.",
             current,
             CURRENT_SCHEMA_VERSION
         );
@@ -28,7 +28,7 @@ pub fn run(conn: &Connection) -> Result<()> {
 
     // Aplica migraciones desde current+1 hasta CURRENT_SCHEMA_VERSION
     if current < 1 {
-        apply(conn, 1, MIGRATION_001).context("migración 001_initial falló")?;
+        apply(conn, 1, MIGRATION_001).context("migration 001_initial failed")?;
     }
 
     Ok(())
@@ -66,7 +66,7 @@ fn apply(conn: &Connection, version: i64, sql: &str) -> Result<()> {
         .join("\n");
 
     conn.execute_batch(&format!("BEGIN;\n{}\nCOMMIT;", ddl))
-        .with_context(|| format!("error al aplicar migración v{}", version))?;
+        .with_context(|| format!("failed to apply migration v{}", version))?;
     Ok(())
 }
 

@@ -58,7 +58,7 @@ pub fn install(
     claude_cfg: Option<&Path>,
 ) -> Result<()> {
     std::fs::create_dir_all(dest_dir)
-        .with_context(|| format!("no se pudo crear {}", dest_dir.display()))?;
+        .with_context(|| format!("failed to create {}", dest_dir.display()))?;
 
     match manifest.install_type {
         InstallType::Tarball => {
@@ -66,21 +66,20 @@ pub fn install(
             let mut archive = Archive::new(gz);
             archive
                 .unpack(dest_dir)
-                .context("no se pudo extraer el tarball")?;
+                .context("failed to extract tarball")?;
         }
         InstallType::File => {
             let filename = std::path::Path::new(&manifest.asset)
                 .file_name()
-                .context("el asset no tiene nombre de fichero válido")?;
-            std::fs::write(dest_dir.join(filename), bytes)
-                .context("no se pudo escribir el fichero")?;
+                .context("asset has no valid filename")?;
+            std::fs::write(dest_dir.join(filename), bytes).context("failed to write file")?;
         }
     }
 
     if let Some(post) = &manifest.post_install {
         if let Some(entry) = &post.claude_json {
-            let cfg = claude_cfg
-                .context("el manifest requiere claude_json pero no se proporcionó la ruta")?;
+            let cfg =
+                claude_cfg.context("manifest requires claude_json but no path was provided")?;
             write_claude_json(cfg, &entry.key, &entry.command, dest_dir.join(&entry.entry))?;
         }
     }
@@ -95,8 +94,7 @@ fn write_claude_json(
     entry_path: std::path::PathBuf,
 ) -> Result<()> {
     let mut root: serde_json::Value = if claude_cfg.exists() {
-        let raw = std::fs::read_to_string(claude_cfg)
-            .context("no se pudo leer ~/.claude.json")?;
+        let raw = std::fs::read_to_string(claude_cfg).context("failed to read ~/.claude.json")?;
         serde_json::from_str(&raw).unwrap_or(serde_json::json!({}))
     } else {
         serde_json::json!({})
@@ -117,11 +115,11 @@ fn write_claude_json(
                 "args": [entry_path.to_string_lossy()]
             });
         }
-        _ => anyhow::bail!("clave claude_json inválida: {}", key),
+        _ => anyhow::bail!("invalid claude_json key: {}", key),
     }
 
     std::fs::write(claude_cfg, serde_json::to_string_pretty(&root)? + "\n")
-        .context("no se pudo escribir ~/.claude.json")?;
+        .context("failed to write ~/.claude.json")?;
 
     Ok(())
 }
@@ -131,21 +129,18 @@ fn write_claude_json(
 /// Elimina dest_dir y opcionalmente limpia una clave de ~/.claude.json.
 ///
 /// Devuelve `false` si dest_dir no existía (ya estaba desinstalado).
-pub fn uninstall(
-    dest_dir: &Path,
-    claude_cfg_key: Option<(&str, &Path)>,
-) -> Result<bool> {
+pub fn uninstall(dest_dir: &Path, claude_cfg_key: Option<(&str, &Path)>) -> Result<bool> {
     if !dest_dir.exists() {
         return Ok(false);
     }
 
     std::fs::remove_dir_all(dest_dir)
-        .with_context(|| format!("no se pudo eliminar {}", dest_dir.display()))?;
+        .with_context(|| format!("failed to remove {}", dest_dir.display()))?;
 
     if let Some((key, claude_cfg)) = claude_cfg_key {
         if claude_cfg.exists() {
-            let raw = std::fs::read_to_string(claude_cfg)
-                .context("no se pudo leer ~/.claude.json")?;
+            let raw =
+                std::fs::read_to_string(claude_cfg).context("failed to read ~/.claude.json")?;
             let mut root: serde_json::Value =
                 serde_json::from_str(&raw).unwrap_or(serde_json::json!({}));
             let parts: Vec<&str> = key.splitn(2, '.').collect();
@@ -155,7 +150,7 @@ pub fn uninstall(
                 }
             }
             std::fs::write(claude_cfg, serde_json::to_string_pretty(&root)? + "\n")
-                .context("no se pudo actualizar ~/.claude.json")?;
+                .context("failed to update ~/.claude.json")?;
         }
     }
 

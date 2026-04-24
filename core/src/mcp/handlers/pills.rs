@@ -8,7 +8,9 @@ use pillbox::{
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::mcp::response::{anyhow_to_response, from_value, not_found, validate_input, Conn, Response};
+use crate::mcp::response::{
+    anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
+};
 
 pub fn take(conn: &mut Conn, input: Value) -> Response {
     let req: NewPill = match from_value(input) {
@@ -96,14 +98,19 @@ pub fn context(conn: &mut Conn, input: Value) -> Response {
         #[serde(default = "default_30")]
         pill_limit: u32,
     }
-    fn default_5() -> u32 { 5 }
-    fn default_30() -> u32 { 30 }
+    fn default_5() -> u32 {
+        5
+    }
+    fn default_30() -> u32 {
+        30
+    }
 
     let req: In = match from_value(input) {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::search::pill_context(conn, &req.bottle_id, req.prescription_limit, req.pill_limit) {
+    match store::search::pill_context(conn, &req.bottle_id, req.prescription_limit, req.pill_limit)
+    {
         Ok(ctx) => Response::ok(json!({
             "context":            ctx.context,
             "prescription_count": ctx.prescription_count,

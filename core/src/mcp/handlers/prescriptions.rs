@@ -2,7 +2,9 @@ use pillbox::{db::store, domain::prescription::NewPrescription};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::mcp::response::{anyhow_to_response, from_value, not_found, validate_input, Conn, Response};
+use crate::mcp::response::{
+    anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
+};
 
 pub fn open(conn: &mut Conn, input: Value) -> Response {
     let req: NewPrescription = match from_value(input) {

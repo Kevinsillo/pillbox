@@ -7,8 +7,8 @@ use crate::output;
 pub fn cmd_pill_show(id: i64) -> Result<()> {
     use pillbox::db::{connection, store::pills};
 
-    let db_path = pillbox::config::resolve_db_path()
-        .unwrap_or_else(pillbox::config::global_db_path);
+    let db_path =
+        pillbox::config::resolve_db_path().unwrap_or_else(pillbox::config::global_db_path);
 
     if !db_path.exists() {
         output::fmt::db_not_found();

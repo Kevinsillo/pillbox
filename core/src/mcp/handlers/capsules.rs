@@ -5,7 +5,9 @@ use pillbox::{
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::mcp::response::{anyhow_to_response, from_value, not_found, validate_input, Conn, Response};
+use crate::mcp::response::{
+    anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
+};
 
 pub fn take(conn: &mut Conn, input: Value) -> Response {
     let req: NewCapsule = match from_value(input) {

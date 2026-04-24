@@ -35,7 +35,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
     ) {
         Ok(row) => Some(row),
         Err(rusqlite::Error::QueryReturnedNoRows) => None,
-        Err(e) => return Err(e).context("error al verificar prescription abierta"),
+        Err(e) => return Err(e).context("failed to check for open prescription"),
     };
 
     if let Some((id, title, started_at, pill_count)) = existing {
@@ -56,7 +56,10 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
     )?;
 
     if !bottle_exists {
-        return Err(PillboxError::BottleNotFound { bottle_id: input.bottle_id.clone() }.into());
+        return Err(PillboxError::BottleNotFound {
+            bottle_id: input.bottle_id.clone(),
+        }
+        .into());
     }
 
     let id = Uuid::now_v7().to_string();
@@ -65,7 +68,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
         "INSERT INTO prescriptions (id, bottle_id, title) VALUES (?1, ?2, ?3)",
         params![id, input.bottle_id, input.title],
     )
-    .context("no se pudo insertar la prescription")?;
+    .context("failed to insert prescription")?;
 
     tx.execute(
         "INSERT INTO dispense_log (prescription_id, action) VALUES (?1, 'prescription_open')",
@@ -79,7 +82,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
             params![id],
             row_to_prescription,
         )
-        .context("no se pudo leer la prescription recién abierta")?;
+        .context("failed to read newly opened prescription")?;
 
     tx.commit()?;
     Ok(prescription)
@@ -95,7 +98,7 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
          WHERE id = ?1 AND ended_at IS NULL AND deleted_at IS NULL",
             params![id],
         )
-        .context("no se pudo cerrar la prescription")?;
+        .context("failed to close prescription")?;
 
     if affected == 0 {
         return Err(PillboxError::PrescriptionNotFoundOrClosed { id: id.to_string() }.into());
@@ -113,7 +116,7 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
             params![id],
             row_to_prescription,
         )
-        .context("no se pudo leer la prescription cerrada")?;
+        .context("failed to read closed prescription")?;
 
     tx.commit()?;
     Ok(prescription)
@@ -163,7 +166,7 @@ pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
     ) {
         Ok(rx) => Ok(Some(rx)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("no se pudo leer la prescription"),
+        Err(e) => Err(e).context("failed to read prescription"),
     }
 }
 
@@ -180,7 +183,7 @@ pub fn list_by_bottle(conn: &Connection, bottle_id: &str, limit: u32) -> Result<
     let rows = stmt
         .query_map(params![bottle_id, limit], row_to_prescription)?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("no se pudo listar las prescriptions")?;
+        .context("failed to list prescriptions")?;
 
     Ok(rows)
 }
@@ -263,8 +266,14 @@ mod tests {
         .unwrap_err();
 
         let already_open = err.downcast_ref::<PillboxError>();
-        assert!(matches!(already_open, Some(PillboxError::PrescriptionAlreadyOpen { .. })));
-        if let Some(PillboxError::PrescriptionAlreadyOpen { title, pill_count, .. }) = already_open {
+        assert!(matches!(
+            already_open,
+            Some(PillboxError::PrescriptionAlreadyOpen { .. })
+        ));
+        if let Some(PillboxError::PrescriptionAlreadyOpen {
+            title, pill_count, ..
+        }) = already_open
+        {
             assert_eq!(title, "Primera sesión");
             assert_eq!(*pill_count, 0);
         }
@@ -296,7 +305,10 @@ mod tests {
         let bottle_id = make_bottle(&mut conn, "read-test");
         let rx = open(
             &mut conn,
-            &NewPrescription { bottle_id, title: "Lectura".into() },
+            &NewPrescription {
+                bottle_id,
+                title: "Lectura".into(),
+            },
         )
         .unwrap();
 
@@ -311,7 +323,10 @@ mod tests {
         let bottle_id = make_bottle(&mut conn, "read-discard");
         let rx = open(
             &mut conn,
-            &NewPrescription { bottle_id, title: "A descartar".into() },
+            &NewPrescription {
+                bottle_id,
+                title: "A descartar".into(),
+            },
         )
         .unwrap();
 
@@ -326,14 +341,20 @@ mod tests {
 
         let rx1 = open(
             &mut conn,
-            &NewPrescription { bottle_id: bottle_id.clone(), title: "Sesión 1".into() },
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "Sesión 1".into(),
+            },
         )
         .unwrap();
         close(&mut conn, &rx1.id).unwrap();
 
         open(
             &mut conn,
-            &NewPrescription { bottle_id: bottle_id.clone(), title: "Sesión 2".into() },
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "Sesión 2".into(),
+            },
         )
         .unwrap();
 
@@ -352,7 +373,10 @@ mod tests {
         for i in 0..5 {
             let rx = open(
                 &mut conn,
-                &NewPrescription { bottle_id: bottle_id.clone(), title: format!("S{i}") },
+                &NewPrescription {
+                    bottle_id: bottle_id.clone(),
+                    title: format!("S{i}"),
+                },
             )
             .unwrap();
             close(&mut conn, &rx.id).unwrap();
@@ -368,7 +392,10 @@ mod tests {
         let bottle_id = make_bottle(&mut conn, "discard-twice");
         let rx = open(
             &mut conn,
-            &NewPrescription { bottle_id, title: "S".into() },
+            &NewPrescription {
+                bottle_id,
+                title: "S".into(),
+            },
         )
         .unwrap();
 

@@ -26,7 +26,7 @@ pub fn register(
          VALUES (?1, ?2, ?3, ?4)",
         params![bottle_id, name, display_name, db_path],
     )
-    .context("no se pudo registrar el bottle en el registry global")?;
+    .context("failed to register bottle in global registry")?;
     Ok(())
 }
 
@@ -36,14 +36,14 @@ pub fn update_db_path(conn: &Connection, id: i64, new_db_path: &str) -> Result<b
             "UPDATE registered_bottles SET db_path = ?1 WHERE id = ?2",
             params![new_db_path, id],
         )
-        .context("no se pudo actualizar la ruta del bottle registrado")?;
+        .context("failed to update registered bottle path")?;
     Ok(count > 0)
 }
 
 pub fn unregister(conn: &Connection, id: i64) -> Result<bool> {
     let count = conn
         .execute("DELETE FROM registered_bottles WHERE id = ?1", params![id])
-        .context("no se pudo eliminar el bottle del registro global")?;
+        .context("failed to unregister bottle from global registry")?;
     Ok(count > 0)
 }
 
@@ -57,7 +57,7 @@ pub fn find_by_bottle_id(conn: &Connection, bottle_id: &str) -> Result<Option<Re
     ) {
         Ok(r) => Ok(Some(r)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("no se pudo buscar el bottle registrado por bottle_id"),
+        Err(e) => Err(e).context("failed to find registered bottle by bottle_id"),
     }
 }
 
@@ -69,7 +69,7 @@ pub fn list(conn: &Connection) -> Result<Vec<RegisteredBottle>> {
     let rows = stmt
         .query_map([], row_to_registered)?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("no se pudo listar los bottles registrados")?;
+        .context("failed to list registered bottles")?;
     Ok(rows)
 }
 
@@ -95,7 +95,14 @@ mod tests {
     #[test]
     fn register_and_list() {
         let conn = open_in_memory().unwrap();
-        register(&conn, BOTTLE_UUID, "mi-proyecto", "Mi Proyecto", "/home/user/.pillbox/pillbox.db").unwrap();
+        register(
+            &conn,
+            BOTTLE_UUID,
+            "mi-proyecto",
+            "Mi Proyecto",
+            "/home/user/.pillbox/pillbox.db",
+        )
+        .unwrap();
 
         let rows = list(&conn).unwrap();
         assert_eq!(rows.len(), 1);

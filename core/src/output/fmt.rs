@@ -191,7 +191,6 @@ pub fn status(
     mcp_path: &std::path::Path,
     skill_path: &std::path::Path,
 ) {
-
     let db_val = |s: StatusDb, bottle: Option<StatusBottle>, is_local: bool| -> String {
         let mut val = match s.result {
             None => return format!("{}\n{}", s.path, t!("status.db.none").dimmed()),
@@ -404,7 +403,11 @@ pub fn mcp_installed(path: &std::path::Path, config: &std::path::Path, version: 
     let cfg_val = config.display().to_string().cyan().to_string();
     print_a(
         &t!("mcp.installed"),
-        &[("path", &path_val), ("config", &cfg_val), ("version", version)],
+        &[
+            ("path", &path_val),
+            ("config", &cfg_val),
+            ("version", version),
+        ],
     );
 }
 
@@ -535,7 +538,10 @@ pub fn migrate_result_global(prescriptions: usize, pills: usize) {
     let pi = pills.to_string();
     let done = t!("migrate.result.done").to_string();
     let deleted = t!("migrate.result.removed_local").to_string();
-    print_a(&done, &[("prescriptions", &p), ("pills", &pi), ("deleted", &deleted)]);
+    print_a(
+        &done,
+        &[("prescriptions", &p), ("pills", &pi), ("deleted", &deleted)],
+    );
 }
 
 pub fn migrate_result_local(prescriptions: usize, pills: usize) {
@@ -543,7 +549,10 @@ pub fn migrate_result_local(prescriptions: usize, pills: usize) {
     let pi = pills.to_string();
     let done = t!("migrate.result.done").to_string();
     let removed = t!("migrate.result.removed_global").to_string();
-    print_a(&done, &[("prescriptions", &p), ("pills", &pi), ("removed", &removed)]);
+    print_a(
+        &done,
+        &[("prescriptions", &p), ("pills", &pi), ("removed", &removed)],
+    );
 }
 
 // ─── Prescription show ────────────────────────────────────────────────────────
@@ -556,10 +565,19 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
     };
     let short_id = &rx.id[..rx.id.len().min(8)];
     let rows = vec![
-        [t!("prescription.show.id").bold().to_string(), short_id.cyan().to_string()],
-        [t!("prescription.show.title").bold().to_string(), rx.title.clone()],
+        [
+            t!("prescription.show.id").bold().to_string(),
+            short_id.cyan().to_string(),
+        ],
+        [
+            t!("prescription.show.title").bold().to_string(),
+            rx.title.clone(),
+        ],
         [t!("prescription.show.state").bold().to_string(), estado],
-        [t!("prescription.show.started").bold().to_string(), rx.started_at.clone()],
+        [
+            t!("prescription.show.started").bold().to_string(),
+            rx.started_at.clone(),
+        ],
     ];
     println!("\n{}", table::dict(rows));
 
@@ -607,10 +625,22 @@ pub fn pill_detail(pill: &Pill) {
     let rx_short = &pill.prescription_id[..pill.prescription_id.len().min(8)];
     let rows = vec![
         [t!("pill.detail.id").bold().to_string(), short_id],
-        [t!("pill.detail.compound").bold().to_string(), pill.compound.clone()],
-        [t!("pill.detail.title").bold().to_string(), pill.title.clone()],
-        [t!("pill.detail.prescription").bold().to_string(), rx_short.cyan().to_string()],
-        [t!("pill.detail.created").bold().to_string(), pill.created_at.clone()],
+        [
+            t!("pill.detail.compound").bold().to_string(),
+            pill.compound.clone(),
+        ],
+        [
+            t!("pill.detail.title").bold().to_string(),
+            pill.title.clone(),
+        ],
+        [
+            t!("pill.detail.prescription").bold().to_string(),
+            rx_short.cyan().to_string(),
+        ],
+        [
+            t!("pill.detail.created").bold().to_string(),
+            pill.created_at.clone(),
+        ],
     ];
     println!("\n{}", table::dict(rows));
     println!();
@@ -631,9 +661,18 @@ pub fn capsule_detail(capsule: &Capsule) {
     };
     let rows = vec![
         [t!("capsule.detail.id").bold().to_string(), short_id],
-        [t!("capsule.detail.compound").bold().to_string(), capsule.compound.clone()],
-        [t!("capsule.detail.title").bold().to_string(), capsule.title.clone()],
-        [t!("capsule.detail.created").bold().to_string(), capsule.created_at.clone()],
+        [
+            t!("capsule.detail.compound").bold().to_string(),
+            capsule.compound.clone(),
+        ],
+        [
+            t!("capsule.detail.title").bold().to_string(),
+            capsule.title.clone(),
+        ],
+        [
+            t!("capsule.detail.created").bold().to_string(),
+            capsule.created_at.clone(),
+        ],
         [t!("capsule.detail.updated").bold().to_string(), updated],
     ];
     println!("\n{}", table::dict(rows));

@@ -4,8 +4,8 @@ use rust_i18n::t;
 
 use crate::output;
 
-use super::shared::open_resolved_db;
 use super::shared::find_current_bottle;
+use super::shared::open_resolved_db;
 
 pub fn cmd_prescription_open(title: String) -> Result<()> {
     use pillbox::db::store::prescriptions;

@@ -42,7 +42,7 @@ pub fn migrate_bottle(
                 ))
             },
         )
-        .with_context(|| format!("bottle '{}' no encontrado en origen", bottle_name))?;
+        .with_context(|| format!("bottle '{}' not found in source", bottle_name))?;
 
     let tx = dst.transaction()?;
 
@@ -55,7 +55,7 @@ pub fn migrate_bottle(
              last_seen_at = datetime('now')",
         params![bottle.0, bottle.1, bottle.2, bottle.3],
     )
-    .context("no se pudo upsert el bottle en destino")?;
+    .context("failed to upsert bottle in destination")?;
 
     let dst_bottle_id: String = tx.query_row(
         "SELECT id FROM bottles WHERE name = ?1",
@@ -220,7 +220,7 @@ pub fn delete_bottle(conn: &mut Connection, bottle_name: &str) -> Result<()> {
             params![bottle_name],
             |r| r.get(0),
         )
-        .with_context(|| format!("bottle '{}' no encontrado al eliminar", bottle_name))?;
+        .with_context(|| format!("bottle '{}' not found for deletion", bottle_name))?;
 
     tx.execute(
         "DELETE FROM pills WHERE prescription_id IN (

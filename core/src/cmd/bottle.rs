@@ -6,7 +6,10 @@ use crate::output;
 use super::shared::{find_current_bottle, open_resolved_db, spinner};
 
 pub fn cmd_bottle_list() -> Result<()> {
-    use pillbox::db::{connection, store::{bottles, registered_bottles}};
+    use pillbox::db::{
+        connection,
+        store::{bottles, registered_bottles},
+    };
 
     let global_path = pillbox::config::global_db_path();
     if !global_path.exists() {
@@ -166,7 +169,13 @@ pub fn cmd_bottle_init() -> Result<()> {
             BottleScope::Local => current_dir.join(".pillbox").join("pillbox.db"),
             BottleScope::Global => global_path.clone(),
         };
-        match register_in_global(&global_path, &bottle.id, &name, &display_name, &register_db_path) {
+        match register_in_global(
+            &global_path,
+            &bottle.id,
+            &name,
+            &display_name,
+            &register_db_path,
+        ) {
             Ok(_) => pb2.finish_with_message(t!("bottle.init.registered_ok").to_string()),
             Err(e) => {
                 pb2.finish_and_clear();
@@ -174,7 +183,6 @@ pub fn cmd_bottle_init() -> Result<()> {
             }
         }
     }
-
 
     output::fmt::bottle_init_done();
     Ok(())
@@ -197,7 +205,11 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
         .find(|r| r.name == slug);
 
     let Some(reg) = reg else {
-        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.delete.not_found", slug = slug));
+        eprintln!(
+            "\n{}  {}\n",
+            "✗".red().bold(),
+            t!("bottle.delete.not_found", slug = slug)
+        );
         return Ok(());
     };
 
@@ -205,26 +217,53 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
     let slug_label = t!("bottle.delete.col.slug");
     let path_label = t!("bottle.delete.col.path");
     let key_width = [&name_label, &slug_label, &path_label]
-        .iter().map(|k| k.len()).max().unwrap_or(0) + 1;
+        .iter()
+        .map(|k| k.len())
+        .max()
+        .unwrap_or(0)
+        + 1;
 
     println!("\n{}  {}", "⚑".yellow().bold(), t!("bottle.delete.header"));
-    println!("   {:<w$}│  {}", name_label.dimmed(), reg.display_name, w = key_width);
-    println!("   {:<w$}│  {}", slug_label.dimmed(), reg.name, w = key_width);
-    println!("   {:<w$}│  {}", path_label.dimmed(), reg.db_path.dimmed(), w = key_width);
+    println!(
+        "   {:<w$}│  {}",
+        name_label.dimmed(),
+        reg.display_name,
+        w = key_width
+    );
+    println!(
+        "   {:<w$}│  {}",
+        slug_label.dimmed(),
+        reg.name,
+        w = key_width
+    );
+    println!(
+        "   {:<w$}│  {}",
+        path_label.dimmed(),
+        reg.db_path.dimmed(),
+        w = key_width
+    );
     println!();
 
-    let input = Text::new(&t!("bottle.delete.confirm", slug = reg.name).to_string())
-        .prompt()?;
+    let input = Text::new(&t!("bottle.delete.confirm", slug = reg.name).to_string()).prompt()?;
 
     if input.trim() != reg.name {
-        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.delete.wrong_slug"));
+        eprintln!(
+            "\n{}  {}\n",
+            "✗".red().bold(),
+            t!("bottle.delete.wrong_slug")
+        );
         return Ok(());
     }
 
     registered_bottles::unregister(&global_conn, reg.id)?;
 
     println!("\n{}  {}", "✓".green().bold(), t!("bottle.delete.done"));
-    println!("   {:<w$}│  {}\n", slug_label.dimmed(), reg.name, w = key_width);
+    println!(
+        "   {:<w$}│  {}\n",
+        slug_label.dimmed(),
+        reg.name,
+        w = key_width
+    );
     Ok(())
 }
 
@@ -245,17 +284,33 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
         .find(|r| r.name == slug);
 
     let Some(reg) = reg else {
-        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.repair.not_found", slug = slug));
+        eprintln!(
+            "\n{}  {}\n",
+            "✗".red().bold(),
+            t!("bottle.repair.not_found", slug = slug)
+        );
         return Ok(());
     };
 
     if std::path::Path::new(&reg.db_path).exists() {
-        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.repair.already_linked", slug = slug));
+        eprintln!(
+            "\n{}  {}\n",
+            "✗".red().bold(),
+            t!("bottle.repair.already_linked", slug = slug)
+        );
         return Ok(());
     }
 
-    println!("\n  {} {}", t!("bottle.repair.header"), reg.display_name.bold());
-    println!("  {}    {}", t!("bottle.repair.current_path"), reg.db_path.dimmed());
+    println!(
+        "\n  {} {}",
+        t!("bottle.repair.header"),
+        reg.display_name.bold()
+    );
+    println!(
+        "  {}    {}",
+        t!("bottle.repair.current_path"),
+        reg.db_path.dimmed()
+    );
     println!();
 
     let new_path = Text::new(&t!("bottle.repair.prompt").to_string())
@@ -266,7 +321,11 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
     let path = std::path::Path::new(&new_path);
 
     if !path.exists() || !path.is_file() {
-        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.repair.invalid_path"));
+        eprintln!(
+            "\n{}  {}\n",
+            "✗".red().bold(),
+            t!("bottle.repair.invalid_path")
+        );
         return Ok(());
     }
 
@@ -274,11 +333,26 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
 
     let slug_label = t!("bottle.repair.col.slug");
     let path_label = t!("bottle.repair.col.path");
-    let key_width = [&slug_label, &path_label].iter().map(|k| k.len()).max().unwrap_or(0) + 1;
+    let key_width = [&slug_label, &path_label]
+        .iter()
+        .map(|k| k.len())
+        .max()
+        .unwrap_or(0)
+        + 1;
 
     println!("\n{}  {}", "✓".green().bold(), t!("bottle.repair.done"));
-    println!("   {:<w$}│  {}", slug_label.dimmed(), reg.name, w = key_width);
-    println!("   {:<w$}│  {}\n", path_label.dimmed(), new_path, w = key_width);
+    println!(
+        "   {:<w$}│  {}",
+        slug_label.dimmed(),
+        reg.name,
+        w = key_width
+    );
+    println!(
+        "   {:<w$}│  {}\n",
+        path_label.dimmed(),
+        new_path,
+        w = key_width
+    );
     Ok(())
 }
 
@@ -318,7 +392,7 @@ fn register_in_global(
     let conn = connection::open(global_path)?;
     let db_path_str = local_db_path
         .to_str()
-        .context("la ruta de la DB local contiene caracteres no UTF-8")?;
+        .context("local DB path contains non-UTF-8 characters")?;
     registered_bottles::register(&conn, bottle_id, name, display_name, db_path_str)?;
 
     Ok(())
@@ -412,7 +486,7 @@ pub fn cmd_migrate_global() -> Result<()> {
     drop(src_conn);
 
     std::fs::remove_file(&local_path)
-        .with_context(|| "no se pudo eliminar la DB local tras la migración")?;
+        .with_context(|| "failed to remove local DB after migration")?;
 
     output::fmt::migrate_result_global(result.prescriptions, result.pills);
     Ok(())

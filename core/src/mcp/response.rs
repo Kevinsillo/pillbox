@@ -74,18 +74,21 @@ pub fn anyhow_to_response(e: anyhow::Error) -> Response {
 
 fn pillbox_to_response(pe: &PillboxError) -> Response {
     match pe {
-        PillboxError::PrescriptionAlreadyOpen { id, title, started_at, pill_count } => {
-            Response::err_with_data(
-                pe.code(),
-                pe.to_string(),
-                json!({
-                    "id": id,
-                    "title": title,
-                    "started_at": started_at,
-                    "pill_count": pill_count,
-                }),
-            )
-        }
+        PillboxError::PrescriptionAlreadyOpen {
+            id,
+            title,
+            started_at,
+            pill_count,
+        } => Response::err_with_data(
+            pe.code(),
+            pe.to_string(),
+            json!({
+                "id": id,
+                "title": title,
+                "started_at": started_at,
+                "pill_count": pill_count,
+            }),
+        ),
         _ => Response::err(pe.code(), pe.to_string()),
     }
 }

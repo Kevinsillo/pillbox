@@ -14,7 +14,10 @@ pub fn open_resolved_db() -> Result<(rusqlite::Connection, std::path::PathBuf)> 
 }
 
 pub fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
-    use pillbox::db::{connection, store::{bottles, registered_bottles}};
+    use pillbox::db::{
+        connection,
+        store::{bottles, registered_bottles},
+    };
     let global_path = pillbox::config::global_db_path();
     let global_conn = connection::open(&global_path)?;
     let current = std::env::current_dir()?;

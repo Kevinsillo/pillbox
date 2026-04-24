@@ -37,7 +37,6 @@ pub fn dict(rows: Vec<[String; 2]>) -> String {
     b.build().with(Style::modern_rounded()).to_string()
 }
 
-
 fn ansi_stripped_len(s: &str) -> usize {
     let mut len = 0usize;
     let mut chars = s.chars().peekable();

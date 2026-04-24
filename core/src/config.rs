@@ -52,7 +52,7 @@ pub fn local_db_path() -> PathBuf {
 /// Ruta de la DB global del usuario: `~/.pillbox/pillbox.db`
 pub fn global_db_path() -> PathBuf {
     dirs::home_dir()
-        .expect("no se pudo resolver el directorio home")
+        .expect("failed to resolve home directory")
         .join(format!(".{}", env!("CARGO_PKG_NAME")))
         .join(DB_FILENAME)
 }
@@ -60,7 +60,7 @@ pub fn global_db_path() -> PathBuf {
 /// Ruta del servidor MCP: `~/.pillbox/mcp/index.js`
 pub fn mcp_path() -> PathBuf {
     dirs::home_dir()
-        .expect("no se pudo resolver el directorio home")
+        .expect("failed to resolve home directory")
         .join(format!(".{}", env!("CARGO_PKG_NAME")))
         .join("mcp")
         .join("index.js")
@@ -69,7 +69,7 @@ pub fn mcp_path() -> PathBuf {
 /// Ruta de la skill de Claude Code: `~/.claude/skills/pillbox/SKILL.md`
 pub fn skill_path() -> PathBuf {
     dirs::home_dir()
-        .expect("no se pudo resolver el directorio home")
+        .expect("failed to resolve home directory")
         .join(".claude")
         .join("skills")
         .join(env!("CARGO_PKG_NAME"))
@@ -79,7 +79,7 @@ pub fn skill_path() -> PathBuf {
 /// Ruta del PID del servidor daemon: `~/.pillbox/pillbox.pid`
 pub fn pid_path() -> PathBuf {
     dirs::home_dir()
-        .expect("no se pudo resolver el directorio home")
+        .expect("failed to resolve home directory")
         .join(format!(".{}", env!("CARGO_PKG_NAME")))
         .join("pillbox.pid")
 }
@@ -87,14 +87,14 @@ pub fn pid_path() -> PathBuf {
 /// Ruta del fichero de configuración de Claude Code: `~/.claude.json`
 pub fn claude_config_path() -> PathBuf {
     dirs::home_dir()
-        .expect("no se pudo resolver el directorio home")
+        .expect("failed to resolve home directory")
         .join(".claude.json")
 }
 
 /// Ruta del log del servidor daemon: `~/.pillbox/pillbox.log`
 pub fn log_path() -> PathBuf {
     dirs::home_dir()
-        .expect("no se pudo resolver el directorio home")
+        .expect("failed to resolve home directory")
         .join(format!(".{}", env!("CARGO_PKG_NAME")))
         .join("pillbox.log")
 }

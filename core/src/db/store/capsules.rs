@@ -32,7 +32,7 @@ pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleTakeResu
          VALUES (?1, ?2, ?3, ?4)",
         params![sync_id, input.compound.as_str(), input.title, input.content],
     )
-    .context("no se pudo insertar la capsule")?;
+    .context("failed to insert capsule")?;
 
     let id = tx.last_insert_rowid();
 
@@ -59,7 +59,7 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Capsule>> {
     ) {
         Ok(c) => Ok(Some(c)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("no se pudo leer la capsule"),
+        Err(e) => Err(e).context("failed to read capsule"),
     }
 }
 
@@ -83,7 +83,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Op
                 id,
             ],
         )
-        .context("no se pudo actualizar la capsule")?;
+        .context("failed to update capsule")?;
 
     if affected == 0 {
         return Ok(None);
@@ -101,7 +101,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Op
             params![id],
             row_to_capsule,
         )
-        .context("no se pudo leer la capsule revisada")?;
+        .context("failed to read revised capsule")?;
 
     tx.commit()?;
     Ok(Some(capsule))
@@ -118,7 +118,7 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<CapsuleDiscardRe
          WHERE id = ?1 AND deleted_at IS NULL",
             params![id],
         )
-        .context("no se pudo descartar la capsule")?;
+        .context("failed to discard capsule")?;
 
     if affected == 0 {
         return Ok(None);
@@ -153,7 +153,7 @@ pub fn list(conn: &Connection, limit: Option<u32>, compound: Option<&str>) -> Re
     let capsules = stmt
         .query_map(params![compound, limit], row_to_capsule)?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("no se pudo listar las capsules")?;
+        .context("failed to list capsules")?;
     Ok(capsules)
 }
 
@@ -244,7 +244,11 @@ mod tests {
         let result = revise(
             &mut conn,
             9999,
-            &CapsulePatch { title: Some("x".into()), content: None, compound: None },
+            &CapsulePatch {
+                title: Some("x".into()),
+                content: None,
+                compound: None,
+            },
         )
         .unwrap();
         assert!(result.is_none());
@@ -259,7 +263,11 @@ mod tests {
         let result = revise(
             &mut conn,
             cap.id,
-            &CapsulePatch { title: Some("nuevo".into()), content: None, compound: None },
+            &CapsulePatch {
+                title: Some("nuevo".into()),
+                content: None,
+                compound: None,
+            },
         )
         .unwrap();
         assert!(result.is_none());
