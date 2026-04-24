@@ -42,6 +42,28 @@ bottle:
   error:
     not_found: "Kein Bottle für dieses Verzeichnis gefunden.\nFühre 'pillbox bottle init' aus, um eines zu erstellen."
     not_found_short: "Kein Bottle für dieses Verzeichnis gefunden."
+  delete:
+    not_found: "Bottle «%{slug}» nicht gefunden."
+    header: "Bottle aus dem Register entfernen"
+    col:
+      name: "Name"
+      slug: "Slug"
+      path: "Pfad"
+    confirm: "Gib den Slug «%{slug}» zur Bestätigung ein:"
+    wrong_slug: "Falscher Slug. Vorgang abgebrochen."
+    done: "Bottle aus dem Register entfernt"
+  repair:
+    not_found: "Bottle «%{slug}» nicht gefunden."
+    already_linked: "Bottle «%{slug}» ist korrekt verknüpft."
+    header: "Bottle reparieren:"
+    current_path: "Aktueller Pfad:"
+    prompt: "Neuer Pfad zur pillbox.db-Datei:"
+    prompt_help: "Absoluter Pfad zur .pillbox/pillbox.db-Datei"
+    invalid_path: "Der angegebene Pfad existiert nicht oder ist keine Datei."
+    done: "Bottle repariert"
+    col:
+      slug: "Slug"
+      path: "Pfad"
 
 status:
   bin_unknown: "(unbekannt)"
@@ -246,6 +268,7 @@ help:
       skill: "Verwaltet die Claude Code Skill."
       lang: "Ändert oder zeigt die CLI-Sprache."
       uninstall: "Deinstalliert Pillbox-Komponenten."
+      help: "Zeigt diese Hilfe."
     serve:
       start: "Startet den HTTP-Server im Hintergrund."
       stop: "Stoppt den Daemon-Server."

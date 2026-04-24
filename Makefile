@@ -10,6 +10,7 @@ dev:
 
 ## Arranca el servidor de desarrollo de la WebUI (con proxy a pillbox serve)
 dev-webui:
+	@pillbox serve start 2>/dev/null || true
 	cd webui && pnpm dev
 
 # ─── Build ────────────────────────────────────────────────────────────────────

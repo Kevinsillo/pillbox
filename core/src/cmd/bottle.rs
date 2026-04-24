@@ -180,6 +180,108 @@ pub fn cmd_bottle_init() -> Result<()> {
     Ok(())
 }
 
+pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
+    use inquire::Text;
+    use owo_colors::OwoColorize;
+    use pillbox::db::{connection, store::registered_bottles};
+
+    let global_path = pillbox::config::global_db_path();
+    if !global_path.exists() {
+        output::fmt::db_not_found();
+        return Ok(());
+    }
+
+    let global_conn = connection::open(&global_path)?;
+    let reg = registered_bottles::list(&global_conn)?
+        .into_iter()
+        .find(|r| r.name == slug);
+
+    let Some(reg) = reg else {
+        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.delete.not_found", slug = slug));
+        return Ok(());
+    };
+
+    let name_label = t!("bottle.delete.col.name");
+    let slug_label = t!("bottle.delete.col.slug");
+    let path_label = t!("bottle.delete.col.path");
+    let key_width = [&name_label, &slug_label, &path_label]
+        .iter().map(|k| k.len()).max().unwrap_or(0) + 1;
+
+    println!("\n{}  {}", "⚑".yellow().bold(), t!("bottle.delete.header"));
+    println!("   {:<w$}│  {}", name_label.dimmed(), reg.display_name, w = key_width);
+    println!("   {:<w$}│  {}", slug_label.dimmed(), reg.name, w = key_width);
+    println!("   {:<w$}│  {}", path_label.dimmed(), reg.db_path.dimmed(), w = key_width);
+    println!();
+
+    let input = Text::new(&t!("bottle.delete.confirm", slug = reg.name).to_string())
+        .prompt()?;
+
+    if input.trim() != reg.name {
+        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.delete.wrong_slug"));
+        return Ok(());
+    }
+
+    registered_bottles::unregister(&global_conn, reg.id)?;
+
+    println!("\n{}  {}", "✓".green().bold(), t!("bottle.delete.done"));
+    println!("   {:<w$}│  {}\n", slug_label.dimmed(), reg.name, w = key_width);
+    Ok(())
+}
+
+pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
+    use inquire::Text;
+    use owo_colors::OwoColorize;
+    use pillbox::db::{connection, store::registered_bottles};
+
+    let global_path = pillbox::config::global_db_path();
+    if !global_path.exists() {
+        output::fmt::db_not_found();
+        return Ok(());
+    }
+
+    let global_conn = connection::open(&global_path)?;
+    let reg = registered_bottles::list(&global_conn)?
+        .into_iter()
+        .find(|r| r.name == slug);
+
+    let Some(reg) = reg else {
+        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.repair.not_found", slug = slug));
+        return Ok(());
+    };
+
+    if std::path::Path::new(&reg.db_path).exists() {
+        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.repair.already_linked", slug = slug));
+        return Ok(());
+    }
+
+    println!("\n  {} {}", t!("bottle.repair.header"), reg.display_name.bold());
+    println!("  {}    {}", t!("bottle.repair.current_path"), reg.db_path.dimmed());
+    println!();
+
+    let new_path = Text::new(&t!("bottle.repair.prompt").to_string())
+        .with_help_message(&t!("bottle.repair.prompt_help").to_string())
+        .prompt()?;
+
+    let new_path = new_path.trim().to_string();
+    let path = std::path::Path::new(&new_path);
+
+    if !path.exists() || !path.is_file() {
+        eprintln!("\n{}  {}\n", "✗".red().bold(), t!("bottle.repair.invalid_path"));
+        return Ok(());
+    }
+
+    registered_bottles::update_db_path(&global_conn, reg.id, &new_path)?;
+
+    let slug_label = t!("bottle.repair.col.slug");
+    let path_label = t!("bottle.repair.col.path");
+    let key_width = [&slug_label, &path_label].iter().map(|k| k.len()).max().unwrap_or(0) + 1;
+
+    println!("\n{}  {}", "✓".green().bold(), t!("bottle.repair.done"));
+    println!("   {:<w$}│  {}", slug_label.dimmed(), reg.name, w = key_width);
+    println!("   {:<w$}│  {}\n", path_label.dimmed(), new_path, w = key_width);
+    Ok(())
+}
+
 fn add_to_gitignore(dir: &std::path::Path) -> Result<()> {
     use std::io::Write;
     let gi_path = dir.join(".gitignore");

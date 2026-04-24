@@ -42,6 +42,28 @@ bottle:
   error:
     not_found: "Nessuna bottle trovata per questa directory.\nEsegui 'pillbox bottle init' per crearne una."
     not_found_short: "Nessuna bottle trovata per questa directory."
+  delete:
+    not_found: "Bottle «%{slug}» non trovata."
+    header: "Rimuovi bottle dal registro"
+    col:
+      name: "nome"
+      slug: "slug"
+      path: "percorso"
+    confirm: "Scrivi lo slug «%{slug}» per confermare:"
+    wrong_slug: "Slug errato. Operazione annullata."
+    done: "Bottle rimossa dal registro"
+  repair:
+    not_found: "Bottle «%{slug}» non trovata."
+    already_linked: "La bottle «%{slug}» è correttamente collegata."
+    header: "Ripara bottle:"
+    current_path: "Percorso attuale:"
+    prompt: "Nuovo percorso al file pillbox.db:"
+    prompt_help: "Percorso assoluto al file .pillbox/pillbox.db"
+    invalid_path: "Il percorso specificato non esiste o non è un file."
+    done: "Bottle riparata"
+    col:
+      slug: "slug"
+      path: "percorso"
 
 status:
   bin_unknown: "(sconosciuto)"
@@ -246,6 +268,7 @@ help:
       skill: "Gestisce la skill di Claude Code."
       lang: "Cambia o mostra la lingua del CLI."
       uninstall: "Disinstalla componenti di Pillbox."
+      help: "Mostra questo aiuto."
     serve:
       start: "Avvia il server HTTP in background."
       stop: "Ferma il server daemon."

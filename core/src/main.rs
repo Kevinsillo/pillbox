@@ -123,6 +123,16 @@ enum BottleCommand {
         #[command(subcommand)]
         subcommand: Option<MigrateCommand>,
     },
+    /// Elimina un bottle del registro global (requiere confirmar el slug).
+    Delete {
+        /// Slug del bottle a eliminar.
+        slug: String,
+    },
+    /// Corrige la ruta de un bottle desvinculado apuntando a su nueva ubicación.
+    Repair {
+        /// Slug del bottle a reparar.
+        slug: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -239,6 +249,8 @@ async fn main() -> Result<()> {
                 Some(MigrateCommand::Global) => cmd::bottle::cmd_migrate_global(),
                 Some(MigrateCommand::Local) => cmd::bottle::cmd_migrate_local(),
             },
+            Some(BottleCommand::Delete { slug }) => cmd::bottle::cmd_bottle_delete(&slug),
+            Some(BottleCommand::Repair { slug }) => cmd::bottle::cmd_bottle_repair(&slug),
             None => cmd_sub_help("bottle"),
         },
         Some(Command::Pill { cmd }) => match cmd {

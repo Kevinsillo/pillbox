@@ -39,6 +39,28 @@ bottle:
     registered_ok: "✓ Registrado en DB global."
     register_err: "⚠  No se pudo registrar en DB global: %{err}"
     done: "Listo. Usa 'pillbox bottle status' para ver el estado."
+  delete:
+    not_found: "Bottle «%{slug}» no encontrado."
+    header: "Eliminar bottle del registro"
+    col:
+      name: "nombre"
+      slug: "slug"
+      path: "ruta"
+    confirm: "Escribe el slug «%{slug}» para confirmar:"
+    wrong_slug: "Slug incorrecto. Operación cancelada."
+    done: "Bottle eliminado del registro"
+  repair:
+    not_found: "Bottle «%{slug}» no encontrado."
+    already_linked: "El bottle «%{slug}» está vinculado correctamente."
+    header: "Reparar bottle:"
+    current_path: "Ruta actual:"
+    prompt: "Nueva ruta al archivo pillbox.db:"
+    prompt_help: "Ruta absoluta al archivo .pillbox/pillbox.db del proyecto"
+    invalid_path: "La ruta especificada no existe o no es un archivo."
+    done: "Bottle reparado"
+    col:
+      slug: "slug"
+      path: "ruta"
   error:
     not_found: "No hay ningún bottle para este directorio.\nEjecuta 'pillbox bottle init' para crear uno."
     not_found_short: "No hay ningún bottle para este directorio."
@@ -246,6 +268,7 @@ help:
       skill: "Gestiona la skill de Claude Code."
       lang: "Cambia o muestra el idioma del CLI."
       uninstall: "Desinstala componentes de Pillbox."
+      help: "Muestra esta ayuda."
     serve:
       start: "Arranca el servidor HTTP en segundo plano."
       stop: "Para el servidor daemon."
