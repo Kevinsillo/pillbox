@@ -5,11 +5,13 @@ import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository
 import { useActiveBottle } from '@/composables/useActiveBottle'
 import type { Bottle } from '@/core/domain/types'
 import { RouterLink } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { useConfirm } from '@/composables/useConfirm'
 import IBox from '~icons/lucide/box'
 import IAlertTriangle from '~icons/lucide/alert-triangle'
+import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
+const { confirm, prompt, alert } = useConfirm()
 const { activeBottleId } = useActiveBottle()
 const bottles = ref<Bottle[]>([])
 const loading = ref(false)
@@ -23,26 +25,26 @@ async function updateRegistration(b: Bottle) {
     if (!b.reg_id) return
     let result
     try {
-        result = await ElMessageBox.prompt(t('bottles.update_registration_hint'), t('bottles.update_registration_btn'), {
+        result = await prompt(t('bottles.update_registration_hint'), t('bottles.update_registration_btn'), {
             inputValue: b.directory + '/.pillbox/pillbox.db',
             inputPlaceholder: '/ruta/al/proyecto/.pillbox/pillbox.db',
             inputValidator: (v: string) => /\/.pillbox\/pillbox\.db$/.test(v) || t('bottles.update_registration_invalid'),
-            confirmButtonText: t('common.save'),
-            cancelButtonText: t('common.cancel'),
+            confirmText: t('common.save'),
+            cancelText: t('common.cancel'),
         })
     } catch { return }
     try {
         await bottlesApi.updateRegistration(b.reg_id, result.value)
         await load()
     } catch (e: unknown) {
-        ElMessageBox.alert(e instanceof Error ? e.message : t('common.error'), { type: 'error' })
+        await alert(e instanceof Error ? e.message : t('common.error'))
     }
 }
 
 async function deleteRegistration(b: Bottle) {
     if (!b.reg_id) return
     try {
-        await ElMessageBox.confirm(t('bottles.confirm_delete_registration'), { type: 'warning', showClose: false })
+        await confirm(t('bottles.confirm_delete_registration'))
     } catch { return }
     try {
         await bottlesApi.deleteRegistration(b.reg_id)
@@ -127,8 +129,9 @@ onMounted(load)
                             {{ $t('bottles.update_registration_btn') }}
                         </button>
                         <button
-                            class="border border-red-900/40 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-300 transition-colors"
+                            class="flex items-center gap-1 border border-red-900/40 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-300 transition-colors"
                             @click="deleteRegistration(b)">
+                            <ITrash2 class="w-3 h-3" />
                             {{ $t('bottles.delete_registration_btn') }}
                         </button>
                     </div>

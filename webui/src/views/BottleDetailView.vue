@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessageBox } from 'element-plus'
+import { useConfirm } from '@/composables/useConfirm'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
-import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
 import type { Bottle, Prescription } from '@/core/domain/types'
 import { RouterLink, useRouter } from 'vue-router'
 import IArrowLeft from '~icons/lucide/arrow-left'
@@ -14,6 +13,7 @@ import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 import { useActiveBottle } from '@/composables/useActiveBottle'
 
 const { t } = useI18n()
+const { prompt, alert } = useConfirm()
 const router = useRouter()
 const props = defineProps<{ bottle_id: string }>()
 const { activeBottleId } = useActiveBottle()
@@ -45,16 +45,14 @@ async function deleteBottle() {
     const slug = bottle.value.name
     let result
     try {
-        result = await ElMessageBox.prompt(
+        result = await prompt(
             t('confirm.delete_bottle_msg', { name: slug }),
             t('confirm.delete_bottle_title'),
             {
                 inputPlaceholder: slug,
                 inputValidator: (v: string) => v === slug || t('confirm.delete_bottle_prompt'),
-                confirmButtonText: t('common.delete'),
-                cancelButtonText: t('common.cancel'),
-                type: 'warning',
-                confirmButtonClass: 'el-button--danger',
+                confirmText: t('common.delete'),
+                cancelText: t('common.cancel'),
             }
         )
     } catch { return }
@@ -63,25 +61,10 @@ async function deleteBottle() {
         await bottlesApi.deleteBottle(props.bottle_id)
         router.push('/bottles')
     } catch (e: unknown) {
-        ElMessageBox.alert(e instanceof Error ? e.message : t('common.error'), { type: 'error' })
+        await alert(e instanceof Error ? e.message : t('common.error'))
     }
 }
 
-async function deleteRx(rx: Prescription) {
-    try {
-        await ElMessageBox.confirm(
-            t('confirm.delete_prescription_msg'),
-            t('confirm.delete_prescription_title'),
-            {
-                confirmButtonText: t('common.delete'),
-                cancelButtonText: t('common.cancel'),
-                type: 'warning',
-            }
-        )
-        await prescriptionsApi.delete(props.bottle_id, rx.id)
-        prescriptions.value = prescriptions.value.filter(p => p.id !== rx.id)
-    } catch { /* cancelled */ }
-}
 </script>
 
 <template>
@@ -141,12 +124,6 @@ async function deleteRx(rx: Prescription) {
                                 <p class="text-xs text-zinc-600">{{ new Date(rx.started_at).toLocaleString() }}</p>
                             </div>
                         </div>
-                        <button
-                            v-if="!rx.deleted_at"
-                            class="shrink-0 text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
-                            @click.prevent="deleteRx(rx)">
-                            {{ $t('common.delete') }}
-                        </button>
                     </RouterLink>
                 </div>
             </div>

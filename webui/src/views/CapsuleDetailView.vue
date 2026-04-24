@@ -2,15 +2,18 @@
 import CompoundBadge from "@/components/CompoundBadge.vue"
 import type { Capsule, CapsuleCompound } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
-import { ElAlert, ElMessageBox } from "element-plus"
+import { useConfirm } from "@/composables/useConfirm"
+import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
 import { marked } from "marked"
 import { computed, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
 import IPill from "~icons/lucide/pill"
+import ITrash2 from "~icons/lucide/trash-2"
 
 const { t } = useI18n()
+const { confirm } = useConfirm()
 const props = defineProps<{ id: string }>()
 const router = useRouter()
 
@@ -56,11 +59,11 @@ async function save() {
 
 async function deleteCapsule() {
     try {
-        await ElMessageBox.confirm(t("confirm.delete_capsule_msg", { title: capsule.value?.title }), t("confirm.delete_capsule_title"), {
-            confirmButtonText: t("common.delete"),
-            cancelButtonText: t("common.cancel"),
-            type: "warning",
-        })
+        await confirm(
+            t("confirm.delete_capsule_msg", { title: capsule.value?.title }),
+            t("confirm.delete_capsule_title"),
+            { confirmText: t("common.delete"), cancelText: t("common.cancel") }
+        )
         await capsulesApi.delete(Number(props.id))
         router.push("/capsules")
     } catch {
@@ -105,9 +108,10 @@ const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.va
                             {{ $t("common.edit") }}
                         </button>
                         <button
-                            class="text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
                             @click="deleteCapsule"
                         >
+                            <ITrash2 class="w-3.5 h-3.5" />
                             {{ $t("common.delete") }}
                         </button>
                     </div>
@@ -124,31 +128,17 @@ const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.va
                 <form class="space-y-3" @submit.prevent="save">
                     <div>
                         <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.compound") }}</label>
-                        <select
-                            v-model="form.compound"
-                            class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500"
-                        >
-                            <option v-for="c in CAPSULE_COMPOUNDS" :key="c" :value="c">{{ c }}</option>
-                        </select>
+                        <el-select v-model="form.compound" class="w-full">
+                            <el-option v-for="c in CAPSULE_COMPOUNDS" :key="c" :value="c" :label="c" />
+                        </el-select>
                     </div>
                     <div>
                         <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.title") }}</label>
-                        <input
-                            v-model="form.title"
-                            required
-                            maxlength="255"
-                            class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500"
-                        />
+                        <el-input v-model="form.title" maxlength="255" class="w-full" />
                     </div>
                     <div>
                         <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.content_md") }}</label>
-                        <textarea
-                            v-model="form.content"
-                            required
-                            rows="10"
-                            maxlength="5000"
-                            class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500 resize-y font-mono"
-                        />
+                        <el-input v-model="form.content" type="textarea" :rows="10" maxlength="5000" class="w-full font-mono" />
                     </div>
                     <el-alert
                         v-if="formError"

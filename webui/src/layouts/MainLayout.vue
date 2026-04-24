@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import ConfirmDialog from "@/components/ConfirmDialog.vue"
 import { useActiveBottle } from "@/composables/useActiveBottle"
 import { useLocale } from "@/composables/useLocale"
 import { useTheme } from "@/composables/useTheme"
 import type { Bottle } from "@/core/domain/types"
 import { bottlesApi } from "@/core/infrastructure/repositories/BottlesRepository"
 import { metaApi } from "@/core/infrastructure/repositories/MetaRepository"
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from "element-plus"
+import { ElDropdown, ElDropdownItem, ElDropdownMenu, ElOption, ElSelect } from "element-plus"
 import { computed, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import { RouterLink, RouterView, useRoute } from "vue-router"
@@ -134,13 +135,15 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                 <!-- Bottle selector -->
                 <div class="px-3 py-3 border-b border-(--border)">
                     <p class="text-xs text-zinc-600 mb-1 uppercase tracking-wider">{{ $t("sidebar.active_bottle_label") }}</p>
-                    <select
+                    <el-select
                         v-model="activeBottleId"
-                        class="w-full bg-(--accent-bg) border border-(--border) rounded-lg text-xs text-(--text-h) px-2 py-1.5 focus:outline-none focus:border-zinc-500 transition-colors"
+                        :placeholder="$t('sidebar.no_bottles')"
+                        :disabled="linkedBottles.length === 0"
+                        class="w-full"
+                        size="small"
                     >
-                        <option v-if="linkedBottles.length === 0" :value="null" disabled>{{ $t("sidebar.no_bottles") }}</option>
-                        <option v-for="b in linkedBottles" :key="b.id" :value="b.id">{{ b.display_name }}</option>
-                    </select>
+                        <el-option v-for="b in linkedBottles" :key="b.id" :value="b.id" :label="b.display_name" />
+                    </el-select>
                 </div>
 
                 <!-- Nav -->
@@ -172,4 +175,5 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
             </main>
         </div>
     </div>
+    <ConfirmDialog />
 </template>

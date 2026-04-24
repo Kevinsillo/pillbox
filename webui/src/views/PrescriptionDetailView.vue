@@ -2,15 +2,17 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ElMessageBox } from 'element-plus'
+import { useConfirm } from '@/composables/useConfirm'
 import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
 import { pillsApi } from '@/core/infrastructure/repositories/PillsRepository'
 import type { Prescription, Pill } from '@/core/domain/types'
 import PillCard from '@/components/PillCard.vue'
 import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
+import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
+const { confirm } = useConfirm()
 const props = defineProps<{ bottle_id: string; rx_id: string }>()
 const router = useRouter()
 
@@ -38,14 +40,10 @@ const isOpen = computed(() => rx.value?.ended_at === null && rx.value?.deleted_a
 
 async function deletePill(pill: Pill) {
     try {
-        await ElMessageBox.confirm(
+        await confirm(
             t('confirm.delete_pill_msg', { title: pill.title }),
             t('confirm.delete_pill_title'),
-            {
-                confirmButtonText: t('common.delete'),
-                cancelButtonText: t('common.cancel'),
-                type: 'warning',
-            }
+            { confirmText: t('common.delete'), cancelText: t('common.cancel') }
         )
         await pillsApi.delete(pill.id, props.bottle_id, props.rx_id)
         pills.value = pills.value.filter(p => p.id !== pill.id)
@@ -54,14 +52,10 @@ async function deletePill(pill: Pill) {
 
 async function closeRx() {
     try {
-        await ElMessageBox.confirm(
+        await confirm(
             t('confirm.close_prescription_msg'),
             t('confirm.close_prescription_title'),
-            {
-                confirmButtonText: t('prescription_detail.close_btn'),
-                cancelButtonText: t('common.cancel'),
-                type: 'warning',
-            }
+            { confirmText: t('prescription_detail.close_btn'), cancelText: t('common.cancel'), waitSeconds: 3 }
         )
         const updated = await prescriptionsApi.close(props.bottle_id, props.rx_id)
         rx.value = updated
@@ -70,14 +64,10 @@ async function closeRx() {
 
 async function deleteRx() {
     try {
-        await ElMessageBox.confirm(
+        await confirm(
             t('confirm.delete_prescription_msg'),
             t('confirm.delete_prescription_title'),
-            {
-                confirmButtonText: t('common.delete'),
-                cancelButtonText: t('common.cancel'),
-                type: 'warning',
-            }
+            { confirmText: t('common.delete'), cancelText: t('common.cancel'), waitSeconds: 5 }
         )
         await prescriptionsApi.delete(props.bottle_id, props.rx_id)
         router.back()
@@ -112,8 +102,9 @@ async function deleteRx() {
                             @click="closeRx">
                         {{ $t('prescription_detail.close_btn') }}
                     </button>
-                    <button class="text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                    <button class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
                             @click="deleteRx">
+                        <ITrash2 class="w-3.5 h-3.5" />
                         {{ $t('common.delete') }}
                     </button>
                 </div>

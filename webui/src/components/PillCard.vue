@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import type { Pill } from '@/core/domain/types'
 import CompoundBadge from './CompoundBadge.vue'
 import IFileText from '~icons/lucide/file-text'
+import ITrash2 from '~icons/lucide/trash-2'
 import { RouterLink } from 'vue-router'
 
 useI18n()
@@ -42,8 +43,9 @@ defineEmits<{ delete: [] }>()
                 {{ $t('pill_card.edit') }}
             </RouterLink>
             <button
-                class="text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
+                class="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
                 @click.stop="$emit('delete')">
+                <ITrash2 class="w-3 h-3" />
                 {{ $t('pill_card.delete') }}
             </button>
         </div>

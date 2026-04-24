@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessageBox } from 'element-plus'
+import { useConfirm } from '@/composables/useConfirm'
+import { ElInput, ElOption, ElSelect } from 'element-plus'
 import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesRepository'
 import type { CapsuleSummary, CapsuleCompound } from '@/core/domain/types'
 import CompoundBadge from '@/components/CompoundBadge.vue'
 import { RouterLink } from 'vue-router'
 import IPill from '~icons/lucide/pill'
+import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
+const { confirm } = useConfirm()
 
 const CAPSULE_COMPOUNDS: CapsuleCompound[] = ['convention', 'workflow', 'environment', 'context', 'goal', 'feedback', 'manual']
 
@@ -44,14 +47,10 @@ function onSearch() {
 
 async function deleteCapsule(c: CapsuleSummary) {
     try {
-        await ElMessageBox.confirm(
+        await confirm(
             t('confirm.delete_capsule_msg', { title: c.title }),
             t('confirm.delete_capsule_title'),
-            {
-                confirmButtonText: t('common.delete'),
-                cancelButtonText: t('common.cancel'),
-                type: 'warning',
-            }
+            { confirmText: t('common.delete'), cancelText: t('common.cancel') }
         )
         await capsulesApi.delete(c.id)
         capsules.value = capsules.value.filter(x => x.id !== c.id)
@@ -67,20 +66,16 @@ async function deleteCapsule(c: CapsuleSummary) {
 
         <!-- Filtros -->
         <div class="flex gap-3">
-            <input
+            <el-input
                 v-model="searchQuery"
                 :placeholder="$t('capsules.search_placeholder')"
-                class="flex-1 bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500"
+                class="flex-1"
                 @input="onSearch"
             />
-            <select
-                v-model="filterCompound"
-                class="bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500"
-                @change="load"
-            >
-                <option value="">{{ $t('capsules.filter_all') }}</option>
-                <option v-for="c in CAPSULE_COMPOUNDS" :key="c" :value="c">{{ c }}</option>
-            </select>
+            <el-select v-model="filterCompound" @change="load">
+                <el-option value="" :label="$t('capsules.filter_all')" />
+                <el-option v-for="c in CAPSULE_COMPOUNDS" :key="c" :value="c" :label="c" />
+            </el-select>
         </div>
 
         <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
@@ -116,8 +111,9 @@ async function deleteCapsule(c: CapsuleSummary) {
                         {{ $t('common.edit') }}
                     </RouterLink>
                     <button
-                        class="text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
+                        class="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
                         @click.stop="deleteCapsule(c)">
+                        <ITrash2 class="w-3 h-3" />
                         {{ $t('common.delete') }}
                     </button>
                 </div>

@@ -6,6 +6,7 @@ import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesReposito
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { ref } from "vue"
 import { useI18n } from "vue-i18n"
+import { ElInput } from "element-plus"
 import { RouterLink } from "vue-router"
 import IFileText from "~icons/lucide/file-text"
 import IPill from "~icons/lucide/pill"
@@ -59,11 +60,11 @@ function onInput() {
     <div class="p-6 max-w-4xl mx-auto space-y-5">
         <h1 class="text-2xl font-bold text-(--text-h)">{{ $t("search.heading") }}</h1>
 
-        <input
+        <el-input
             v-model="query"
             :placeholder="$t('search.placeholder')"
             autofocus
-            class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-4 py-3 text-(--text-h) focus:outline-none focus:border-zinc-500 text-sm"
+            class="w-full"
             @input="onInput"
         />
 

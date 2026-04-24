@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElAlert } from "element-plus"
+import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
 import type { PillCompound } from "@/core/domain/types"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { onMounted, ref } from "vue"
@@ -69,31 +69,17 @@ async function save() {
             <form class="space-y-3" @submit.prevent="save">
                 <div>
                     <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.compound") }}</label>
-                    <select
-                        v-model="form.compound"
-                        class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500"
-                    >
-                        <option v-for="c in COMPOUNDS" :key="c" :value="c">{{ c }}</option>
-                    </select>
+                    <el-select v-model="form.compound" class="w-full">
+                        <el-option v-for="c in COMPOUNDS" :key="c" :value="c" :label="c" />
+                    </el-select>
                 </div>
                 <div>
                     <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.title") }}</label>
-                    <input
-                        v-model="form.title"
-                        required
-                        maxlength="255"
-                        class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500"
-                    />
+                    <el-input v-model="form.title" maxlength="255" class="w-full" />
                 </div>
                 <div>
                     <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.content_md") }}</label>
-                    <textarea
-                        v-model="form.content"
-                        required
-                        rows="16"
-                        maxlength="5000"
-                        class="w-full bg-(--bg-surface) border border-(--border) rounded-lg px-3 py-2 text-sm text-(--text-h) focus:outline-none focus:border-zinc-500 resize-y font-mono"
-                    />
+                    <el-input v-model="form.content" type="textarea" :rows="16" maxlength="5000" class="w-full font-mono" />
                 </div>
                 <el-alert
                     v-if="error"
