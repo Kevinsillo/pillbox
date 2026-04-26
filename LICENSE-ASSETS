@@ -1,0 +1,56 @@
+# Pillbox Brand & Concept Assets License
+
+Copyright (c) 2026 Kevin Illanas Cabeza <kevin.illanas@gmail.com>
+https://kevinillanas.dev — https://github.com/Kevinsillo
+
+The brand assets and conceptual nomenclature of this project are NOT covered
+by the PolyForm Noncommercial License that applies to the software source code.
+
+## Protected Brand Assets
+
+The following visual elements are reserved:
+
+- The name "Pillbox" and the Pillbox logo
+- All icons, illustrations, and visual identity elements of the project
+
+## Protected Conceptual Nomenclature
+
+The following naming system — conceived as a unified metaphor for this
+software's domain model — is original to this project and reserved:
+
+- **Pillbox** — the application and its storage container metaphor
+- **Pill** — the base unit of persistent memory
+- **Prescription** — the active context or session grouping pills
+- **Bottle** — the named collection or namespace of pills
+- **Capsule** — the compound or extended form of a pill
+
+This nomenclature as a whole, and the conceptual framework it represents,
+may not be used to build a competing product or service that replicates
+the domain model of this project.
+
+## Reserved Rights
+
+You may NOT:
+
+- Use the Pillbox name, logo, or visual assets to represent your own
+  project, product, or organization.
+- Use the protected nomenclature system above to market or describe a
+  product that replicates or competes with the purpose of this software.
+- Register or claim any trademark, trade name, or domain based on any
+  of the protected terms above in connection with similar software or services.
+- Redistribute modified versions of the visual brand assets.
+
+## Permitted Uses
+
+You MAY:
+
+- Reference any of these terms in documentation, articles, or talks to
+  accurately describe this original project (nominative fair use).
+- Use common English meanings of "pill", "bottle", or "prescription"
+  outside the context of persistent memory systems for AI agents.
+- Include unmodified screenshots of the software for review or
+  educational purposes, provided the source is credited.
+
+## Contact
+
+For permission requests beyond the above, contact: kevin.illanas@gmail.com
