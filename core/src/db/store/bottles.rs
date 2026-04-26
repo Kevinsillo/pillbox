@@ -94,6 +94,20 @@ pub fn find_by_directory(conn: &Connection, directory: &str) -> Result<Option<Bo
 pub fn delete(conn: &mut Connection, id: &str) -> Result<bool> {
     let tx = conn.transaction()?;
 
+    // dispense_log referencia prescriptions(id) y pills(id) — borrar antes que ambas.
+    tx.execute(
+        "DELETE FROM dispense_log WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)",
+        params![id],
+    )
+    .context("failed to delete bottle dispense_log")?;
+
+    // pill_links referencia pills(id) — borrar antes que pills.
+    tx.execute(
+        "DELETE FROM pill_links WHERE from_id IN (SELECT id FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)) OR to_id IN (SELECT id FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1))",
+        params![id],
+    )
+    .context("failed to delete bottle pill_links")?;
+
     tx.execute(
         "DELETE FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)",
         params![id],

@@ -167,13 +167,15 @@ pub async fn bottle_delete(State(s): State<AppState>, Path(id): Path<String>) ->
         Ok(c) => c,
         Err(r) => return r,
     };
-    if let Ok(global_conn) = open_global_conn(&s) {
-        if let Ok(Some(reg)) = registered_bottles::find_by_bottle_id(&global_conn, &id) {
-            let _ = registered_bottles::unregister(&global_conn, reg.id);
-        }
-    }
     match store::bottles::delete(&mut conn, &id) {
-        Ok(true) => ok(serde_json::Value::Null),
+        Ok(true) => {
+            if let Ok(global_conn) = open_global_conn(&s) {
+                if let Ok(Some(reg)) = registered_bottles::find_by_bottle_id(&global_conn, &id) {
+                    let _ = registered_bottles::unregister(&global_conn, reg.id);
+                }
+            }
+            ok(serde_json::Value::Null)
+        }
         Ok(false) => err_404_bottle(&id),
         Err(e) => err_500(e),
     }

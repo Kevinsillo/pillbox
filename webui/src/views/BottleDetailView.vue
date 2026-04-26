@@ -59,6 +59,7 @@ async function deleteBottle() {
     if (result.value !== slug) return
     try {
         await bottlesApi.deleteBottle(props.bottle_id)
+        if (activeBottleId.value === props.bottle_id) activeBottleId.value = null
         router.push('/bottles')
     } catch (e: unknown) {
         await alert(e instanceof Error ? e.message : t('common.error'))
