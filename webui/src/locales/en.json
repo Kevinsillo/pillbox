@@ -33,7 +33,9 @@
     "error_saving": "Could not save",
     "error_not_found": "The requested resource does not exist or was deleted.",
     "error_server": "Could not connect to the server. Is it running?",
-    "content_md": "Content (Markdown)"
+    "content_md": "Content (Markdown)",
+    "archive": "Archive",
+    "delete_permanent": "Delete permanently"
   },
   "confirm": {
     "delete_capsule_title": "Delete capsule",

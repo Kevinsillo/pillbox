@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
-import { pillsApi } from '@/core/infrastructure/repositories/PillsRepository'
 import type { Prescription, Pill } from '@/core/domain/types'
 import PillCard from '@/components/PillCard.vue'
 import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
@@ -12,7 +11,7 @@ import IArrowLeft from '~icons/lucide/arrow-left'
 import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
-const { confirm } = useConfirm()
+const { confirm, confirmDual } = useConfirm()
 const props = defineProps<{ bottle_id: string; rx_id: string }>()
 const router = useRouter()
 
@@ -38,18 +37,6 @@ onMounted(load)
 
 const isOpen = computed(() => rx.value?.ended_at === null && rx.value?.deleted_at === null)
 
-async function deletePill(pill: Pill) {
-    try {
-        await confirm(
-            t('confirm.delete_pill_msg', { title: pill.title }),
-            t('confirm.delete_pill_title'),
-            { confirmText: t('common.delete'), cancelText: t('common.cancel') }
-        )
-        await pillsApi.delete(pill.id, props.bottle_id, props.rx_id)
-        pills.value = pills.value.filter(p => p.id !== pill.id)
-    } catch { /* cancelled */ }
-}
-
 async function closeRx() {
     try {
         await confirm(
@@ -64,12 +51,16 @@ async function closeRx() {
 
 async function deleteRx() {
     try {
-        await confirm(
+        const mode = await confirmDual(
             t('confirm.delete_prescription_msg'),
             t('confirm.delete_prescription_title'),
-            { confirmText: t('common.delete'), cancelText: t('common.cancel'), waitSeconds: 5 }
+            { softText: t('common.archive'), hardText: t('common.delete_permanent'), cancelText: t('common.cancel') }
         )
-        await prescriptionsApi.delete(props.bottle_id, props.rx_id)
+        if (mode === "soft") {
+            await prescriptionsApi.delete(props.bottle_id, props.rx_id)
+        } else {
+            await prescriptionsApi.purge(props.bottle_id, props.rx_id)
+        }
         router.back()
     } catch { /* cancelled */ }
 }
@@ -122,8 +113,6 @@ async function deleteRx() {
                         :key="pill.id"
                         :pill="pill"
                         :bottle-id="props.bottle_id"
-                        :editable="isOpen"
-                        @delete="deletePill(pill)"
                     />
                 </div>
             </div>

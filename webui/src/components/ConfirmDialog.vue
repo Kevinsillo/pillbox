@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { confirmState, rejectDialog, resolveDialog } from "@/composables/useConfirm"
+import { confirmState, rejectDialog, resolveDialog, resolveDualDialog, rejectDualDialog } from "@/composables/useConfirm"
 import { ElInput } from "element-plus"
 import { ref, watch } from "vue"
 
 const inputValue = ref("")
 const inputError = ref("")
 const remaining = ref(0)
+const hardRemaining = ref(0)
 let _timer: ReturnType<typeof setInterval> | undefined
+let _hardTimer: ReturnType<typeof setInterval> | undefined
 
 watch(
     () => confirmState.visible,
@@ -24,10 +26,25 @@ watch(
                     }
                 }, 1000)
             }
+            if (confirmState.variant === "dual") {
+                hardRemaining.value = confirmState.hardWaitSeconds
+                if (hardRemaining.value > 0) {
+                    _hardTimer = setInterval(() => {
+                        hardRemaining.value--
+                        if (hardRemaining.value <= 0) {
+                            clearInterval(_hardTimer)
+                            _hardTimer = undefined
+                        }
+                    }, 1000)
+                }
+            }
         } else {
             clearInterval(_timer)
             _timer = undefined
             remaining.value = 0
+            clearInterval(_hardTimer)
+            _hardTimer = undefined
+            hardRemaining.value = 0
         }
     }
 )
@@ -51,9 +68,19 @@ function handleConfirm() {
 function handleCancel() {
     if (confirmState.variant === "alert") {
         resolveDialog()
+    } else if (confirmState.variant === "dual") {
+        rejectDualDialog()
     } else {
         rejectDialog()
     }
+}
+
+function handleSoft() {
+    resolveDualDialog("soft")
+}
+
+function handleHard() {
+    resolveDualDialog("hard")
 }
 </script>
 
@@ -88,7 +115,36 @@ function handleCancel() {
                             <p v-if="inputError" class="text-xs text-red-400">{{ inputError }}</p>
                         </div>
 
-                        <div class="flex justify-end gap-2">
+                        <!-- Dual variant buttons -->
+                        <div v-if="confirmState.variant === 'dual'" class="flex justify-end gap-2">
+                            <button
+                                class="border border-(--border) px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-(--text-h) transition-colors"
+                                @click="handleCancel"
+                            >
+                                {{ confirmState.cancelText }}
+                            </button>
+                            <button
+                                class="border border-red-900/40 px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300 transition-colors"
+                                @click="handleSoft"
+                            >
+                                {{ confirmState.softText }}
+                            </button>
+                            <button
+                                :disabled="hardRemaining > 0"
+                                :class="
+                                    hardRemaining > 0
+                                        ? 'border border-(--border) text-zinc-600 cursor-not-allowed'
+                                        : 'border border-red-900/40 text-red-400 hover:text-red-300'
+                                "
+                                class="px-3 py-2 rounded-lg text-sm transition-colors"
+                                @click="handleHard"
+                            >
+                                {{ confirmState.hardText }}{{ hardRemaining > 0 ? ` (${hardRemaining})` : "" }}
+                            </button>
+                        </div>
+
+                        <!-- Default variant buttons -->
+                        <div v-else class="flex justify-end gap-2">
                             <button
                                 v-if="confirmState.variant !== 'alert'"
                                 class="border border-(--border) px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-(--text-h) transition-colors"

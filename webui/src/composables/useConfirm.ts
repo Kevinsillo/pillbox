@@ -2,7 +2,7 @@ import { reactive } from "vue"
 
 interface DialogState {
     visible: boolean
-    variant: "confirm" | "prompt" | "alert"
+    variant: "confirm" | "prompt" | "alert" | "dual"
     title: string
     message: string
     confirmText: string
@@ -12,6 +12,9 @@ interface DialogState {
     inputPlaceholder: string
     inputValidator?: (v: string) => boolean | string
     waitSeconds: number
+    softText: string
+    hardText: string
+    hardWaitSeconds: number
 }
 
 export const confirmState = reactive<DialogState>({
@@ -25,10 +28,15 @@ export const confirmState = reactive<DialogState>({
     inputValue: "",
     inputPlaceholder: "",
     waitSeconds: 0,
+    softText: "Archivar",
+    hardText: "Eliminar definitivamente",
+    hardWaitSeconds: 5,
 })
 
 let _resolve: ((value?: string) => void) | undefined
 let _reject: (() => void) | undefined
+let _resolveDual: ((mode: "soft" | "hard") => void) | undefined
+let _rejectDual: (() => void) | undefined
 
 export function resolveDialog(value?: string) {
     _resolve?.(value)
@@ -44,6 +52,20 @@ export function rejectDialog() {
     confirmState.visible = false
 }
 
+export function resolveDualDialog(mode: "soft" | "hard") {
+    _resolveDual?.(mode)
+    _resolveDual = undefined
+    _rejectDual = undefined
+    confirmState.visible = false
+}
+
+export function rejectDualDialog() {
+    _rejectDual?.()
+    _resolveDual = undefined
+    _rejectDual = undefined
+    confirmState.visible = false
+}
+
 export function useConfirm() {
     function confirm(
         message: string,
@@ -51,7 +73,7 @@ export function useConfirm() {
         opts?: { confirmText?: string; cancelText?: string; waitSeconds?: number }
     ): Promise<void> {
         return new Promise((resolve, reject) => {
-            _resolve = resolve
+            _resolve = resolve as (value?: string) => void
             _reject = reject
             Object.assign(confirmState, {
                 visible: true,
@@ -97,7 +119,7 @@ export function useConfirm() {
 
     function alert(message: string): Promise<void> {
         return new Promise((resolve) => {
-            _resolve = resolve
+            _resolve = resolve as (value?: string) => void
             _reject = undefined
             Object.assign(confirmState, {
                 visible: true,
@@ -111,5 +133,26 @@ export function useConfirm() {
         })
     }
 
-    return { confirm, prompt, alert }
+    function confirmDual(
+        message: string,
+        title?: string | null,
+        opts?: { softText?: string; hardText?: string; hardWaitSeconds?: number; cancelText?: string }
+    ): Promise<"soft" | "hard"> {
+        return new Promise((resolve, reject) => {
+            _resolveDual = resolve
+            _rejectDual = reject
+            Object.assign(confirmState, {
+                visible: true,
+                variant: "dual",
+                title: title ?? "",
+                message,
+                cancelText: opts?.cancelText ?? "Cancelar",
+                softText: opts?.softText ?? "Archivar",
+                hardText: opts?.hardText ?? "Eliminar definitivamente",
+                hardWaitSeconds: opts?.hardWaitSeconds ?? 5,
+            })
+        })
+    }
+
+    return { confirm, prompt, alert, confirmDual }
 }

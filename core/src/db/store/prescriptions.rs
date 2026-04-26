@@ -153,6 +153,57 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
     Ok(())
 }
 
+/// Hard delete de una prescription y todos sus datos relacionados (irreversible).
+///
+/// Elimina en orden dentro de una tx IMMEDIATE:
+/// dispense_log → pill_links → pills → prescriptions.
+///
+/// Falla con `PillboxError::PrescriptionNotFound` si la prescription no existe.
+pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<()> {
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+
+    // Verificar que la prescription existe
+    let exists: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM prescriptions WHERE id = ?1)",
+        params![id],
+        |row| row.get(0),
+    )?;
+
+    if !exists {
+        return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
+    }
+
+    // 1. Eliminar dispense_log de la prescription
+    tx.execute(
+        "DELETE FROM dispense_log WHERE prescription_id = ?1",
+        params![id],
+    )
+    .context("failed to delete dispense_log for prescription")?;
+
+    // 2. Eliminar pill_links de las pills de esta prescription
+    tx.execute(
+        "DELETE FROM pill_links
+         WHERE from_id IN (SELECT id FROM pills WHERE prescription_id = ?1)
+            OR to_id   IN (SELECT id FROM pills WHERE prescription_id = ?1)",
+        params![id],
+    )
+    .context("failed to delete pill_links for prescription")?;
+
+    // 3. Eliminar pills de la prescription
+    tx.execute(
+        "DELETE FROM pills WHERE prescription_id = ?1",
+        params![id],
+    )
+    .context("failed to delete pills for prescription")?;
+
+    // 4. Eliminar la prescription
+    tx.execute("DELETE FROM prescriptions WHERE id = ?1", params![id])
+        .context("failed to delete prescription")?;
+
+    tx.commit()?;
+    Ok(())
+}
+
 /// Lee una prescription por ID exacto o prefijo de UUID (no descartada).
 pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
     let pattern = format!("{}%", id);
@@ -401,6 +452,73 @@ mod tests {
 
         discard(&mut conn, &rx.id).unwrap();
         assert!(discard(&mut conn, &rx.id).is_err());
+    }
+
+    #[test]
+    fn hard_delete_prescription_removes_all_rows() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "hard-delete");
+
+        let rx = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id,
+                title: "Sesión a purgar".into(),
+            },
+        )
+        .unwrap();
+
+        // Insertar una pill con sync_id único
+        conn.execute(
+            "INSERT INTO pills (sync_id, compound, title, content, prescription_id)
+             VALUES ('sync-hd-001', 'decision', 'T', 'C', ?1)",
+            params![rx.id],
+        )
+        .unwrap();
+
+        let pill_id: i64 = conn
+            .query_row(
+                "SELECT id FROM pills WHERE prescription_id = ?1",
+                params![rx.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+
+        // Insertar un pill_link
+        conn.execute(
+            "INSERT INTO pill_links (from_id, to_id, rel_type) VALUES (?1, ?1, 'related')",
+            params![pill_id],
+        )
+        .unwrap();
+
+        // dispense_log ya tiene entradas de prescription_open
+        hard_delete(&mut conn, &rx.id).unwrap();
+
+        let rx_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prescriptions WHERE id = ?1", params![rx.id], |r| r.get(0))
+            .unwrap();
+        let pill_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM pills WHERE prescription_id = ?1", params![rx.id], |r| r.get(0))
+            .unwrap();
+        let link_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM pill_links WHERE from_id = ?1", params![pill_id], |r| r.get(0))
+            .unwrap();
+        let log_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM dispense_log WHERE prescription_id = ?1", params![rx.id], |r| r.get(0))
+            .unwrap();
+
+        assert_eq!(rx_count, 0);
+        assert_eq!(pill_count, 0);
+        assert_eq!(link_count, 0);
+        assert_eq!(log_count, 0);
+    }
+
+    #[test]
+    fn hard_delete_nonexistent_prescription_returns_error() {
+        let mut conn = open_in_memory().unwrap();
+        let err = hard_delete(&mut conn, "id-inexistente").unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>();
+        assert!(matches!(typed, Some(PillboxError::PrescriptionNotFound { .. })));
     }
 
     #[test]

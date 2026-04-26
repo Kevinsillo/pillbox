@@ -10,6 +10,7 @@ use pillbox::{
     },
 };
 use serde::Deserialize;
+use serde_json::json;
 use validator::Validate;
 
 use super::{
@@ -100,6 +101,21 @@ pub async fn pill_delete(
     };
     match store::pills::discard(&mut conn, pill_id) {
         Ok(Some(r)) => ok(r),
+        Ok(None) => err_404_pill(pill_id),
+        Err(e) => err_500(e),
+    }
+}
+
+pub async fn pill_purge(
+    State(s): State<AppState>,
+    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
+) -> ApiResponse {
+    let mut conn = match conn_for_bottle(&s, &bottle_id) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::pills::hard_delete(&mut conn, pill_id) {
+        Ok(Some(_)) => ok(json!({ "purged": true })),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => err_500(e),
     }

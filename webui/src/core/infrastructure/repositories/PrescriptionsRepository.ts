@@ -10,6 +10,8 @@ export const prescriptionsApi = {
         api.patch<Prescription>(`/bottles/${bottleId}/prescriptions/${rxId}`),
     delete: (bottleId: string, rxId: string) =>
         api.delete<{ discarded: boolean }>(`/bottles/${bottleId}/prescriptions/${rxId}`),
+    purge: (bottleId: string, rxId: string) =>
+        api.delete<{ purged: boolean }>(`/bottles/${bottleId}/prescriptions/${rxId}/purge`),
     pills: (bottleId: string, rxId: string) =>
         api.get<Pill[]>(`/bottles/${bottleId}/prescriptions/${rxId}/pills`),
 }

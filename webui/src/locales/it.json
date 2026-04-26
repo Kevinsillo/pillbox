@@ -33,7 +33,9 @@
     "error_saving": "Impossibile salvare",
     "error_not_found": "La risorsa richiesta non esiste o è stata eliminata.",
     "error_server": "Impossibile connettersi al server. È in esecuzione?",
-    "content_md": "Contenuto (Markdown)"
+    "content_md": "Contenuto (Markdown)",
+    "archive": "Archivia",
+    "delete_permanent": "Elimina definitivamente"
   },
   "confirm": {
     "delete_capsule_title": "Elimina capsule",

@@ -8,6 +8,8 @@ export const pillsApi = {
         api.patch<Pill>(`/bottles/${bottleId}/prescriptions/${rxId}/pills/${pillId}`, body),
     delete: (pillId: number, bottleId: string, rxId: string) =>
         api.delete<Pill>(`/bottles/${bottleId}/prescriptions/${rxId}/pills/${pillId}`),
+    purge: (pillId: number, bottleId: string, rxId: string) =>
+        api.delete<{ purged: boolean }>(`/bottles/${bottleId}/prescriptions/${rxId}/pills/${pillId}/purge`),
     search: (params: { query: string; bottle_id?: string; compound?: PillCompound; limit?: number }) => {
         const q = new URLSearchParams({ query: params.query })
         if (params.bottle_id) q.set('bottle_id', params.bottle_id)

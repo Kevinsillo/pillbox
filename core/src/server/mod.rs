@@ -74,6 +74,10 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
             "/bottles/:bottle_id/prescriptions/:rx_id",
             delete(handlers::prescription_delete),
         )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id/purge",
+            delete(handlers::prescription_purge),
+        )
         // Pills (anidadas bajo prescription)
         .route(
             "/bottles/:bottle_id/prescriptions/:rx_id/pills",
@@ -94,6 +98,10 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
         .route(
             "/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id",
             delete(handlers::pill_delete),
+        )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id/purge",
+            delete(handlers::pill_purge),
         )
         // Registered bottles (gestión de registros rotos)
         .route(

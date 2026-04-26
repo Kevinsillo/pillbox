@@ -33,7 +33,9 @@
     "error_saving": "Speichern fehlgeschlagen",
     "error_not_found": "Die angeforderte Ressource existiert nicht oder wurde gelöscht.",
     "error_server": "Verbindung zum Server fehlgeschlagen. Läuft er?",
-    "content_md": "Inhalt (Markdown)"
+    "content_md": "Inhalt (Markdown)",
+    "archive": "Archivieren",
+    "delete_permanent": "Endgültig löschen"
   },
   "confirm": {
     "delete_capsule_title": "Capsule löschen",

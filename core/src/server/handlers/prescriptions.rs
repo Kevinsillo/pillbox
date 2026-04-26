@@ -101,6 +101,24 @@ pub async fn prescription_delete(
     }
 }
 
+pub async fn prescription_purge(
+    State(s): State<AppState>,
+    Path((bottle_id, rx_id)): Path<(String, String)>,
+) -> ApiResponse {
+    let mut conn = match conn_for_bottle(&s, &bottle_id) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::prescriptions::hard_delete(&mut conn, &rx_id) {
+        Ok(()) => ok(json!({ "purged": true })),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::PrescriptionNotFound { .. }) => err_404_prescription(&rx_id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
+    }
+}
+
 pub async fn prescription_pills(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,

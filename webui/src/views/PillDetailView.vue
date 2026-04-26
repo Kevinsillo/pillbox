@@ -12,7 +12,7 @@ import IFileText from "~icons/lucide/file-text"
 import ITrash2 from "~icons/lucide/trash-2"
 
 const { t } = useI18n()
-const { confirm } = useConfirm()
+const { confirmDual } = useConfirm()
 const props = defineProps<{ bottle_id: string; rx_id: string; pill_id: string }>()
 const router = useRouter()
 
@@ -33,12 +33,16 @@ onMounted(load)
 async function deletePill() {
     if (!pill.value) return
     try {
-        await confirm(
+        const mode = await confirmDual(
             t("confirm.delete_pill_msg", { title: pill.value.title }),
             t("confirm.delete_pill_title"),
-            { confirmText: t("common.delete"), cancelText: t("common.cancel") }
+            { softText: t("common.archive"), hardText: t("common.delete_permanent"), cancelText: t("common.cancel") }
         )
-        await pillsApi.delete(Number(props.pill_id), props.bottle_id, props.rx_id)
+        if (mode === "soft") {
+            await pillsApi.delete(Number(props.pill_id), props.bottle_id, props.rx_id)
+        } else {
+            await pillsApi.purge(Number(props.pill_id), props.bottle_id, props.rx_id)
+        }
         router.back()
     } catch {
         /* cancelled */

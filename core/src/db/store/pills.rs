@@ -215,6 +215,46 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<PillDiscardResul
     Ok(Some(PillDiscardResult { id, deleted_at }))
 }
 
+/// Hard delete de una pill (irreversible).
+///
+/// Elimina en orden: dispense_log WHERE pill_id=? → pill_links WHERE from_id=? OR to_id=? → pills WHERE id=?.
+/// Devuelve `Some(id)` si se eliminó, `None` si la pill no existía.
+pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<Option<i64>> {
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+
+    // Verificar que la pill existe
+    let exists: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM pills WHERE id = ?1)",
+        params![id],
+        |row| row.get(0),
+    )?;
+
+    if !exists {
+        return Ok(None);
+    }
+
+    // 1. Eliminar entradas de dispense_log referenciando esta pill
+    tx.execute(
+        "DELETE FROM dispense_log WHERE pill_id = ?1",
+        params![id],
+    )
+    .context("failed to delete dispense_log for pill")?;
+
+    // 2. Eliminar pill_links donde esta pill participa
+    tx.execute(
+        "DELETE FROM pill_links WHERE from_id = ?1 OR to_id = ?1",
+        params![id],
+    )
+    .context("failed to delete pill_links for pill")?;
+
+    // 3. Eliminar la pill
+    tx.execute("DELETE FROM pills WHERE id = ?1", params![id])
+        .context("failed to delete pill")?;
+
+    tx.commit()?;
+    Ok(Some(id))
+}
+
 /// Lista todas las pills de una prescription, ordenadas por fecha de creación.
 pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
@@ -487,6 +527,50 @@ mod tests {
         let conn = open_in_memory().unwrap();
         let pills = list_by_prescription(&conn, "rx-inexistente").unwrap();
         assert!(pills.is_empty());
+    }
+
+    #[test]
+    fn hard_delete_pill_removes_row() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+
+        let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        let pill_id = result.id;
+
+        // Insertar un pill_link self-referenciado para probar que se elimina
+        conn.execute(
+            "INSERT INTO pill_links (from_id, to_id, rel_type) VALUES (?1, ?1, 'related')",
+            params![pill_id],
+        )
+        .unwrap();
+
+        let deleted = hard_delete(&mut conn, pill_id).unwrap();
+        assert_eq!(deleted, Some(pill_id));
+
+        // pill ya no existe
+        let pill_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM pills WHERE id = ?1", params![pill_id], |r| r.get(0))
+            .unwrap();
+        assert_eq!(pill_count, 0);
+
+        // pill_links eliminados
+        let link_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM pill_links WHERE from_id = ?1", params![pill_id], |r| r.get(0))
+            .unwrap();
+        assert_eq!(link_count, 0);
+
+        // dispense_log de pill eliminado
+        let log_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM dispense_log WHERE pill_id = ?1", params![pill_id], |r| r.get(0))
+            .unwrap();
+        assert_eq!(log_count, 0);
+    }
+
+    #[test]
+    fn hard_delete_nonexistent_pill_returns_none() {
+        let mut conn = open_in_memory().unwrap();
+        let result = hard_delete(&mut conn, 9999).unwrap();
+        assert_eq!(result, None);
     }
 
     #[test]

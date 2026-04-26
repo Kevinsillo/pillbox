@@ -33,7 +33,9 @@
     "error_saving": "Impossible d'enregistrer",
     "error_not_found": "La ressource demandée n'existe pas ou a été supprimée.",
     "error_server": "Impossible de se connecter au serveur. Est-il en cours d'exécution ?",
-    "content_md": "Contenu (Markdown)"
+    "content_md": "Contenu (Markdown)",
+    "archive": "Archiver",
+    "delete_permanent": "Supprimer définitivement"
   },
   "confirm": {
     "delete_capsule_title": "Supprimer la capsule",

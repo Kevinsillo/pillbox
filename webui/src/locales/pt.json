@@ -33,7 +33,9 @@
     "error_saving": "Não foi possível salvar",
     "error_not_found": "O recurso solicitado não existe ou foi excluído.",
     "error_server": "Não foi possível conectar ao servidor. Ele está em execução?",
-    "content_md": "Conteúdo (Markdown)"
+    "content_md": "Conteúdo (Markdown)",
+    "archive": "Arquivar",
+    "delete_permanent": "Excluir permanentemente"
   },
   "confirm": {
     "delete_capsule_title": "Excluir capsule",
