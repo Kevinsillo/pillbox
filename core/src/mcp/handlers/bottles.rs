@@ -1,4 +1,4 @@
-use pillbox::{db::store, domain::bottle::NewBottle};
+use pillbox::{config, db, db::store, db::store::registered_bottles, domain::bottle::NewBottle};
 use serde_json::Value;
 
 use crate::mcp::response::{anyhow_to_response, from_value, validate_input, Conn, Response};
@@ -12,7 +12,21 @@ pub fn create(conn: &mut Conn, input: Value) -> Response {
         return r;
     }
     match store::bottles::create(conn, &req) {
-        Ok(b) => Response::ok(b),
+        Ok(b) => {
+            if let Some(local_path) = config::resolve_db_path() {
+                let global_path = config::global_db_path();
+                if let Ok(global_conn) = db::connection::open(&global_path) {
+                    let _ = registered_bottles::register(
+                        &global_conn,
+                        &b.id,
+                        &b.name,
+                        &b.display_name,
+                        &local_path.to_string_lossy(),
+                    );
+                }
+            }
+            Response::ok(b)
+        }
         Err(e) => anyhow_to_response(e),
     }
 }
