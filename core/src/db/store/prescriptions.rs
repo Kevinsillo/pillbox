@@ -204,6 +204,23 @@ pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<()> {
     Ok(())
 }
 
+/// Lee una prescription por ID exacto o prefijo de UUID incluyendo descartadas.
+pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
+    let pattern = format!("{}%", id);
+    match conn.query_row(
+        "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
+         FROM prescriptions
+         WHERE (id = ?1 OR id LIKE ?2)
+         ORDER BY started_at DESC LIMIT 1",
+        params![id, pattern],
+        row_to_prescription,
+    ) {
+        Ok(rx) => Ok(Some(rx)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e).context("failed to read prescription"),
+    }
+}
+
 /// Lee una prescription por ID exacto o prefijo de UUID (no descartada).
 pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
     let pattern = format!("{}%", id);
@@ -226,7 +243,7 @@ pub fn list_by_bottle(conn: &Connection, bottle_id: &str, limit: u32) -> Result<
     let mut stmt = conn.prepare(
         "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
          FROM prescriptions
-         WHERE bottle_id = ?1 AND deleted_at IS NULL
+         WHERE bottle_id = ?1
          ORDER BY started_at DESC
          LIMIT ?2",
     )?;
@@ -554,5 +571,92 @@ mod tests {
             .unwrap();
 
         assert_eq!(pill_count, 0);
+    }
+
+    #[test]
+    fn list_by_bottle_includes_archived() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "archived-include");
+
+        let rx = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "Sesión a archivar".into(),
+            },
+        )
+        .unwrap();
+        discard(&mut conn, &rx.id).unwrap();
+
+        let all = list_by_bottle(&conn, &bottle_id, 10).unwrap();
+        assert_eq!(all.len(), 1);
+        assert!(all[0].deleted_at.is_some());
+    }
+
+    #[test]
+    fn list_by_bottle_active_and_archived_together() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "active-and-archived");
+
+        // Active prescription
+        let rx_active = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "Activa".into(),
+            },
+        )
+        .unwrap();
+        close(&mut conn, &rx_active.id).unwrap();
+
+        // Archived prescription (re-open then discard)
+        let rx_to_archive = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "Archivada".into(),
+            },
+        )
+        .unwrap();
+        discard(&mut conn, &rx_to_archive.id).unwrap();
+
+        let all = list_by_bottle(&conn, &bottle_id, 10).unwrap();
+        assert_eq!(all.len(), 2);
+
+        let active_count = all.iter().filter(|rx| rx.deleted_at.is_none()).count();
+        let archived_count = all.iter().filter(|rx| rx.deleted_at.is_some()).count();
+        assert_eq!(active_count, 1);
+        assert_eq!(archived_count, 1);
+    }
+
+    #[test]
+    fn read_any_returns_archived_prescription() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "read-any-archived");
+        let rx = open(
+            &mut conn,
+            &NewPrescription { bottle_id, title: "A archivar".into() },
+        )
+        .unwrap();
+        discard(&mut conn, &rx.id).unwrap();
+
+        let found = read_any(&conn, &rx.id).unwrap();
+        assert!(found.is_some());
+        assert!(found.unwrap().deleted_at.is_some());
+    }
+
+    #[test]
+    fn read_excludes_archived_but_read_any_does_not() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "read-vs-read-any");
+        let rx = open(
+            &mut conn,
+            &NewPrescription { bottle_id, title: "Test".into() },
+        )
+        .unwrap();
+        discard(&mut conn, &rx.id).unwrap();
+
+        assert!(read(&conn, &rx.id).unwrap().is_none());
+        assert!(read_any(&conn, &rx.id).unwrap().is_some());
     }
 }

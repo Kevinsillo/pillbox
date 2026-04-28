@@ -37,6 +37,9 @@ onMounted(load)
 
 const isOpen = computed(() => rx.value?.ended_at === null && rx.value?.deleted_at === null)
 
+const activePills = computed(() => pills.value.filter(p => p.deleted_at === null))
+const archivedPills = computed(() => pills.value.filter(p => p.deleted_at !== null))
+
 async function closeRx() {
     try {
         await confirm(
@@ -104,16 +107,29 @@ async function deleteRx() {
             <!-- Pills -->
             <div>
                 <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                    {{ $t('prescription_detail.pills_heading') }} ({{ pills.length }})
+                    {{ $t('prescription_detail.pills_heading') }} ({{ activePills.length }})
                 </h2>
                 <div v-if="pills.length === 0" class="text-zinc-500 text-sm">{{ $t('prescription_detail.empty') }}</div>
                 <div v-else class="space-y-3">
                     <PillCard
-                        v-for="pill in pills"
+                        v-for="pill in activePills"
                         :key="pill.id"
                         :pill="pill"
                         :bottle-id="props.bottle_id"
                     />
+
+                    <template v-if="archivedPills.length > 0">
+                        <h3 class="text-xs font-semibold text-zinc-600 uppercase tracking-wider mt-4 mb-2">
+                            {{ $t('prescription_detail.archived_pills_heading') }} ({{ archivedPills.length }})
+                        </h3>
+                        <div v-for="pill in archivedPills" :key="pill.id" class="opacity-50 relative">
+                            <PillCard
+                                :pill="pill"
+                                :bottle-id="props.bottle_id"
+                            />
+                            <span class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400 pointer-events-none">{{ $t('prescription_detail.archived_badge') }}</span>
+                        </div>
+                    </template>
                 </div>
             </div>
         </template>

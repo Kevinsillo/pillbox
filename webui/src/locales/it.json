@@ -48,7 +48,9 @@
     "close_prescription_msg": "La prescription verrà chiusa e non sarà possibile aggiungere altre pills.",
     "delete_bottle_title": "Elimina bottle",
     "delete_bottle_msg": "Questa azione eliminerà definitivamente il bottle, tutte le prescription e le pill. Scrivi «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» per confermare.",
-    "delete_bottle_prompt": "Scrivi lo slug del bottle per confermare"
+    "delete_bottle_prompt": "Scrivi lo slug del bottle per confermare",
+    "purge_capsule_title": "Elimina capsule definitivamente",
+    "purge_capsule_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» verrà eliminata definitivamente. Questa azione non può essere annullata."
   },
   "dashboard": {
     "heading": "Dashboard",
@@ -96,7 +98,9 @@
     "status_deleted": "eliminata",
     "status_closed": "chiusa",
     "modal_title": "Nuova prescription",
-    "field_title_placeholder": "Implementare feature X"
+    "field_title_placeholder": "Implementare feature X",
+    "archived_heading": "Archiviate",
+    "archived_badge": "Archiviata"
   },
   "prescription_detail": {
     "status_open": "aperta",
@@ -111,7 +115,9 @@
     "modal_new_title": "Nuova pill",
     "confirm_close": "Chiudere questa prescription?",
     "confirm_delete_rx": "Eliminare questa prescription e tutte le sue pills?",
-    "confirm_delete_pill": "Eliminare pill \"{title}\"?"
+    "confirm_delete_pill": "Eliminare pill \"{title}\"?",
+    "archived_pills_heading": "Archiviate",
+    "archived_badge": "Archiviata"
   },
   "capsules": {
     "heading": "Capsules",
@@ -120,13 +126,16 @@
     "filter_all": "Tutti",
     "empty_search": "Nessuna capsule per questa ricerca",
     "empty": "Nessuna capsule",
-    "modal_title": "Nuova capsule"
+    "modal_title": "Nuova capsule",
+    "archived_heading": "Archiviate",
+    "archived_badge": "Archiviata"
   },
   "capsule_detail": {
     "back": "Capsules",
     "updated_at": "Aggiornata",
     "edit_heading": "Modifica capsule",
-    "confirm_delete": "Eliminare capsule \"{title}\"?"
+    "confirm_delete": "Eliminare capsule \"{title}\"?",
+    "archived_badge": "Archiviata"
   },
   "search": {
     "heading": "Cerca",
@@ -144,7 +153,8 @@
   },
   "pill_detail": {
     "created_at": "Creata",
-    "updated_at": "Aggiornata"
+    "updated_at": "Aggiornata",
+    "archived_badge": "Archiviata"
   },
   "pill_edit": {
     "heading": "Modifica pill"

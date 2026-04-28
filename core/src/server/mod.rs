@@ -46,6 +46,7 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
         .route("/capsules/:id", get(handlers::capsule_get))
         .route("/capsules/:id", patch(handlers::capsule_patch))
         .route("/capsules/:id", delete(handlers::capsule_delete))
+        .route("/capsules/:id/purge", delete(handlers::capsule_purge))
         // Bottles
         .route("/bottles", get(handlers::bottle_list))
         .route("/bottles", post(handlers::bottle_create))

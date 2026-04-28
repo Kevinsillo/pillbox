@@ -48,9 +48,22 @@ pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiR
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::capsules::read(&conn, id) {
+    match store::capsules::read_any(&conn, id) {
         Ok(Some(c)) => ok(c),
         Ok(None) => err_404_capsule(id),
+        Err(e) => err_500(e),
+    }
+}
+
+pub async fn capsule_purge(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+    use serde_json::json;
+    let mut conn = match open_global_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::capsules::hard_delete(&mut conn, id) {
+        Ok(true) => ok(json!({ "purged": true })),
+        Ok(false) => err_404_capsule(id),
         Err(e) => err_500(e),
     }
 }

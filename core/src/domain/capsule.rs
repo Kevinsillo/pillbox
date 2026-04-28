@@ -55,6 +55,7 @@ pub struct CapsuleSummary {
     pub title: String,
     pub created_at: String,
     pub updated_at: String,
+    pub deleted_at: Option<String>,
 }
 
 /// Capsule completa.
@@ -67,6 +68,7 @@ pub struct Capsule {
     pub content: String,
     pub created_at: String,
     pub updated_at: String,
+    pub deleted_at: Option<String>,
 }
 
 /// Campos actualizables en una revisión parcial.

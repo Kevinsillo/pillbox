@@ -1,4 +1,5 @@
 use anyhow::Result;
+use owo_colors::OwoColorize;
 use rust_i18n::t;
 
 use crate::output;
@@ -13,7 +14,7 @@ pub fn cmd_capsule_show(id: i64) -> Result<()> {
     }
 
     let conn = connection::open(&global_path)?;
-    match capsules::read(&conn, id)? {
+    match capsules::read_any(&conn, id)? {
         Some(capsule) => output::fmt::capsule_detail(&capsule),
         None => eprintln!(
             "\n{} {}\n",
@@ -24,4 +25,17 @@ pub fn cmd_capsule_show(id: i64) -> Result<()> {
     Ok(())
 }
 
-use owo_colors::OwoColorize;
+pub fn cmd_capsule_list(limit: u32) -> Result<()> {
+    use pillbox::db::{connection, store::capsules};
+
+    let global_path = pillbox::config::global_db_path();
+    if !global_path.exists() {
+        output::fmt::db_not_found();
+        return Ok(());
+    }
+
+    let conn = connection::open(&global_path)?;
+    let list = capsules::list(&conn, Some(limit), None)?;
+    output::fmt::capsules_list(&list);
+    Ok(())
+}

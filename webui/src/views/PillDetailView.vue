@@ -69,7 +69,10 @@ const renderedContent = computed(() => (pill.value ? (marked.parse(pill.value.co
                         <IFileText class="size-8 text-zinc-400" />
                     </div>
                     <div>
-                        <CompoundBadge :compound="pill.compound" />
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <CompoundBadge :compound="pill.compound" />
+                            <span v-if="pill.deleted_at" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('pill_detail.archived_badge') }}</span>
+                        </div>
                         <h1 class="text-xl font-bold text-(--text-h) mt-2">{{ pill.title }}</h1>
                         <p class="text-xs text-zinc-500 mt-0.5">
                             {{ $t("pill_detail.created_at") }} {{ new Date(pill.created_at).toLocaleString() }}

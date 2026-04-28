@@ -85,6 +85,7 @@ pub struct Pill {
     pub author_email: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub deleted_at: Option<String>,
 }
 
 /// Campos actualizables en una revisión parcial.

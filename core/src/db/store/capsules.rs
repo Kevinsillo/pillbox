@@ -52,8 +52,22 @@ pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleTakeResu
 /// Lee una capsule completa por ID (no descartada).
 pub fn read(conn: &Connection, id: i64) -> Result<Option<Capsule>> {
     match conn.query_row(
-        "SELECT id, sync_id, compound, title, content, created_at, updated_at
+        "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
          FROM capsules WHERE id = ?1 AND deleted_at IS NULL",
+        params![id],
+        row_to_capsule,
+    ) {
+        Ok(c) => Ok(Some(c)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e).context("failed to read capsule"),
+    }
+}
+
+/// Lee una capsule completa por ID incluyendo descartadas.
+pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Capsule>> {
+    match conn.query_row(
+        "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
+         FROM capsules WHERE id = ?1",
         params![id],
         row_to_capsule,
     ) {
@@ -96,7 +110,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Op
 
     let capsule = tx
         .query_row(
-            "SELECT id, sync_id, compound, title, content, created_at, updated_at
+            "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
              FROM capsules WHERE id = ?1",
             params![id],
             row_to_capsule,
@@ -139,14 +153,13 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<CapsuleDiscardRe
     Ok(Some(CapsuleDiscardResult { id, deleted_at }))
 }
 
-/// Lista capsules globales con filtros opcionales.
+/// Lista capsules globales con filtros opcionales (incluye archivadas).
 pub fn list(conn: &Connection, limit: Option<u32>, compound: Option<&str>) -> Result<Vec<Capsule>> {
     let limit = limit.unwrap_or(50);
     let mut stmt = conn.prepare(
-        "SELECT id, sync_id, compound, title, content, created_at, updated_at
+        "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
          FROM capsules
-         WHERE deleted_at IS NULL
-           AND (?1 IS NULL OR compound = ?1)
+         WHERE (?1 IS NULL OR compound = ?1)
          ORDER BY updated_at DESC
          LIMIT ?2",
     )?;
@@ -155,6 +168,38 @@ pub fn list(conn: &Connection, limit: Option<u32>, compound: Option<&str>) -> Re
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to list capsules")?;
     Ok(capsules)
+}
+
+/// Hard delete de una capsule (irreversible).
+///
+/// Elimina en orden: dispense_log WHERE pill_id=? → capsules WHERE id=?.
+/// Devuelve `Ok(true)` si existía y fue eliminada, `Ok(false)` si no existía.
+pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<bool> {
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+
+    let exists: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM capsules WHERE id = ?1)",
+        params![id],
+        |row| row.get(0),
+    )?;
+
+    if !exists {
+        return Ok(false);
+    }
+
+    // 1. Eliminar entradas de dispense_log referenciando esta capsule
+    tx.execute(
+        "DELETE FROM dispense_log WHERE pill_id = ?1",
+        params![id],
+    )
+    .context("failed to delete dispense_log for capsule")?;
+
+    // 2. Eliminar la capsule
+    tx.execute("DELETE FROM capsules WHERE id = ?1", params![id])
+        .context("failed to delete capsule")?;
+
+    tx.commit()?;
+    Ok(true)
 }
 
 fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
@@ -166,6 +211,7 @@ fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
         content: row.get(4)?,
         created_at: row.get(5)?,
         updated_at: row.get(6)?,
+        deleted_at: row.get(7)?,
     })
 }
 
@@ -330,12 +376,77 @@ mod tests {
     }
 
     #[test]
-    fn list_excludes_discarded() {
+    fn list_includes_discarded_after_filter_removal() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         discard(&mut conn, cap.id).unwrap();
 
         let all = list(&conn, None, None).unwrap();
-        assert!(all.is_empty());
+        assert_eq!(all.len(), 1);
+        assert!(all[0].deleted_at.is_some());
+    }
+
+    #[test]
+    fn read_any_finds_archived() {
+        let mut conn = open_in_memory().unwrap();
+        let cap = take(&mut conn, &sample_capsule()).unwrap();
+        discard(&mut conn, cap.id).unwrap();
+
+        let found = read_any(&conn, cap.id).unwrap();
+        assert!(found.is_some());
+        assert!(found.unwrap().deleted_at.is_some());
+    }
+
+    #[test]
+    fn read_excludes_archived_but_read_any_does_not() {
+        let mut conn = open_in_memory().unwrap();
+        let cap = take(&mut conn, &sample_capsule()).unwrap();
+        discard(&mut conn, cap.id).unwrap();
+
+        assert!(read(&conn, cap.id).unwrap().is_none());
+        assert!(read_any(&conn, cap.id).unwrap().is_some());
+    }
+
+    #[test]
+    fn hard_delete_removes_row() {
+        let mut conn = open_in_memory().unwrap();
+        let cap = take(&mut conn, &sample_capsule()).unwrap();
+        let deleted = hard_delete(&mut conn, cap.id).unwrap();
+        assert!(deleted);
+        assert!(read_any(&conn, cap.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn hard_delete_cleans_dispense_log() {
+        let mut conn = open_in_memory().unwrap();
+        let cap = take(&mut conn, &sample_capsule()).unwrap();
+        hard_delete(&mut conn, cap.id).unwrap();
+
+        let log_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM dispense_log WHERE pill_id = ?1",
+                rusqlite::params![cap.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(log_count, 0);
+    }
+
+    #[test]
+    fn hard_delete_nonexistent_returns_false() {
+        let mut conn = open_in_memory().unwrap();
+        let deleted = hard_delete(&mut conn, 9999).unwrap();
+        assert!(!deleted);
+    }
+
+    #[test]
+    fn list_includes_archived() {
+        let mut conn = open_in_memory().unwrap();
+        let cap = take(&mut conn, &sample_capsule()).unwrap();
+        discard(&mut conn, cap.id).unwrap();
+
+        let all = list(&conn, None, None).unwrap();
+        assert_eq!(all.len(), 1);
+        assert!(all[0].deleted_at.is_some());
     }
 }

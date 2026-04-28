@@ -48,7 +48,9 @@
     "close_prescription_msg": "The prescription will be closed and no more pills can be added.",
     "delete_bottle_title": "Delete bottle",
     "delete_bottle_msg": "This will permanently delete the bottle, all its prescriptions and pills. Type «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» to confirm.",
-    "delete_bottle_prompt": "Type the bottle slug to confirm"
+    "delete_bottle_prompt": "Type the bottle slug to confirm",
+    "purge_capsule_title": "Delete capsule permanently",
+    "purge_capsule_msg": "«<strong style=\"color: var(--chip-error-text)\">{title}</strong>» will be permanently deleted. This action cannot be undone."
   },
   "dashboard": {
     "heading": "Dashboard",
@@ -96,7 +98,9 @@
     "status_deleted": "deleted",
     "status_closed": "closed",
     "modal_title": "New prescription",
-    "field_title_placeholder": "Implement feature X"
+    "field_title_placeholder": "Implement feature X",
+    "archived_heading": "Archived",
+    "archived_badge": "Archived"
   },
   "prescription_detail": {
     "status_open": "open",
@@ -111,7 +115,9 @@
     "modal_new_title": "New pill",
     "confirm_close": "Close this prescription?",
     "confirm_delete_rx": "Delete this prescription and all its pills?",
-    "confirm_delete_pill": "Delete pill \"{title}\"?"
+    "confirm_delete_pill": "Delete pill \"{title}\"?",
+    "archived_pills_heading": "Archived",
+    "archived_badge": "Archived"
   },
   "capsules": {
     "heading": "Capsules",
@@ -120,13 +126,16 @@
     "filter_all": "All",
     "empty_search": "No capsules for that search",
     "empty": "No capsules",
-    "modal_title": "New capsule"
+    "modal_title": "New capsule",
+    "archived_heading": "Archived",
+    "archived_badge": "Archived"
   },
   "capsule_detail": {
     "back": "Capsules",
     "updated_at": "Updated",
     "edit_heading": "Editing capsule",
-    "confirm_delete": "Delete capsule \"{title}\"?"
+    "confirm_delete": "Delete capsule \"{title}\"?",
+    "archived_badge": "Archived"
   },
   "search": {
     "heading": "Search",
@@ -144,7 +153,8 @@
   },
   "pill_detail": {
     "created_at": "Created",
-    "updated_at": "Updated"
+    "updated_at": "Updated",
+    "archived_badge": "Archived"
   },
   "pill_edit": {
     "heading": "Editing pill"

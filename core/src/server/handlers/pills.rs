@@ -65,7 +65,7 @@ pub async fn pill_get(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::pills::read(&conn, pill_id) {
+    match store::pills::read_any(&conn, pill_id) {
         Ok(Some(p)) => ok(p),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => err_500(e),

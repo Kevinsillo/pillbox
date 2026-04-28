@@ -51,6 +51,7 @@ export interface Pill {
     author_email: string | null
     created_at: string
     updated_at: string
+    deleted_at: string | null
 }
 
 export interface PillSearchResult {
@@ -74,6 +75,7 @@ export interface Capsule {
     content: string
     created_at: string
     updated_at: string
+    deleted_at: string | null
 }
 
 export interface CapsuleSummary {
@@ -83,6 +85,7 @@ export interface CapsuleSummary {
     title: string
     created_at: string
     updated_at: string
+    deleted_at: string | null
 }
 
 export interface CapsuleSearchResult extends CapsuleSummary {

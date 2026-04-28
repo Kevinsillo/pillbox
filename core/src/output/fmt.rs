@@ -314,7 +314,10 @@ pub fn db_not_found() {
 // ─── Prescriptions ────────────────────────────────────────────────────────────
 
 pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription], _limit: u32) {
-    let count = rxs.len();
+    let (active, archived): (Vec<&Prescription>, Vec<&Prescription>) =
+        rxs.iter().partition(|rx| rx.deleted_at.is_none());
+
+    let count = active.len();
     println!(
         "\nPrescriptions  {}  {}    {}",
         "·".dimmed(),
@@ -323,35 +326,85 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
     );
     println!("  {}", db_path.dimmed());
 
-    if rxs.is_empty() {
+    if active.is_empty() && archived.is_empty() {
         println!("\n  {}\n", t!("prescriptions.none").dimmed());
         return;
     }
 
-    println!();
-    let rows = rxs
-        .iter()
-        .map(|rx| {
-            let short_id = &rx.id[..rx.id.len().min(8)];
-            let estado = if rx.ended_at.is_some() {
-                t!("prescriptions.state.closed").dimmed().to_string()
-            } else {
-                t!("prescriptions.state.open").green().to_string()
-            };
-            vec![short_id.to_string(), truncate(&rx.title, 40), estado]
-        })
-        .collect();
-    println!(
-        "{}\n",
-        table::plain_list(
-            &[
-                t!("prescriptions.list.col.id").as_ref(),
-                t!("prescriptions.list.col.title").as_ref(),
-                t!("prescriptions.list.col.state").as_ref(),
-            ],
-            rows
-        )
-    );
+    if !active.is_empty() {
+        println!();
+        let rows = active
+            .iter()
+            .map(|rx| {
+                let short_id = &rx.id[..rx.id.len().min(8)];
+                let estado = if rx.ended_at.is_some() {
+                    t!("prescriptions.state.closed").dimmed().to_string()
+                } else {
+                    t!("prescriptions.state.open").green().to_string()
+                };
+                vec![short_id.to_string(), truncate(&rx.title, 40), estado]
+            })
+            .collect();
+        println!(
+            "{}",
+            table::plain_list(
+                &[
+                    t!("prescriptions.list.col.id").as_ref(),
+                    t!("prescriptions.list.col.title").as_ref(),
+                    t!("prescriptions.list.col.state").as_ref(),
+                ],
+                rows
+            )
+        );
+    }
+
+    if !archived.is_empty() {
+        let n = archived.len();
+        println!(
+            "\n  {}\n",
+            t!("prescriptions.list.archived_section", count = n)
+                .dimmed()
+                .to_string()
+        );
+        let rows = archived
+            .iter()
+            .map(|rx| {
+                let short_id = &rx.id[..rx.id.len().min(8)];
+                let estado = if rx.ended_at.is_some() {
+                    t!("prescriptions.state.closed").dimmed().to_string()
+                } else {
+                    t!("prescriptions.state.open").dimmed().to_string()
+                };
+                let archived_date = rx
+                    .deleted_at
+                    .as_deref()
+                    .and_then(|d| d.get(..10))
+                    .unwrap_or("—")
+                    .dimmed()
+                    .to_string();
+                vec![
+                    short_id.dimmed().to_string(),
+                    truncate(&rx.title, 36).dimmed().to_string(),
+                    estado,
+                    archived_date,
+                ]
+            })
+            .collect();
+        println!(
+            "{}\n",
+            table::plain_list(
+                &[
+                    t!("prescriptions.list.col.id").as_ref(),
+                    t!("prescriptions.list.col.title").as_ref(),
+                    t!("prescriptions.list.col.state").as_ref(),
+                    t!("prescriptions.list.col.archived_at").as_ref(),
+                ],
+                rows
+            )
+        );
+    } else {
+        println!();
+    }
 }
 
 pub fn prescription_opened(id: &str, title: &str) {
@@ -581,7 +634,12 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
     ];
     println!("\n{}", table::dict(rows));
 
-    let count = pills.len();
+    let (active_pills, archived_pills): (
+        Vec<&pillbox::domain::pill::Pill>,
+        Vec<&pillbox::domain::pill::Pill>,
+    ) = pills.iter().partition(|p| p.deleted_at.is_none());
+
+    let count = active_pills.len();
     println!(
         "\nPills  {}  {}    {}",
         "·".dimmed(),
@@ -589,33 +647,68 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
         count.to_string().bold()
     );
 
-    if pills.is_empty() {
+    if active_pills.is_empty() && archived_pills.is_empty() {
         println!("\n  {}\n", t!("pills.none").dimmed());
         return;
     }
 
-    println!();
-    let table_rows = pills
-        .iter()
-        .map(|p| {
-            vec![
-                p.id.to_string(),
-                truncate(&p.compound, 16),
-                truncate(&p.title, 50),
-            ]
-        })
-        .collect();
-    println!(
-        "{}\n",
-        table::plain_list(
-            &[
-                t!("pills.list.col.num").as_ref(),
-                t!("pills.list.col.compound").as_ref(),
-                t!("pills.list.col.title").as_ref(),
-            ],
-            table_rows,
-        )
-    );
+    if !active_pills.is_empty() {
+        println!();
+        let table_rows = active_pills
+            .iter()
+            .map(|p| {
+                vec![
+                    p.id.to_string(),
+                    truncate(&p.compound, 16),
+                    truncate(&p.title, 50),
+                ]
+            })
+            .collect();
+        println!(
+            "{}",
+            table::plain_list(
+                &[
+                    t!("pills.list.col.num").as_ref(),
+                    t!("pills.list.col.compound").as_ref(),
+                    t!("pills.list.col.title").as_ref(),
+                ],
+                table_rows,
+            )
+        );
+    }
+
+    if !archived_pills.is_empty() {
+        let n = archived_pills.len();
+        println!(
+            "\n  {}\n",
+            t!("prescription.pills.archived_section", count = n)
+                .dimmed()
+                .to_string()
+        );
+        let table_rows = archived_pills
+            .iter()
+            .map(|p| {
+                vec![
+                    p.id.to_string().dimmed().to_string(),
+                    truncate(&p.compound, 16).dimmed().to_string(),
+                    truncate(&p.title, 50).dimmed().to_string(),
+                ]
+            })
+            .collect();
+        println!(
+            "{}\n",
+            table::plain_list(
+                &[
+                    t!("pills.list.col.num").as_ref(),
+                    t!("pills.list.col.compound").as_ref(),
+                    t!("pills.list.col.title").as_ref(),
+                ],
+                table_rows,
+            )
+        );
+    } else {
+        println!();
+    }
 }
 
 // ─── Pill detail ──────────────────────────────────────────────────────────────
@@ -648,6 +741,88 @@ pub fn pill_detail(pill: &Pill) {
         println!("  {}", line);
     }
     println!();
+}
+
+// ─── Capsules list ────────────────────────────────────────────────────────────
+
+pub fn capsules_list(capsules: &[Capsule]) {
+    let (active, archived): (Vec<&Capsule>, Vec<&Capsule>) =
+        capsules.iter().partition(|c| c.deleted_at.is_none());
+
+    let count = active.len();
+    println!("\nCapsules    {}", count.to_string().bold());
+
+    if active.is_empty() && archived.is_empty() {
+        println!("\n  {}\n", t!("capsules.none").dimmed());
+        return;
+    }
+
+    if !active.is_empty() {
+        println!();
+        let rows = active
+            .iter()
+            .map(|c| {
+                vec![
+                    c.id.to_string(),
+                    truncate(&c.compound, 14),
+                    truncate(&c.title, 50),
+                ]
+            })
+            .collect();
+        println!(
+            "{}",
+            table::plain_list(
+                &[
+                    t!("capsules.list.col.num").as_ref(),
+                    t!("capsules.list.col.compound").as_ref(),
+                    t!("capsules.list.col.title").as_ref(),
+                ],
+                rows,
+            )
+        );
+    }
+
+    if !archived.is_empty() {
+        let n = archived.len();
+        println!(
+            "\n  {}\n",
+            t!("capsules.list.archived_section", count = n)
+                .dimmed()
+                .to_string()
+        );
+        let rows = archived
+            .iter()
+            .map(|c| {
+                let archived_date = c
+                    .deleted_at
+                    .as_deref()
+                    .and_then(|d| d.get(..10))
+                    .unwrap_or("—")
+                    .dimmed()
+                    .to_string();
+                vec![
+                    c.id.to_string().dimmed().to_string(),
+                    truncate(&c.compound, 14).dimmed().to_string(),
+                    truncate(&c.title, 46).dimmed().to_string(),
+                    archived_date,
+                ]
+            })
+            .collect();
+        println!(
+            "{}\n",
+            table::plain_list(
+                &[
+                    t!("capsules.list.col.num").as_ref(),
+                    t!("capsules.list.col.compound").as_ref(),
+                    t!("capsules.list.col.title").as_ref(),
+                    t!("capsules.list.col.archived_at").as_ref(),
+                ],
+                rows,
+            )
+        );
+    } else {
+        println!();
+    }
 }
 
 // ─── Capsule detail ───────────────────────────────────────────────────────────

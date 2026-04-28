@@ -66,7 +66,7 @@ pub async fn prescription_get(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::prescriptions::read(&conn, &rx_id) {
+    match store::prescriptions::read_any(&conn, &rx_id) {
         Ok(Some(rx)) => ok(rx),
         Ok(None) => err_404_prescription(&rx_id),
         Err(e) => err_500(e),
@@ -127,7 +127,7 @@ pub async fn prescription_pills(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::prescriptions::read(&conn, &rx_id) {
+    match store::prescriptions::read_any(&conn, &rx_id) {
         Ok(None) => return err_404_prescription(&rx_id),
         Err(e) => return err_500(e),
         Ok(Some(_)) => {}

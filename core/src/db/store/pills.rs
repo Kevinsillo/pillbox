@@ -87,8 +87,22 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
 pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     match conn.query_row(
         "SELECT id, sync_id, compound, title, content, prescription_id,
-                dispenser, author_name, author_email, created_at, updated_at
+                dispenser, author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE id = ?1 AND deleted_at IS NULL",
+        params![id],
+        row_to_pill,
+    ) {
+        Ok(p) => Ok(Some(p)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e).context("failed to read pill"),
+    }
+}
+
+pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Pill>> {
+    match conn.query_row(
+        "SELECT id, sync_id, compound, title, content, prescription_id,
+                dispenser, author_name, author_email, created_at, updated_at, deleted_at
+         FROM pills WHERE id = ?1",
         params![id],
         row_to_pill,
     ) {
@@ -103,7 +117,7 @@ pub fn find_by_sync_id_prefix(conn: &Connection, prefix: &str) -> Result<Option<
     let pattern = format!("{}%", prefix);
     match conn.query_row(
         "SELECT id, sync_id, compound, title, content, prescription_id,
-                dispenser, author_name, author_email, created_at, updated_at
+                dispenser, author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE sync_id LIKE ?1 AND deleted_at IS NULL
          ORDER BY created_at DESC LIMIT 1",
         params![pattern],
@@ -161,7 +175,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
     let pill = tx
         .query_row(
             "SELECT id, sync_id, compound, title, content, prescription_id,
-                    dispenser, author_name, author_email, created_at, updated_at
+                    dispenser, author_name, author_email, created_at, updated_at, deleted_at
              FROM pills WHERE id = ?1",
             params![id],
             row_to_pill,
@@ -259,10 +273,10 @@ pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<Option<i64>> {
 pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
         "SELECT id, sync_id, compound, title, content, prescription_id,
-                dispenser, author_name, author_email, created_at, updated_at
+                dispenser, author_name, author_email, created_at, updated_at, deleted_at
          FROM pills
-         WHERE prescription_id = ?1 AND deleted_at IS NULL
-         ORDER BY created_at ASC",
+         WHERE prescription_id = ?1
+         ORDER BY created_at ASC, id ASC",
     )?;
     let pills = stmt
         .query_map(params![prescription_id], row_to_pill)?
@@ -335,6 +349,7 @@ fn row_to_pill(row: &rusqlite::Row<'_>) -> rusqlite::Result<Pill> {
         author_email: row.get(8)?,
         created_at: row.get(9)?,
         updated_at: row.get(10)?,
+        deleted_at: row.get(11)?,
     })
 }
 
@@ -574,13 +589,82 @@ mod tests {
     }
 
     #[test]
-    fn list_by_prescription_excludes_discarded() {
+    fn read_excludes_discarded() {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, pill.id).unwrap();
 
+        // read() should return None for a discarded pill
+        assert!(read(&conn, pill.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn list_by_prescription_includes_discarded() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        discard(&mut conn, pill.id).unwrap();
+
+        // list_by_prescription() should now include discarded pills
         let pills = list_by_prescription(&conn, &rx_id).unwrap();
-        assert!(pills.is_empty());
+        assert_eq!(pills.len(), 1);
+        assert!(pills[0].deleted_at.is_some());
+    }
+
+    #[test]
+    fn list_by_prescription_active_and_archived_together() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+
+        // Active pill
+        take(&mut conn, &sample_pill(&rx_id)).unwrap();
+
+        // Discarded pill
+        let pill2 = take(
+            &mut conn,
+            &NewPill {
+                title: "Segunda pill".into(),
+                content: "Contenido.".into(),
+                compound: PillCompound::Discovery,
+                prescription_id: rx_id.clone(),
+                dispenser: None,
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        discard(&mut conn, pill2.id).unwrap();
+
+        let pills = list_by_prescription(&conn, &rx_id).unwrap();
+        assert_eq!(pills.len(), 2);
+
+        let active_count = pills.iter().filter(|p| p.deleted_at.is_none()).count();
+        let archived_count = pills.iter().filter(|p| p.deleted_at.is_some()).count();
+        assert_eq!(active_count, 1);
+        assert_eq!(archived_count, 1);
+    }
+
+    #[test]
+    fn read_any_returns_archived_pill() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        discard(&mut conn, pill.id).unwrap();
+
+        let found = read_any(&conn, pill.id).unwrap();
+        assert!(found.is_some());
+        assert!(found.unwrap().deleted_at.is_some());
+    }
+
+    #[test]
+    fn read_excludes_archived_but_read_any_does_not() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        discard(&mut conn, pill.id).unwrap();
+
+        assert!(read(&conn, pill.id).unwrap().is_none());
+        assert!(read_any(&conn, pill.id).unwrap().is_some());
     }
 }

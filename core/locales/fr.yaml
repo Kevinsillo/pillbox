@@ -143,6 +143,16 @@ capsule:
   error:
     not_found: "Capsule #%{id} introuvable."
 
+capsules:
+  none: "(aucune)"
+  list:
+    col:
+      num: "#"
+      compound: "Composé"
+      title: "Titre"
+      archived_at: "Archivée le"
+    archived_section: "Archivées (%{count})"
+
 prescriptions:
   none: "(aucune)"
   state:
@@ -154,6 +164,8 @@ prescriptions:
       id: "ID"
       title: "Titre"
       state: "Statut"
+      archived_at: "Archivée le"
+    archived_section: "Archivées (%{count})"
   msg:
     opened: "Prescription ouverte"
     closed: "Prescription fermée"
@@ -168,6 +180,8 @@ prescription:
     title: "Titre"
     state: "État"
     started: "Démarrée"
+  pills:
+    archived_section: "Archivées (%{count})"
 
 migrate:
   help:
@@ -281,6 +295,9 @@ help:
     migrate:
       global: "Déplace la bottle de ce répertoire → global."
       local: "Choisit une bottle globale et la déplace ici."
+    capsule:
+      list: "Liste les capsules."
+      show: "Affiche une capsule par ID."
     pills:
       list: "Liste les pills de la bottle active."
     prescription:

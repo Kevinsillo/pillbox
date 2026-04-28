@@ -63,7 +63,7 @@ pub fn cmd_prescription_show(id: String) -> Result<()> {
 
     let (conn, _) = open_resolved_db()?;
 
-    let rx = match prescriptions::read(&conn, &id)? {
+    let rx = match prescriptions::read_any(&conn, &id)? {
         Some(rx) => rx,
         None => {
             eprintln!(

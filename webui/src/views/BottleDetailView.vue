@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
@@ -21,6 +21,9 @@ const { activeBottleId } = useActiveBottle()
 const bottle = ref<Bottle | null>(null)
 const prescriptions = ref<Prescription[]>([])
 const loading = ref(false)
+
+const activePrescriptions = computed(() => prescriptions.value.filter(rx => rx.deleted_at === null))
+const archivedPrescriptions = computed(() => prescriptions.value.filter(rx => rx.deleted_at !== null))
 
 async function load() {
     loading.value = true
@@ -103,12 +106,12 @@ async function deleteBottle() {
 
             <div>
                 <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                    {{ $t('bottle_detail.prescriptions_heading') }} ({{ prescriptions.length }})
+                    {{ $t('bottle_detail.prescriptions_heading') }} ({{ activePrescriptions.length }})
                 </h2>
                 <div v-if="prescriptions.length === 0" class="text-zinc-500 text-sm">{{ $t('bottle_detail.empty') }}</div>
                 <div v-else class="space-y-2">
                     <RouterLink
-                        v-for="rx in prescriptions"
+                        v-for="rx in activePrescriptions"
                         :key="rx.id"
                         :to="`/bottles/${props.bottle_id}/prescriptions/${rx.id}`"
                         class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
@@ -126,6 +129,31 @@ async function deleteBottle() {
                             </div>
                         </div>
                     </RouterLink>
+
+                    <template v-if="archivedPrescriptions.length > 0">
+                        <h3 class="text-xs font-semibold text-zinc-600 uppercase tracking-wider mt-4 mb-2">
+                            {{ $t('bottle_detail.archived_heading') }} ({{ archivedPrescriptions.length }})
+                        </h3>
+                        <RouterLink
+                            v-for="rx in archivedPrescriptions"
+                            :key="rx.id"
+                            :to="`/bottles/${props.bottle_id}/prescriptions/${rx.id}`"
+                            class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors opacity-50"
+                        >
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
+                                    <IClipboard class="w-4 h-4 text-zinc-400" />
+                                </div>
+                                <div class="space-y-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('bottle_detail.archived_badge') }}</span>
+                                        <span class="text-(--text-h) text-sm font-medium">{{ rx.title }}</span>
+                                    </div>
+                                    <p class="text-xs text-zinc-600">{{ new Date(rx.started_at).toLocaleString() }}</p>
+                                </div>
+                            </div>
+                        </RouterLink>
+                    </template>
                 </div>
             </div>
         </template>

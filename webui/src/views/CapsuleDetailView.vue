@@ -27,6 +27,8 @@ const CAPSULE_COMPOUNDS: CapsuleCompound[] = ["convention", "workflow", "environ
 
 const form = ref({ title: "", content: "", compound: "convention" as CapsuleCompound })
 
+const isArchived = computed(() => !!capsule.value?.deleted_at)
+
 async function load() {
     loading.value = true
     try {
@@ -71,6 +73,20 @@ async function deleteCapsule() {
     }
 }
 
+async function purgeCapsule() {
+    try {
+        await confirm(
+            t("confirm.purge_capsule_msg", { title: capsule.value?.title }),
+            t("confirm.purge_capsule_title"),
+            { confirmText: t("common.delete_permanent"), cancelText: t("common.cancel") }
+        )
+        await capsulesApi.purge(Number(props.id))
+        router.push("/capsules")
+    } catch {
+        /* cancelled */
+    }
+}
+
 const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.value.content) as string) : ""))
 </script>
 
@@ -93,7 +109,10 @@ const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.va
                             <IPill class="size-8 text-zinc-400" />
                         </div>
                         <div>
-                            <CompoundBadge :compound="capsule.compound" />
+                            <div class="flex items-center gap-2 mb-1">
+                                <CompoundBadge :compound="capsule.compound" />
+                                <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('capsule_detail.archived_badge') }}</span>
+                            </div>
                             <h1 class="text-xl font-bold text-(--text-h) mt-2">{{ capsule.title }}</h1>
                             <p class="text-xs text-zinc-500 mt-0.5">
                                 {{ $t("capsule_detail.updated_at") }} {{ new Date(capsule.updated_at).toLocaleString() }}
@@ -101,23 +120,33 @@ const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.va
                         </div>
                     </div>
                     <div class="flex gap-2">
+                        <template v-if="!isArchived">
+                            <button
+                                class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg transition-colors"
+                                @click="startEdit"
+                            >
+                                {{ $t("common.edit") }}
+                            </button>
+                            <button
+                                class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                                @click="deleteCapsule"
+                            >
+                                <ITrash2 class="w-3.5 h-3.5" />
+                                {{ $t("common.delete") }}
+                            </button>
+                        </template>
                         <button
-                            class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg transition-colors"
-                            @click="startEdit"
-                        >
-                            {{ $t("common.edit") }}
-                        </button>
-                        <button
+                            v-if="isArchived"
                             class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
-                            @click="deleteCapsule"
+                            @click="purgeCapsule"
                         >
                             <ITrash2 class="w-3.5 h-3.5" />
-                            {{ $t("common.delete") }}
+                            {{ $t("common.delete_permanent") }}
                         </button>
                     </div>
                 </div>
 
-                <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-5">
+                <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-5" :class="{ 'opacity-50': isArchived }">
                     <div class="markdown" v-html="renderedContent" />
                 </div>
             </template>

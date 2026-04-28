@@ -16,7 +16,7 @@ pub fn cmd_pill_show(id: i64) -> Result<()> {
     }
 
     let conn = connection::open(&db_path)?;
-    match pills::read(&conn, id)? {
+    match pills::read_any(&conn, id)? {
         Some(pill) => output::fmt::pill_detail(&pill),
         None => eprintln!("\n{} {}\n", "✗".red(), t!("pill.error.not_found", id = id)),
     }

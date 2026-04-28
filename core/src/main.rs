@@ -179,6 +179,11 @@ enum PillCommand {
 
 #[derive(Subcommand)]
 enum CapsuleCommand {
+    /// Lista las capsules globales (activas y archivadas).
+    List {
+        #[arg(short, long, default_value = "50")]
+        limit: u32,
+    },
     /// Muestra el detalle de una capsule por ID.
     Show {
         /// ID numérico de la capsule.
@@ -266,6 +271,7 @@ async fn main() -> Result<()> {
             None => cmd_sub_help("pill"),
         },
         Some(Command::Capsule { cmd }) => match cmd {
+            Some(CapsuleCommand::List { limit }) => cmd::capsule::cmd_capsule_list(limit),
             Some(CapsuleCommand::Show { id }) => cmd::capsule::cmd_capsule_show(id),
             None => cmd_sub_help("capsule"),
         },

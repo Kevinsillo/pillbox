@@ -48,7 +48,9 @@
     "close_prescription_msg": "La prescription quedará cerrada y no se podrán añadir más pills.",
     "delete_bottle_title": "Borrar bottle",
     "delete_bottle_msg": "Esta acción eliminará el bottle, todas sus prescriptions y pills de forma permanente. Escribe «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» para confirmar.",
-    "delete_bottle_prompt": "Escribe el slug del bottle para confirmar"
+    "delete_bottle_prompt": "Escribe el slug del bottle para confirmar",
+    "purge_capsule_title": "Eliminar capsule permanentemente",
+    "purge_capsule_msg": "Se eliminará «<strong style=\"color: var(--chip-error-text)\">{title}</strong>» de forma permanente. Esta acción no se puede deshacer."
   },
   "dashboard": {
     "heading": "Dashboard",
@@ -96,7 +98,9 @@
     "status_deleted": "borrada",
     "status_closed": "cerrada",
     "modal_title": "Nueva prescription",
-    "field_title_placeholder": "Implementar feature X"
+    "field_title_placeholder": "Implementar feature X",
+    "archived_heading": "Archivadas",
+    "archived_badge": "Archivada"
   },
   "prescription_detail": {
     "status_open": "abierta",
@@ -111,7 +115,9 @@
     "modal_new_title": "Nueva pill",
     "confirm_close": "¿Cerrar esta prescription?",
     "confirm_delete_rx": "¿Borrar esta prescription y todas sus pills?",
-    "confirm_delete_pill": "¿Borrar pill \"{title}\"?"
+    "confirm_delete_pill": "¿Borrar pill \"{title}\"?",
+    "archived_pills_heading": "Archivadas",
+    "archived_badge": "Archivada"
   },
   "capsules": {
     "heading": "Capsules",
@@ -120,13 +126,16 @@
     "filter_all": "Todos",
     "empty_search": "Sin capsules para esa búsqueda",
     "empty": "Sin capsules",
-    "modal_title": "Nueva capsule"
+    "modal_title": "Nueva capsule",
+    "archived_heading": "Archivadas",
+    "archived_badge": "Archivada"
   },
   "capsule_detail": {
     "back": "Capsules",
     "updated_at": "Actualizada",
     "edit_heading": "Editando capsule",
-    "confirm_delete": "¿Borrar capsule \"{title}\"?"
+    "confirm_delete": "¿Borrar capsule \"{title}\"?",
+    "archived_badge": "Archivada"
   },
   "search": {
     "heading": "Buscar",
@@ -144,7 +153,8 @@
   },
   "pill_detail": {
     "created_at": "Creada",
-    "updated_at": "Actualizada"
+    "updated_at": "Actualizada",
+    "archived_badge": "Archivada"
   },
   "pill_edit": {
     "heading": "Editando pill"

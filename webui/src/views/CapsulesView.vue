@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { ElInput, ElOption, ElSelect } from 'element-plus'
@@ -11,7 +11,7 @@ import IPill from '~icons/lucide/pill'
 import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
-const { confirm } = useConfirm()
+const { confirm, confirmDual } = useConfirm()
 
 const CAPSULE_COMPOUNDS: CapsuleCompound[] = ['convention', 'workflow', 'environment', 'context', 'goal', 'feedback', 'manual']
 
@@ -19,6 +19,9 @@ const capsules = ref<CapsuleSummary[]>([])
 const loading = ref(false)
 const filterCompound = ref<CapsuleCompound | ''>('')
 const searchQuery = ref('')
+
+const activeCapsules = computed(() => capsules.value.filter(c => c.deleted_at === null))
+const archivedCapsules = computed(() => capsules.value.filter(c => c.deleted_at !== null))
 
 async function load() {
     loading.value = true
@@ -45,7 +48,7 @@ function onSearch() {
     debounce = setTimeout(load, 300)
 }
 
-async function deleteCapsule(c: CapsuleSummary) {
+async function archiveCapsule(c: CapsuleSummary) {
     try {
         await confirm(
             t('confirm.delete_capsule_msg', { title: c.title }),
@@ -53,7 +56,21 @@ async function deleteCapsule(c: CapsuleSummary) {
             { confirmText: t('common.delete'), cancelText: t('common.cancel') }
         )
         await capsulesApi.delete(c.id)
-        capsules.value = capsules.value.filter(x => x.id !== c.id)
+        await load()
+    } catch { /* cancelled */ }
+}
+
+async function purgeCapsule(c: CapsuleSummary) {
+    try {
+        const mode = await confirmDual(
+            t('confirm.purge_capsule_msg', { title: c.title }),
+            t('confirm.purge_capsule_title'),
+            { softText: t('common.cancel'), hardText: t('common.delete_permanent'), cancelText: t('common.cancel') }
+        )
+        if (mode === 'hard') {
+            await capsulesApi.purge(c.id)
+            capsules.value = capsules.value.filter(x => x.id !== c.id)
+        }
     } catch { /* cancelled */ }
 }
 </script>
@@ -84,40 +101,84 @@ async function deleteCapsule(c: CapsuleSummary) {
             {{ searchQuery ? $t('capsules.empty_search') : $t('capsules.empty') }}
         </div>
 
-        <div v-else class="space-y-2">
-            <RouterLink
-                v-for="c in capsules"
-                :key="c.id"
-                :to="`/capsules/${c.id}`"
-                class="flex items-center justify-between gap-4 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
-            >
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
-                        <IPill class="w-4 h-4 text-zinc-400" />
-                    </div>
-                    <div class="space-y-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <CompoundBadge :compound="c.compound" />
-                            <span class="text-sm text-(--text-h) font-medium truncate">{{ c.title }}</span>
+        <template v-else>
+            <!-- Active capsules -->
+            <div class="space-y-2">
+                <RouterLink
+                    v-for="c in activeCapsules"
+                    :key="c.id"
+                    :to="`/capsules/${c.id}`"
+                    class="flex items-center justify-between gap-4 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
+                >
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
+                            <IPill class="w-4 h-4 text-zinc-400" />
                         </div>
-                        <p class="text-xs text-zinc-600">{{ new Date(c.updated_at).toLocaleString() }}</p>
+                        <div class="space-y-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <CompoundBadge :compound="c.compound" />
+                                <span class="text-sm text-(--text-h) font-medium truncate">{{ c.title }}</span>
+                            </div>
+                            <p class="text-xs text-zinc-600">{{ new Date(c.updated_at).toLocaleString() }}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 shrink-0" @click.prevent>
+                        <RouterLink
+                            :to="`/capsules/${c.id}`"
+                            class="text-xs text-zinc-400 hover:text-(--text-h) border border-(--border) px-2.5 py-1.5 rounded-lg transition-colors"
+                            @click.stop>
+                            {{ $t('common.edit') }}
+                        </RouterLink>
+                        <button
+                            class="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
+                            @click.stop="archiveCapsule(c)">
+                            <ITrash2 class="w-3 h-3" />
+                            {{ $t('common.delete') }}
+                        </button>
+                    </div>
+                </RouterLink>
+            </div>
+
+            <!-- Archived capsules -->
+            <template v-if="archivedCapsules.length > 0">
+                <h3 class="text-xs font-semibold text-zinc-600 uppercase tracking-wider mt-4 mb-2">
+                    {{ $t('capsules.archived_heading') }} ({{ archivedCapsules.length }})
+                </h3>
+                <div class="space-y-2">
+                    <div
+                        v-for="c in archivedCapsules"
+                        :key="c.id"
+                        class="relative opacity-50"
+                    >
+                        <RouterLink
+                            :to="`/capsules/${c.id}`"
+                            class="flex items-center justify-between gap-4 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
+                        >
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
+                                    <IPill class="w-4 h-4 text-zinc-400" />
+                                </div>
+                                <div class="space-y-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('capsules.archived_badge') }}</span>
+                                        <CompoundBadge :compound="c.compound" />
+                                        <span class="text-sm text-(--text-h) font-medium truncate">{{ c.title }}</span>
+                                    </div>
+                                    <p class="text-xs text-zinc-600">{{ new Date(c.updated_at).toLocaleString() }}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 shrink-0" @click.prevent>
+                                <button
+                                    class="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
+                                    @click.stop="purgeCapsule(c)">
+                                    <ITrash2 class="w-3 h-3" />
+                                    {{ $t('common.delete_permanent') }}
+                                </button>
+                            </div>
+                        </RouterLink>
                     </div>
                 </div>
-                <div class="flex gap-2 shrink-0" @click.prevent>
-                    <RouterLink
-                        :to="`/capsules/${c.id}`"
-                        class="text-xs text-zinc-400 hover:text-(--text-h) border border-(--border) px-2.5 py-1.5 rounded-lg transition-colors"
-                        @click.stop>
-                        {{ $t('common.edit') }}
-                    </RouterLink>
-                    <button
-                        class="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors"
-                        @click.stop="deleteCapsule(c)">
-                        <ITrash2 class="w-3 h-3" />
-                        {{ $t('common.delete') }}
-                    </button>
-                </div>
-            </RouterLink>
-        </div>
+            </template>
+        </template>
     </div>
 </template>

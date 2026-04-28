@@ -15,6 +15,7 @@ export const capsulesApi = {
     update: (id: number, body: { title?: string; content?: string; compound?: CapsuleCompound }) =>
         api.patch<Capsule>(`/capsules/${id}`, body),
     delete: (id: number) => api.delete<Capsule>(`/capsules/${id}`),
+    purge: (id: number) => api.delete<{ purged: boolean }>(`/capsules/${id}/purge`),
     search: (params: { query: string; compound?: CapsuleCompound; limit?: number }) => {
         const qs = new URLSearchParams({ query: params.query })
         if (params.compound) qs.set('compound', params.compound)
