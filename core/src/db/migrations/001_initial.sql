@@ -81,7 +81,7 @@ CREATE TABLE dispenser_types (
 );
 
 INSERT INTO dispenser_types VALUES
-('pill_take',   'Herramienta MCP pill_take'),
+('pill_store',  'Herramienta MCP pill_store'),
 ('pill_revise', 'Herramienta MCP pill_revise'),
 ('api',         'Llamada directa a la HTTP API'),
 ('cli',         'Comando CLI pillbox');
@@ -92,11 +92,11 @@ CREATE TABLE action_types (
 );
 
 INSERT INTO action_types VALUES
-('pill_take',           'Pill creada o actualizada'),
+('pill_store',          'Pill creada o actualizada'),
 ('pill_revise',         'Pill revisada'),
 ('pill_discard',        'Pill eliminada (soft delete)'),
 ('pill_find',           'Búsqueda de pills'),
-('capsule_take',        'Capsule creada o actualizada'),
+('capsule_store',       'Capsule creada o actualizada'),
 ('capsule_revise',      'Capsule revisada'),
 ('capsule_discard',     'Capsule eliminada'),
 ('capsule_find',        'Búsqueda de capsules'),
@@ -139,7 +139,7 @@ CREATE TABLE prescriptions (
     bottle_id  TEXT NOT NULL,
     -- Título de la tarea/funcionalidad/bug. Obligatorio: el agente DEBE llamar
     -- a prescription_open con título ANTES de insertar cualquier pill.
-    -- Flujo: prescription_open → pill_take (N veces) → prescription_close.
+    -- Flujo: prescription_open → pill_store (N veces) → prescription_close.
     -- El resumen de la sesión se guarda como pill con compound=prescription_summary,
     -- no como campo aquí — así es searchable vía FTS5 y vive en el timeline.
     title      TEXT NOT NULL,

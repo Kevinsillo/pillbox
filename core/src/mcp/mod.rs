@@ -21,7 +21,7 @@ struct Request {
 }
 
 const CAPSULE_TOOLS: &[&str] = &[
-    "capsule_take",
+    "capsule_store",
     "capsule_read",
     "capsule_revise",
     "capsule_discard",

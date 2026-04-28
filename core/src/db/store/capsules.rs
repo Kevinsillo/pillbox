@@ -8,7 +8,7 @@ use crate::domain::capsule::{Capsule, CapsulePatch, NewCapsule};
 // ─── Tipos de resultado ───────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct CapsuleTakeResult {
+pub struct CapsuleStoreResult {
     pub id: i64,
     pub sync_id: String,
     pub action: &'static str, // "created"
@@ -26,7 +26,7 @@ pub struct CapsuleDiscardResult {
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 /// Guarda una capsule de conocimiento personal (sin prescription ni bottle).
-pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleTakeResult> {
+pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleStoreResult> {
     let sync_id = Uuid::now_v7().to_string();
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
@@ -40,12 +40,12 @@ pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleTakeResu
     let id = tx.last_insert_rowid();
 
     tx.execute(
-        "INSERT INTO dispense_log (action, pill_id) VALUES ('capsule_take', ?1)",
+        "INSERT INTO dispense_log (action, pill_id) VALUES ('capsule_store', ?1)",
         params![id],
     )?;
 
     tx.commit()?;
-    Ok(CapsuleTakeResult {
+    Ok(CapsuleStoreResult {
         id,
         sync_id,
         action: "created",

@@ -9,7 +9,7 @@ use crate::error::PillboxError;
 // ─── Tipos de resultado ───────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct PillTakeResult {
+pub struct PillStoreResult {
     pub id: i64,
     pub sync_id: String,
     pub action: &'static str, // "created"
@@ -30,7 +30,7 @@ pub struct PillDiscardResult {
 ///
 /// La prescription debe existir y estar abierta (`ended_at IS NULL`).
 /// Falla con `prescription_required` si no se cumple.
-pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
+pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
     // Verificar que la prescription existe y está abierta (fuera de tx: lectura rápida)
     let rx_open: bool = conn
         .query_row(
@@ -74,12 +74,12 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
 
     tx.execute(
         "INSERT INTO dispense_log (prescription_id, action, pill_id)
-         VALUES (?1, 'pill_take', ?2)",
+         VALUES (?1, 'pill_store', ?2)",
         params![input.prescription_id, id],
     )?;
 
     tx.commit()?;
-    Ok(PillTakeResult {
+    Ok(PillStoreResult {
         id,
         sync_id,
         action: "created",
@@ -398,7 +398,7 @@ mod tests {
             content: "Usamos UUID v7 para sync_id porque preserva el orden temporal.".into(),
             compound: PillCompound::Decision,
             prescription_id: rx_id.to_string(),
-            dispenser: Some("pill_take".into()),
+            dispenser: Some("pill_store".into()),
             author_name: Some("Kevin".into()),
             author_email: None,
         }

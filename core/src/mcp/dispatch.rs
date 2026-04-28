@@ -5,14 +5,14 @@ use super::{handlers, response::Response};
 
 pub fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
     match tool {
-        "pill_take" => handlers::pills::take(conn, input),
+        "pill_store" => handlers::pills::take(conn, input),
         "pill_read" => handlers::pills::read(conn, input),
         "pill_revise" => handlers::pills::revise(conn, input),
         "pill_discard" => handlers::pills::discard(conn, input),
         "pill_search" => handlers::pills::search(conn, input),
         "pill_context" => handlers::pills::context(conn, input),
         "pill_compounds" => handlers::compounds::list(conn, tool, input),
-        "capsule_take" => handlers::capsules::take(conn, input),
+        "capsule_store" => handlers::capsules::take(conn, input),
         "capsule_read" => handlers::capsules::read(conn, input),
         "capsule_revise" => handlers::capsules::revise(conn, input),
         "capsule_discard" => handlers::capsules::discard(conn, input),

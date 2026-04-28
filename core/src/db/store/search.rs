@@ -318,10 +318,13 @@ pub fn pill_context(
     if !pills.is_empty() {
         md.push_str("## Recent Pills\n\n");
         for pill in &pills {
-            let snippet = if pill.content.len() > 400 {
-                format!("{}…", &pill.content[..400])
-            } else {
-                pill.content.clone()
+            let snippet = {
+                let chars: Vec<char> = pill.content.chars().collect();
+                if chars.len() > 400 {
+                    format!("{}…", chars[..399].iter().collect::<String>())
+                } else {
+                    pill.content.clone()
+                }
             };
             md.push_str(&format!(
                 "- [{}] **{}**: {}\n",
@@ -593,6 +596,50 @@ mod tests {
         assert!(ctx.context.contains("## Recent Prescriptions"));
         assert!(ctx.context.contains("## Recent Pills"));
         assert!(ctx.context.contains("[decision]") || ctx.context.contains("[bugfix]"));
+    }
+
+    #[test]
+    fn pill_context_truncates_multibyte_content_safely() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle = bottles::create(
+            &mut conn,
+            &NewBottle {
+                name: "utf8-test".into(),
+                display_name: "UTF-8 Test".into(),
+                directory: "/tmp/utf8-test".into(),
+                scope: BottleScope::Local,
+            },
+        )
+        .unwrap();
+        let rx = prescriptions::open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle.id.clone(),
+                title: "rx utf8".into(),
+            },
+        )
+        .unwrap();
+        // 396 ASCII chars + emoji de 4 bytes → byte 400 cae en mitad del emoji
+        let long_content = format!("{}{}", "a".repeat(396), "🦀".repeat(10));
+        pills::take(
+            &mut conn,
+            &NewPill {
+                title: "pill con emoji".into(),
+                content: long_content,
+                compound: PillCompound::Discovery,
+                prescription_id: rx.id.clone(),
+                dispenser: None,
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        // No debe hacer panic por byte boundary
+        let result = pill_context(&conn, &bottle.id, 5, 30);
+        assert!(result.is_ok());
+        let ctx = result.unwrap();
+        assert!(ctx.context.contains("🦀") || ctx.context.contains("…"));
     }
 
     #[test]
