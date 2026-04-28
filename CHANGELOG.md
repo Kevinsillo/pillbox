@@ -1,3 +1,20 @@
+## [0.8.0] - 2026-04-28
+
+### 🚀 Features
+
+- Modal de doble acción para borrado de prescriptions y pills
+- *(archivados)* Visibilidad de soft deletes y hard delete en cápsulas
+
+### 🐛 Bug Fixes
+
+- *(mcp)* Registrar bottle en global registry al crearlo vía tool
+- *(core)* Completar cascade y limpieza al eliminar bottle
+
+### ⚙️ Miscellaneous Tasks
+
+- Añadir ficheros de licencia
+- Añadir identificador SPDX a la licencia
+
 ## [0.7.0] - 2026-04-24
 
 ### 🚀 Features
@@ -22,6 +39,7 @@
 - *(core)* Traducir mensajes de error internos a inglés
 - Actualizar install.sh — pasar --install-dir como argumento
 - *(core)* Formatear error.rs
+- *(release)* V0.7.0
 
 ## [0.6.0] - 2026-04-22
 
