@@ -13,6 +13,9 @@ pub struct PillTakeResult {
     pub id: i64,
     pub sync_id: String,
     pub action: &'static str, // "created"
+    pub title: String,
+    pub compound: String,
+    pub content: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -80,6 +83,9 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillTakeResult> {
         id,
         sync_id,
         action: "created",
+        title: input.title.clone(),
+        compound: input.compound.as_str().to_string(),
+        content: input.content.clone(),
     })
 }
 
@@ -403,9 +409,13 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
 
-        let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        let input = sample_pill(&rx_id);
+        let result = take(&mut conn, &input).unwrap();
         assert_eq!(result.action, "created");
         assert!(result.id > 0);
+        assert_eq!(result.title, input.title);
+        assert_eq!(result.compound, input.compound.as_str());
+        assert_eq!(result.content, input.content);
 
         let pill = read(&conn, result.id).unwrap().unwrap();
         assert_eq!(pill.compound, "decision");

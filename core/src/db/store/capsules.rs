@@ -12,6 +12,9 @@ pub struct CapsuleTakeResult {
     pub id: i64,
     pub sync_id: String,
     pub action: &'static str, // "created"
+    pub title: String,
+    pub compound: String,
+    pub content: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -46,6 +49,9 @@ pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleTakeResu
         id,
         sync_id,
         action: "created",
+        title: input.title.clone(),
+        compound: input.compound.as_str().to_string(),
+        content: input.content.clone(),
     })
 }
 
@@ -232,8 +238,12 @@ mod tests {
     #[test]
     fn take_and_read() {
         let mut conn = open_in_memory().unwrap();
-        let result = take(&mut conn, &sample_capsule()).unwrap();
+        let input = sample_capsule();
+        let result = take(&mut conn, &input).unwrap();
         assert_eq!(result.action, "created");
+        assert_eq!(result.title, input.title);
+        assert_eq!(result.compound, input.compound.as_str());
+        assert_eq!(result.content, input.content);
 
         let cap = read(&conn, result.id).unwrap().unwrap();
         assert_eq!(cap.compound, "convention");
