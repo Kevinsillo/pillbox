@@ -12,12 +12,14 @@ import IFileText from "~icons/lucide/file-text"
 import ITrash2 from "~icons/lucide/trash-2"
 
 const { t } = useI18n()
-const { confirmDual } = useConfirm()
+const { confirm } = useConfirm()
 const props = defineProps<{ bottle_id: string; rx_id: string; pill_id: string }>()
 const router = useRouter()
 
 const pill = ref<Pill | null>(null)
 const loading = ref(false)
+
+const isArchived = computed(() => !!pill.value?.deleted_at)
 
 async function load() {
     loading.value = true
@@ -30,19 +32,30 @@ async function load() {
 
 onMounted(load)
 
-async function deletePill() {
+async function archivePill() {
     if (!pill.value) return
     try {
-        const mode = await confirmDual(
+        await confirm(
             t("confirm.delete_pill_msg", { title: pill.value.title }),
             t("confirm.delete_pill_title"),
-            { softText: t("common.archive"), hardText: t("common.delete_permanent"), cancelText: t("common.cancel") }
+            { confirmText: t("common.archive"), cancelText: t("common.cancel") }
         )
-        if (mode === "soft") {
-            await pillsApi.delete(Number(props.pill_id), props.bottle_id, props.rx_id)
-        } else {
-            await pillsApi.purge(Number(props.pill_id), props.bottle_id, props.rx_id)
-        }
+        await pillsApi.delete(Number(props.pill_id), props.bottle_id, props.rx_id)
+        await load()
+    } catch {
+        /* cancelled */
+    }
+}
+
+async function purgePill() {
+    if (!pill.value) return
+    try {
+        await confirm(
+            t("confirm.purge_pill_msg", { title: pill.value.title }),
+            t("confirm.purge_pill_title"),
+            { confirmText: t("common.delete_permanent"), cancelText: t("common.cancel"), waitSeconds: 3 }
+        )
+        await pillsApi.purge(Number(props.pill_id), props.bottle_id, props.rx_id)
         router.back()
     } catch {
         /* cancelled */
@@ -84,18 +97,28 @@ const renderedContent = computed(() => (pill.value ? (marked.parse(pill.value.co
                     </div>
                 </div>
                 <div class="flex gap-2">
+                    <template v-if="!isArchived">
+                        <button
+                            class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg transition-colors"
+                            @click="router.push(`/bottles/${props.bottle_id}/prescriptions/${props.rx_id}/pills/${props.pill_id}/edit`)"
+                        >
+                            {{ $t("common.edit") }}
+                        </button>
+                        <button
+                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                            @click="archivePill"
+                        >
+                            <ITrash2 class="w-3.5 h-3.5" />
+                            {{ $t("common.archive") }}
+                        </button>
+                    </template>
                     <button
-                        class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg transition-colors"
-                        @click="router.push(`/bottles/${props.bottle_id}/prescriptions/${props.rx_id}/pills/${props.pill_id}/edit`)"
-                    >
-                        {{ $t("common.edit") }}
-                    </button>
-                    <button
+                        v-if="isArchived"
                         class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
-                        @click="deletePill"
+                        @click="purgePill"
                     >
                         <ITrash2 class="w-3.5 h-3.5" />
-                        {{ $t("common.delete") }}
+                        {{ $t("common.delete_permanent") }}
                     </button>
                 </div>
             </div>

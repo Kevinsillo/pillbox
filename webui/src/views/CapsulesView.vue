@@ -11,7 +11,7 @@ import IPill from '~icons/lucide/pill'
 import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
-const { confirm, confirmDual } = useConfirm()
+const { confirm } = useConfirm()
 
 const CAPSULE_COMPOUNDS: CapsuleCompound[] = ['convention', 'workflow', 'environment', 'context', 'goal', 'feedback', 'manual']
 
@@ -62,15 +62,13 @@ async function archiveCapsule(c: CapsuleSummary) {
 
 async function purgeCapsule(c: CapsuleSummary) {
     try {
-        const mode = await confirmDual(
+        await confirm(
             t('confirm.purge_capsule_msg', { title: c.title }),
             t('confirm.purge_capsule_title'),
-            { softText: t('common.cancel'), hardText: t('common.delete_permanent'), cancelText: t('common.cancel') }
+            { confirmText: t('common.delete_permanent'), cancelText: t('common.cancel'), waitSeconds: 3 }
         )
-        if (mode === 'hard') {
-            await capsulesApi.purge(c.id)
-            capsules.value = capsules.value.filter(x => x.id !== c.id)
-        }
+        await capsulesApi.purge(c.id)
+        capsules.value = capsules.value.filter(x => x.id !== c.id)
     } catch { /* cancelled */ }
 }
 </script>

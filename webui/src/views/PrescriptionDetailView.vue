@@ -11,7 +11,7 @@ import IArrowLeft from '~icons/lucide/arrow-left'
 import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
-const { confirm, confirmDual } = useConfirm()
+const { confirm } = useConfirm()
 const props = defineProps<{ bottle_id: string; rx_id: string }>()
 const router = useRouter()
 
@@ -36,6 +36,7 @@ async function load() {
 onMounted(load)
 
 const isOpen = computed(() => rx.value?.ended_at === null && rx.value?.deleted_at === null)
+const isArchived = computed(() => !!rx.value?.deleted_at)
 
 const activePills = computed(() => pills.value.filter(p => p.deleted_at === null))
 const archivedPills = computed(() => pills.value.filter(p => p.deleted_at !== null))
@@ -52,18 +53,26 @@ async function closeRx() {
     } catch { /* cancelled */ }
 }
 
-async function deleteRx() {
+async function archiveRx() {
     try {
-        const mode = await confirmDual(
-            t('confirm.delete_prescription_msg'),
+        await confirm(
+            t('confirm.delete_prescription_msg', { title: rx.value?.title }),
             t('confirm.delete_prescription_title'),
-            { softText: t('common.archive'), hardText: t('common.delete_permanent'), cancelText: t('common.cancel') }
+            { confirmText: t('common.archive'), cancelText: t('common.cancel') }
         )
-        if (mode === "soft") {
-            await prescriptionsApi.delete(props.bottle_id, props.rx_id)
-        } else {
-            await prescriptionsApi.purge(props.bottle_id, props.rx_id)
-        }
+        await prescriptionsApi.delete(props.bottle_id, props.rx_id)
+        await load()
+    } catch { /* cancelled */ }
+}
+
+async function purgeRx() {
+    try {
+        await confirm(
+            t('confirm.purge_prescription_msg', { title: rx.value?.title }),
+            t('confirm.purge_prescription_title'),
+            { confirmText: t('common.delete_permanent'), cancelText: t('common.cancel'), waitSeconds: 3 }
+        )
+        await prescriptionsApi.purge(props.bottle_id, props.rx_id)
         router.back()
     } catch { /* cancelled */ }
 }
@@ -96,10 +105,19 @@ async function deleteRx() {
                             @click="closeRx">
                         {{ $t('prescription_detail.close_btn') }}
                     </button>
-                    <button class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
-                            @click="deleteRx">
+                    <button
+                        v-if="!isArchived"
+                        class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                        @click="archiveRx">
                         <ITrash2 class="w-3.5 h-3.5" />
-                        {{ $t('common.delete') }}
+                        {{ $t('common.archive') }}
+                    </button>
+                    <button
+                        v-if="isArchived"
+                        class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                        @click="purgeRx">
+                        <ITrash2 class="w-3.5 h-3.5" />
+                        {{ $t('common.delete_permanent') }}
                     </button>
                 </div>
             </div>
