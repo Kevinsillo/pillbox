@@ -8,6 +8,7 @@ import type { Prescription, Pill } from '@/core/domain/types'
 import PillCard from '@/components/PillCard.vue'
 import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
+import IClipboard from '~icons/lucide/clipboard'
 import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
@@ -89,16 +90,21 @@ async function purgeRx() {
         <template v-else-if="rx">
             <!-- Header -->
             <div class="space-y-3">
-                <div>
-                    <div class="mb-1 flex items-center gap-2 flex-wrap">
-                        <PrescriptionStatusBadge :open="isOpen" />
-                        <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('prescription_detail.archived_badge') }}</span>
+                <div class="flex gap-3">
+                    <div class="min-h-full w-20 rounded-lg bg-(--bg-surface) border border-(--border) flex items-center justify-center shrink-0">
+                        <IClipboard class="size-8 text-zinc-400" />
                     </div>
-                    <h1 class="text-xl font-bold text-(--text-h)">{{ rx.title }}</h1>
-                    <p class="text-xs text-zinc-500 mt-0.5">
-                        {{ $t('prescription_detail.started_at') }} {{ new Date(rx.started_at).toLocaleString() }}
-                        <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ new Date(rx.ended_at).toLocaleString() }}</span>
-                    </p>
+                    <div>
+                        <div class="mb-1 flex items-center gap-2 flex-wrap">
+                            <PrescriptionStatusBadge :open="isOpen" />
+                            <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('prescription_detail.archived_badge') }}</span>
+                        </div>
+                        <h1 class="text-xl font-bold text-(--text-h)">{{ rx.title }}</h1>
+                        <p class="text-xs text-zinc-500 mt-0.5">
+                            {{ $t('prescription_detail.started_at') }} {{ new Date(rx.started_at).toLocaleString() }}
+                            <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ new Date(rx.ended_at).toLocaleString() }}</span>
+                        </p>
+                    </div>
                 </div>
                 <div class="flex gap-2">
                     <button v-if="isOpen"
