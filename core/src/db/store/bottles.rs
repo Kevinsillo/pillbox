@@ -128,16 +128,6 @@ pub fn delete(conn: &mut Connection, id: &str) -> Result<bool> {
     Ok(count > 0)
 }
 
-/// Actualiza `last_seen_at` del bottle al momento actual.
-pub fn touch(conn: &Connection, id: &str) -> Result<()> {
-    conn.execute(
-        "UPDATE bottles SET last_seen_at = datetime('now') WHERE id = ?1",
-        params![id],
-    )
-    .context("failed to update bottle last_seen_at")?;
-    Ok(())
-}
-
 fn row_to_bottle(row: &rusqlite::Row<'_>) -> rusqlite::Result<Bottle> {
     Ok(Bottle {
         id: row.get(0)?,
@@ -241,13 +231,4 @@ mod tests {
         assert!(list(&conn).unwrap().is_empty());
     }
 
-    #[test]
-    fn touch_updates_last_seen_at() {
-        let mut conn = open_in_memory().unwrap();
-        let b = create(&mut conn, &test_bottle("touch-test", "/tmp/touch")).unwrap();
-        let before = find_by_id(&conn, &b.id).unwrap().unwrap().last_seen_at;
-        touch(&conn, &b.id).unwrap();
-        let after = find_by_id(&conn, &b.id).unwrap().unwrap().last_seen_at;
-        let _ = (before, after);
-    }
 }

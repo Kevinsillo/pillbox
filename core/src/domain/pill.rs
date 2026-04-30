@@ -57,17 +57,6 @@ pub struct NewPill {
     pub author_email: Option<String>,
 }
 
-/// Proyección reducida para listados y resultados de búsqueda.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PillSummary {
-    pub id: i64,
-    pub sync_id: String,
-    pub compound: String,
-    pub title: String,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
 /// Pill completa tal como se devuelve al leerla por ID.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Pill {

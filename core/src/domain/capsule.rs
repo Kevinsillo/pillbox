@@ -46,18 +46,6 @@ pub struct NewCapsule {
     pub compound: CapsuleCompound,
 }
 
-/// Proyección reducida para listados.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CapsuleSummary {
-    pub id: i64,
-    pub sync_id: String,
-    pub compound: String,
-    pub title: String,
-    pub created_at: String,
-    pub updated_at: String,
-    pub deleted_at: Option<String>,
-}
-
 /// Capsule completa.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Capsule {

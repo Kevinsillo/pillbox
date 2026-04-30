@@ -117,23 +117,6 @@ pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     }
 }
 
-/// Busca una pill por prefijo de sync_id (UUID v7). Devuelve la primera coincidencia.
-pub fn find_by_sync_id_prefix(conn: &Connection, prefix: &str) -> Result<Option<Pill>> {
-    let pattern = format!("{}%", prefix);
-    match conn.query_row(
-        "SELECT id, sync_id, compound, title, content, prescription_id,
-                author_name, author_email, created_at, updated_at, deleted_at
-         FROM pills WHERE sync_id LIKE ?1 AND deleted_at IS NULL
-         ORDER BY created_at DESC LIMIT 1",
-        params![pattern],
-        row_to_pill,
-    ) {
-        Ok(p) => Ok(Some(p)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("failed to find pill by sync_id"),
-    }
-}
-
 /// Actualiza campos de una pill existente (patch parcial).
 /// Solo se modifican los campos no-None. Devuelve `None` si no existe o fue descartada.
 pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Option<Pill>> {

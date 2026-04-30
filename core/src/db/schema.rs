@@ -49,22 +49,3 @@ pub struct BottleRow {
     pub last_seen_at: String,
 }
 
-/// Entrada del registry de DBs locales (solo en DB global).
-#[derive(Debug, Clone)]
-pub struct RegisteredBottleRow {
-    pub id: String,
-    pub name: String,
-    pub display_name: String,
-    pub db_path: String,
-    pub registered_at: String,
-    pub last_seen_at: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompoundRow {
-    pub id: String,
-    pub description: String,
-    pub prompt_hint: String,
-    pub example_title: Option<String>,
-    pub is_active: bool,
-}

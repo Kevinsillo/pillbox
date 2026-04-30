@@ -99,11 +99,6 @@ pub fn log_path() -> PathBuf {
         .join("pillbox.log")
 }
 
-/// Indica si una ruta de DB corresponde a una pillbox local de proyecto.
-pub fn is_local_db(path: &Path) -> bool {
-    path.starts_with(LOCAL_DIR) || path.components().any(|c| c.as_os_str() == LOCAL_DIR)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,26 +149,4 @@ mod tests {
         assert!(path.ends_with(".claude.json"));
     }
 
-    #[test]
-    fn is_local_db_true_for_local_path() {
-        let path = std::path::Path::new(".pillbox/pillbox.db");
-        assert!(is_local_db(path));
-    }
-
-    #[test]
-    fn is_local_db_false_for_unrelated_path() {
-        let path = std::path::Path::new("/tmp/other/pillbox.db");
-        assert!(!is_local_db(path));
-    }
-
-    #[test]
-    fn is_local_db_false_for_bare_filename() {
-        assert!(!is_local_db(std::path::Path::new("pillbox.db")));
-    }
-
-    #[test]
-    fn is_local_db_relative_local_dir() {
-        let local = local_db_path();
-        assert!(is_local_db(&local));
-    }
 }
