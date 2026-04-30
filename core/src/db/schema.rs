@@ -9,7 +9,6 @@ pub struct PillRow {
     pub title: String,
     pub content: String,
     pub prescription_id: String,
-    pub dispenser: Option<String>,
     pub author_name: Option<String>,
     pub author_email: Option<String>,
     pub created_at: String,

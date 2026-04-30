@@ -53,9 +53,6 @@ pub struct NewPill {
     #[validate(length(min = 1))]
     pub prescription_id: String,
 
-    /// Quién dispensó la pill. FK a `dispenser_types.id`.
-    pub dispenser: Option<String>,
-
     pub author_name: Option<String>,
     pub author_email: Option<String>,
 }
@@ -80,7 +77,6 @@ pub struct Pill {
     pub title: String,
     pub content: String,
     pub prescription_id: String,
-    pub dispenser: Option<String>,
     pub author_name: Option<String>,
     pub author_email: Option<String>,
     pub created_at: String,
@@ -121,7 +117,6 @@ mod tests {
             content: "Contenido de prueba".into(),
             compound: PillCompound::Decision,
             prescription_id: "01jq0000000000000000000000".into(),
-            dispenser: None,
             author_name: None,
             author_email: None,
         };
@@ -168,7 +163,6 @@ mod tests {
             content: "Contenido".into(),
             compound: PillCompound::Decision,
             prescription_id: "abc".into(),
-            dispenser: None,
             author_name: None,
             author_email: None,
         };
@@ -182,7 +176,6 @@ mod tests {
             content: "x".repeat(5001),
             compound: PillCompound::Decision,
             prescription_id: "abc".into(),
-            dispenser: None,
             author_name: None,
             author_email: None,
         };

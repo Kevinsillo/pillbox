@@ -343,7 +343,7 @@ pub fn pill_context(
 pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
         "SELECT p.id, p.sync_id, p.compound, p.title, p.content, p.prescription_id,
-                p.dispenser, p.author_name, p.author_email, p.created_at, p.updated_at, p.deleted_at
+                p.author_name, p.author_email, p.created_at, p.updated_at, p.deleted_at
          FROM pills p
          JOIN prescriptions rx ON p.prescription_id = rx.id
          WHERE rx.bottle_id = ?1 AND p.deleted_at IS NULL
@@ -360,12 +360,11 @@ pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Ve
                 title: row.get(3)?,
                 content: row.get(4)?,
                 prescription_id: row.get(5)?,
-                dispenser: row.get(6)?,
-                author_name: row.get(7)?,
-                author_email: row.get(8)?,
-                created_at: row.get(9)?,
-                updated_at: row.get(10)?,
-                deleted_at: row.get(11)?,
+                author_name: row.get(6)?,
+                author_email: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
+                deleted_at: row.get(10)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
@@ -456,7 +455,6 @@ mod tests {
                     content: content.into(),
                     compound,
                     prescription_id: rx.id.clone(),
-                    dispenser: None,
                     author_name: None,
                     author_email: None,
                 },
@@ -628,7 +626,6 @@ mod tests {
                 content: long_content,
                 compound: PillCompound::Discovery,
                 prescription_id: rx.id.clone(),
-                dispenser: None,
                 author_name: None,
                 author_email: None,
             },
@@ -751,7 +748,6 @@ mod tests {
                 content: "Otro contexto JWT completamente diferente.".into(),
                 compound: PillCompound::Decision,
                 prescription_id: rx_b.id.clone(),
-                dispenser: None,
                 author_name: None,
                 author_email: None,
             },

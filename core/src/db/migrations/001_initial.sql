@@ -75,17 +75,6 @@ INSERT INTO capsule_compounds VALUES
  'No mockear la DB en tests — una migración rota llegó a producción porque los mocks no la detectaron', 1),
 ('manual',       'Entrada manual sin compound específico', '', NULL, 1);
 
-CREATE TABLE dispenser_types (
-    id          TEXT PRIMARY KEY,
-    description TEXT NOT NULL
-);
-
-INSERT INTO dispenser_types VALUES
-('pill_store',  'Herramienta MCP pill_store'),
-('pill_revise', 'Herramienta MCP pill_revise'),
-('api',         'Llamada directa a la HTTP API'),
-('cli',         'Comando CLI pillbox');
-
 CREATE TABLE action_types (
     id          TEXT PRIMARY KEY,
     description TEXT NOT NULL
@@ -164,15 +153,13 @@ CREATE TABLE pills (
     title           TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 255),
     content         TEXT NOT NULL CHECK (length(content) BETWEEN 1 AND 5000),
     prescription_id TEXT NOT NULL,
-    dispenser       TEXT,
     author_name     TEXT,
     author_email    TEXT,
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
     deleted_at      TEXT,
     FOREIGN KEY (compound)        REFERENCES pill_compounds(id),
-    FOREIGN KEY (prescription_id) REFERENCES prescriptions(id),
-    FOREIGN KEY (dispenser)       REFERENCES dispenser_types(id)
+    FOREIGN KEY (prescription_id) REFERENCES prescriptions(id)
 );
 
 CREATE INDEX idx_pill_compound ON pills(compound)        WHERE deleted_at IS NULL;

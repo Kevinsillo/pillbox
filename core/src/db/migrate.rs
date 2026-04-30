@@ -107,7 +107,7 @@ pub fn migrate_bottle(
     for rx_id in &rx_ids {
         let mut pill_stmt = src.prepare(
             "SELECT sync_id, compound, title, content, prescription_id,
-                    dispenser, author_name, author_email,
+                    author_name, author_email,
                     created_at, updated_at, deleted_at
              FROM pills WHERE prescription_id = ?1",
         )?;
@@ -120,12 +120,11 @@ pub fn migrate_bottle(
                     r.get::<_, String>(2)?,          // title
                     r.get::<_, String>(3)?,          // content
                     r.get::<_, String>(4)?,          // prescription_id
-                    r.get::<_, Option<String>>(5)?,  // dispenser
-                    r.get::<_, Option<String>>(6)?,  // author_name
-                    r.get::<_, Option<String>>(7)?,  // author_email
-                    r.get::<_, String>(8)?,          // created_at
-                    r.get::<_, String>(9)?,          // updated_at
-                    r.get::<_, Option<String>>(10)?, // deleted_at
+                    r.get::<_, Option<String>>(5)?,  // author_name
+                    r.get::<_, Option<String>>(6)?,  // author_email
+                    r.get::<_, String>(7)?,          // created_at
+                    r.get::<_, String>(8)?,          // updated_at
+                    r.get::<_, Option<String>>(9)?,  // deleted_at
                 ))
             })?
             .collect::<rusqlite::Result<_>>()?;
@@ -136,8 +135,8 @@ pub fn migrate_bottle(
             tx.execute(
                 "INSERT INTO pills
                      (sync_id, compound, title, content, prescription_id,
-                      dispenser, author_name, author_email, created_at, updated_at, deleted_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+                      author_name, author_email, created_at, updated_at, deleted_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
                  ON CONFLICT(sync_id) DO UPDATE SET
                      title      = excluded.title,
                      content    = excluded.content,
@@ -145,7 +144,7 @@ pub fn migrate_bottle(
                      updated_at = excluded.updated_at,
                      deleted_at = excluded.deleted_at
                  WHERE excluded.updated_at > pills.updated_at",
-                params![p.0, p.1, p.2, p.3, p.4, p.5, p.6, p.7, p.8, p.9, p.10],
+                params![p.0, p.1, p.2, p.3, p.4, p.5, p.6, p.7, p.8, p.9],
             )?;
         }
     }

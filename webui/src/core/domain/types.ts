@@ -46,7 +46,6 @@ export interface Pill {
     title: string
     content: string
     prescription_id: string
-    dispenser: string | null
     author_name: string | null
     author_email: string | null
     created_at: string

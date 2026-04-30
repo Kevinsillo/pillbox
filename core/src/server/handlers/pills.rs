@@ -25,7 +25,6 @@ pub struct NewPillBody {
     #[validate(length(min = 1, max = 5000))]
     pub content: String,
     pub compound: PillCompound,
-    pub dispenser: Option<String>,
     pub author_name: Option<String>,
     pub author_email: Option<String>,
 }
@@ -47,7 +46,6 @@ pub async fn pill_create(
         content: input.content,
         compound: input.compound,
         prescription_id: rx_id,
-        dispenser: input.dispenser,
         author_name: input.author_name,
         author_email: input.author_email,
     };

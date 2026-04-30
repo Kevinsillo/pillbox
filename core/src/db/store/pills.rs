@@ -55,15 +55,14 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
 
     tx.execute(
         "INSERT INTO pills
-             (sync_id, compound, title, content, prescription_id, dispenser, author_name, author_email)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+             (sync_id, compound, title, content, prescription_id, author_name, author_email)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             sync_id,
             input.compound.as_str(),
             input.title,
             input.content,
             input.prescription_id,
-            input.dispenser,
             input.author_name,
             input.author_email,
         ],
@@ -93,7 +92,7 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
 pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     match conn.query_row(
         "SELECT id, sync_id, compound, title, content, prescription_id,
-                dispenser, author_name, author_email, created_at, updated_at, deleted_at
+                author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE id = ?1 AND deleted_at IS NULL",
         params![id],
         row_to_pill,
@@ -107,7 +106,7 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
 pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     match conn.query_row(
         "SELECT id, sync_id, compound, title, content, prescription_id,
-                dispenser, author_name, author_email, created_at, updated_at, deleted_at
+                author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE id = ?1",
         params![id],
         row_to_pill,
@@ -123,7 +122,7 @@ pub fn find_by_sync_id_prefix(conn: &Connection, prefix: &str) -> Result<Option<
     let pattern = format!("{}%", prefix);
     match conn.query_row(
         "SELECT id, sync_id, compound, title, content, prescription_id,
-                dispenser, author_name, author_email, created_at, updated_at, deleted_at
+                author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE sync_id LIKE ?1 AND deleted_at IS NULL
          ORDER BY created_at DESC LIMIT 1",
         params![pattern],
@@ -181,7 +180,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
     let pill = tx
         .query_row(
             "SELECT id, sync_id, compound, title, content, prescription_id,
-                    dispenser, author_name, author_email, created_at, updated_at, deleted_at
+                    author_name, author_email, created_at, updated_at, deleted_at
              FROM pills WHERE id = ?1",
             params![id],
             row_to_pill,
@@ -279,7 +278,7 @@ pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<Option<i64>> {
 pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
         "SELECT id, sync_id, compound, title, content, prescription_id,
-                dispenser, author_name, author_email, created_at, updated_at, deleted_at
+                author_name, author_email, created_at, updated_at, deleted_at
          FROM pills
          WHERE prescription_id = ?1
          ORDER BY created_at ASC, id ASC",
@@ -350,12 +349,11 @@ fn row_to_pill(row: &rusqlite::Row<'_>) -> rusqlite::Result<Pill> {
         title: row.get(3)?,
         content: row.get(4)?,
         prescription_id: row.get(5)?,
-        dispenser: row.get(6)?,
-        author_name: row.get(7)?,
-        author_email: row.get(8)?,
-        created_at: row.get(9)?,
-        updated_at: row.get(10)?,
-        deleted_at: row.get(11)?,
+        author_name: row.get(6)?,
+        author_email: row.get(7)?,
+        created_at: row.get(8)?,
+        updated_at: row.get(9)?,
+        deleted_at: row.get(10)?,
     })
 }
 
@@ -398,7 +396,6 @@ mod tests {
             content: "Usamos UUID v7 para sync_id porque preserva el orden temporal.".into(),
             compound: PillCompound::Decision,
             prescription_id: rx_id.to_string(),
-            dispenser: Some("pill_store".into()),
             author_name: Some("Kevin".into()),
             author_email: None,
         }
@@ -534,7 +531,6 @@ mod tests {
                 content: "Contenido de la segunda.".into(),
                 compound: PillCompound::Discovery,
                 prescription_id: rx_id.clone(),
-                dispenser: None,
                 author_name: None,
                 author_email: None,
             },
@@ -638,7 +634,6 @@ mod tests {
                 content: "Contenido.".into(),
                 compound: PillCompound::Discovery,
                 prescription_id: rx_id.clone(),
-                dispenser: None,
                 author_name: None,
                 author_email: None,
             },
