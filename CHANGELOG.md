@@ -1,3 +1,19 @@
+## [0.9.0] - 2026-04-30
+
+### 🚀 Features
+
+- *(mcp)* Incluir title, compound y content en PillTakeResult y CapsuleTakeResult
+
+### 🐛 Bug Fixes
+
+- [**breaking**] Eliminar campo dispenser de pills
+- *(webui)* Corregir título de la ventana del dashboard
+- *(mcp)* Corregir bottle_create para crear en la DB correcta según scope
+
+### 🚜 Refactor
+
+- *(mcp)* Renombrar pill_take → pill_store y capsule_take → capsule_store
+
 ## [0.8.0] - 2026-04-28
 
 ### 🚀 Features
@@ -14,6 +30,7 @@
 
 - Añadir ficheros de licencia
 - Añadir identificador SPDX a la licencia
+- *(release)* V0.8.0
 
 ## [0.7.0] - 2026-04-24
 
