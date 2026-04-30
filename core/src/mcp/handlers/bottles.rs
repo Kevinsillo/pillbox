@@ -54,11 +54,59 @@ pub fn create(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
-pub fn list(conn: &mut Conn, _input: Value) -> Response {
-    match store::bottles::list(conn) {
-        Ok(bottles) => Response::ok(bottles),
-        Err(e) => anyhow_to_response(e),
+pub fn list(_conn: &mut Conn, _input: Value) -> Response {
+    use pillbox::domain::bottle::Bottle;
+
+    let global_path = config::global_db_path();
+    if !global_path.exists() {
+        return Response::ok(Vec::<Bottle>::new());
     }
+
+    let global_conn = match db::connection::open(&global_path) {
+        Ok(c) => c,
+        Err(e) => return anyhow_to_response(e),
+    };
+
+    let registered = match registered_bottles::list(&global_conn) {
+        Ok(r) => r,
+        Err(e) => return anyhow_to_response(e),
+    };
+
+    let mut bottles: Vec<Bottle> = Vec::new();
+    for reg in registered {
+        let db_path = std::path::Path::new(&reg.db_path);
+        if !db_path.exists() {
+            bottles.push(Bottle {
+                id: reg.bottle_id,
+                name: reg.name,
+                display_name: reg.display_name,
+                directory: db_path
+                    .parent()
+                    .and_then(|p| p.parent())
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| reg.db_path.clone()),
+                scope: "local".to_string(),
+                created_at: reg.registered_at,
+                last_seen_at: reg.last_seen_at,
+                linked: false,
+                reg_id: Some(reg.id),
+            });
+            continue;
+        }
+
+        let db_conn = match db::connection::open(db_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        for mut bottle in store::bottles::list(&db_conn).unwrap_or_default() {
+            bottle.reg_id = Some(reg.id);
+            bottles.push(bottle);
+        }
+    }
+
+    bottles.sort_by(|a, b| a.name.cmp(&b.name));
+    Response::ok(bottles)
 }
 
 #[cfg(test)]
@@ -67,8 +115,6 @@ mod tests {
         db::{connection::open_in_memory, store::registered_bottles},
         domain::bottle::{BottleScope, NewBottle},
     };
-
-    use super::*;
 
     /// Verifica que el path calculado para la DB local sigue el patrón
     /// `<directory>/.pillbox/pillbox.db`, comprobando la lógica que usa el handler.

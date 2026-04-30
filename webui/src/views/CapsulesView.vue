@@ -81,16 +81,20 @@ async function purgeCapsule(c: CapsuleSummary) {
 
         <!-- Filtros -->
         <div class="flex gap-3">
-            <el-input
-                v-model="searchQuery"
-                :placeholder="$t('capsules.search_placeholder')"
-                class="flex-1"
-                @input="onSearch"
-            />
-            <el-select v-model="filterCompound" @change="load">
-                <el-option value="" :label="$t('capsules.filter_all')" />
-                <el-option v-for="c in CAPSULE_COMPOUNDS" :key="c" :value="c" :label="c" />
-            </el-select>
+            <div class="flex-1">
+                <el-input
+                    v-model="searchQuery"
+                    :placeholder="$t('capsules.search_placeholder')"
+                    class="w-full"
+                    @input="onSearch"
+                />
+            </div>
+            <div class="w-40">
+                <el-select v-model="filterCompound" class="w-full" :placeholder="$t('capsules.filter_all')" @change="load">
+                    <el-option value="" :label="$t('capsules.filter_all')" />
+                    <el-option v-for="c in CAPSULE_COMPOUNDS" :key="c" :value="c" :label="c.charAt(0).toUpperCase() + c.slice(1)" />
+                </el-select>
+            </div>
         </div>
 
         <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>

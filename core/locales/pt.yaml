@@ -22,7 +22,7 @@ bottle:
     start: "Inicializando bottle em %{dir}..."
     name_prompt: "Como você quer chamar este projeto?"
     scope:
-      prompt: "Onde salvar as memories?"
+      prompt: "Onde salvar as suas pills?"
       local: "local  — .pillbox/pillbox.db (somente este projeto)"
       global: "global — ~/.pillbox/pillbox.db (compartilhado)"
     creating: "Criando DB..."

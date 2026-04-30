@@ -49,9 +49,10 @@ async fn cmd_serve_daemon(port: u16) -> Result<()> {
         anyhow::bail!("{}\n{}", t!("serve.error.start_failed"), hint);
     }
     println!(
-        "\n{} {}\n",
+        "\n{} {}\n  {}\n",
         "✓".green().bold(),
-        t!("serve.daemon_started", pid = pid, port = port)
+        t!("serve.daemon_started", pid = pid, port = port),
+        format!("http://localhost:{}", port).cyan()
     );
     Ok(())
 }
