@@ -31,7 +31,7 @@ pub fn migrate_bottle(
     // ── 1. Bottle ─────────────────────────────────────────────────────────────
     let bottle = src
         .query_row(
-            "SELECT name, display_name, directory, scope FROM bottles WHERE name = ?1",
+            "SELECT id, name, display_name, directory, scope FROM bottles WHERE name = ?1",
             params![bottle_name],
             |r| {
                 Ok((
@@ -39,6 +39,7 @@ pub fn migrate_bottle(
                     r.get::<_, String>(1)?,
                     r.get::<_, String>(2)?,
                     r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
                 ))
             },
         )
@@ -47,13 +48,13 @@ pub fn migrate_bottle(
     let tx = dst.transaction()?;
 
     tx.execute(
-        "INSERT INTO bottles (name, display_name, directory, scope)
-         VALUES (?1, ?2, ?3, ?4)
+        "INSERT INTO bottles (id, name, display_name, directory, scope)
+         VALUES (?1, ?2, ?3, ?4, ?5)
          ON CONFLICT(name) DO UPDATE SET
              display_name = excluded.display_name,
              directory    = excluded.directory,
              last_seen_at = datetime('now')",
-        params![bottle.0, bottle.1, bottle.2, bottle.3],
+        params![bottle.0, bottle.1, bottle.2, bottle.3, bottle.4],
     )
     .context("failed to upsert bottle in destination")?;
 

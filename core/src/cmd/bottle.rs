@@ -485,6 +485,18 @@ pub fn cmd_migrate_global() -> Result<()> {
     let result = migrate::migrate_bottle(&src_conn, &mut dst_conn, &bottle_name)?;
     drop(src_conn);
 
+    dst_conn.execute(
+        "UPDATE bottles SET scope = 'global' WHERE name = ?1",
+        rusqlite::params![bottle_name],
+    )?;
+    let global_path_str = global_path
+        .to_str()
+        .context("global DB path contains non-UTF-8 characters")?;
+    dst_conn.execute(
+        "UPDATE registered_bottles SET db_path = ?1 WHERE name = ?2",
+        rusqlite::params![global_path_str, bottle_name],
+    )?;
+
     std::fs::remove_file(&local_path)
         .with_context(|| "failed to remove local DB after migration")?;
 
@@ -558,10 +570,24 @@ pub fn cmd_migrate_local() -> Result<()> {
 
     let mut dst_conn = connection::open(&local_path)?;
     let result = migrate::migrate_bottle(&global_conn, &mut dst_conn, &bottle_name)?;
+
+    dst_conn.execute(
+        "UPDATE bottles SET scope = 'local' WHERE name = ?1",
+        rusqlite::params![bottle_name],
+    )?;
+
     drop(global_conn);
 
     let mut global_conn_mut = connection::open(&global_path)?;
     migrate::delete_bottle(&mut global_conn_mut, &bottle_name)?;
+
+    let local_path_str = local_path
+        .to_str()
+        .context("local DB path contains non-UTF-8 characters")?;
+    global_conn_mut.execute(
+        "UPDATE registered_bottles SET db_path = ?1 WHERE name = ?2",
+        rusqlite::params![local_path_str, bottle_name],
+    )?;
 
     output::fmt::migrate_result_local(result.prescriptions, result.pills);
     Ok(())
