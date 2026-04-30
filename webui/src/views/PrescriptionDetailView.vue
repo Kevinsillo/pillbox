@@ -90,8 +90,9 @@ async function purgeRx() {
             <!-- Header -->
             <div class="space-y-3">
                 <div>
-                    <div class="mb-1">
+                    <div class="mb-1 flex items-center gap-2 flex-wrap">
                         <PrescriptionStatusBadge :open="isOpen" />
+                        <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('prescription_detail.archived_badge') }}</span>
                     </div>
                     <h1 class="text-xl font-bold text-(--text-h)">{{ rx.title }}</h1>
                     <p class="text-xs text-zinc-500 mt-0.5">
@@ -145,7 +146,7 @@ async function purgeRx() {
                                 :pill="pill"
                                 :bottle-id="props.bottle_id"
                             />
-                            <span class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400 pointer-events-none">{{ $t('prescription_detail.archived_badge') }}</span>
+                            <span class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text) pointer-events-none">{{ $t('prescription_detail.archived_badge') }}</span>
                         </div>
                     </template>
                 </div>

@@ -84,7 +84,7 @@ const renderedContent = computed(() => (pill.value ? (marked.parse(pill.value.co
                     <div>
                         <div class="flex items-center gap-2 flex-wrap">
                             <CompoundBadge :compound="pill.compound" />
-                            <span v-if="pill.deleted_at" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('pill_detail.archived_badge') }}</span>
+                            <span v-if="pill.deleted_at" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('pill_detail.archived_badge') }}</span>
                         </div>
                         <h1 class="text-xl font-bold text-(--text-h) mt-2">{{ pill.title }}</h1>
                         <p class="text-xs text-zinc-500 mt-0.5">
