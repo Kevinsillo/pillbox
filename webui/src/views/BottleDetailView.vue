@@ -134,25 +134,21 @@ async function deleteBottle() {
                         <h3 class="text-xs font-semibold text-zinc-600 uppercase tracking-wider mt-4 mb-2">
                             {{ $t('bottle_detail.archived_heading') }} ({{ archivedPrescriptions.length }})
                         </h3>
-                        <RouterLink
-                            v-for="rx in archivedPrescriptions"
-                            :key="rx.id"
-                            :to="`/bottles/${props.bottle_id}/prescriptions/${rx.id}`"
-                            class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors opacity-50"
-                        >
-                            <div class="flex items-center gap-3 min-w-0">
+                        <div v-for="rx in archivedPrescriptions" :key="rx.id" class="opacity-50 relative">
+                            <RouterLink
+                                :to="`/bottles/${props.bottle_id}/prescriptions/${rx.id}`"
+                                class="flex items-center gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
+                            >
                                 <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
                                     <IClipboard class="w-4 h-4 text-zinc-400" />
                                 </div>
                                 <div class="space-y-1 min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('bottle_detail.archived_badge') }}</span>
-                                        <span class="text-(--text-h) text-sm font-medium">{{ rx.title }}</span>
-                                    </div>
+                                    <span class="text-(--text-h) text-sm font-medium">{{ rx.title }}</span>
                                     <p class="text-xs text-zinc-600">{{ new Date(rx.started_at).toLocaleString() }}</p>
                                 </div>
-                            </div>
-                        </RouterLink>
+                            </RouterLink>
+                            <span class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text) pointer-events-none">{{ $t('bottle_detail.archived_badge') }}</span>
+                        </div>
                     </template>
                 </div>
             </div>
