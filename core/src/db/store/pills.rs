@@ -1,3 +1,5 @@
+//! Operaciones de store para la entidad [`Pill`].
+
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection, TransactionBehavior};
 use serde::Serialize;
@@ -8,6 +10,7 @@ use crate::error::PillboxError;
 
 // ─── Tipos de resultado ───────────────────────────────────────────────────────
 
+/// Resultado de guardar una pill nueva.
 #[derive(Debug, Serialize)]
 pub struct PillStoreResult {
     pub id: i64,
@@ -18,6 +21,7 @@ pub struct PillStoreResult {
     pub content: String,
 }
 
+/// Resultado de descartar una pill (soft delete).
 #[derive(Debug, Serialize)]
 pub struct PillDiscardResult {
     pub id: i64,
@@ -103,6 +107,7 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     }
 }
 
+/// Lee una pill completa por ID numérico, incluyendo descartadas.
 pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     match conn.query_row(
         "SELECT id, sync_id, compound, title, content, prescription_id,
@@ -143,7 +148,6 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
         return Ok(None);
     }
 
-    // Log de la revisión
     let rx_id: Option<String> = tx
         .query_row(
             "SELECT prescription_id FROM pills WHERE id = ?1",
@@ -275,6 +279,7 @@ pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
+/// Conteo de pills creadas en un día concreto.
 #[derive(Debug, serde::Serialize)]
 pub struct DayCount {
     pub date: String,
@@ -324,6 +329,7 @@ pub fn open_rx_pill_count(conn: &Connection) -> Result<i64> {
     .context("failed to count pills in open rx")
 }
 
+/// Mapea una fila de SQLite al tipo [`Pill`].
 fn row_to_pill(row: &rusqlite::Row<'_>) -> rusqlite::Result<Pill> {
     Ok(Pill {
         id: row.get(0)?,

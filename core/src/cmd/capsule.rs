@@ -1,9 +1,12 @@
+//! Subcomandos `pillbox capsule *`.
+
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
 use crate::output;
 
+/// Muestra el detalle de una capsule por su ID numérico, incluyendo archivadas.
 pub fn cmd_capsule_show(id: i64) -> Result<()> {
     use pillbox::db::{connection, store::capsules};
 
@@ -25,6 +28,7 @@ pub fn cmd_capsule_show(id: i64) -> Result<()> {
     Ok(())
 }
 
+/// Lista las capsules globales (activas y archivadas) hasta el límite indicado.
 pub fn cmd_capsule_list(limit: u32) -> Result<()> {
     use pillbox::db::{connection, store::capsules};
 

@@ -1,3 +1,5 @@
+//! Instalación y desinstalación de la skill de Claude Code desde GitHub Releases.
+
 use anyhow::{Context, Result};
 
 use super::{github, manifest};

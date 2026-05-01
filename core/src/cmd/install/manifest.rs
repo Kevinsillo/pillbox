@@ -1,3 +1,8 @@
+//! Ejecución del manifest `pillbox.json` para instalar/desinstalar componentes.
+//!
+//! El manifest describe cómo instalar el asset descargado (tarball o fichero único)
+//! y acciones opcionales de post-instalación (registrar en `~/.claude.json`).
+
 use anyhow::{Context, Result};
 use flate2::read::GzDecoder;
 use serde::Deserialize;
@@ -87,6 +92,9 @@ pub fn install(
     Ok(())
 }
 
+/// Escribe o actualiza una entrada en `~/.claude.json` bajo la clave indicada.
+///
+/// La clave puede ser una ruta anidada con punto como separador (ej: `"mcpServers.pillbox"`).
 fn write_claude_json(
     claude_cfg: &Path,
     key: &str,

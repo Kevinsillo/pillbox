@@ -1,8 +1,14 @@
+//! Enrutador de herramientas MCP — mapea el nombre de la herramienta al handler.
+
 use rusqlite::Connection;
 use serde_json::Value;
 
 use super::{handlers, response::Response};
 
+/// Despacha la herramienta MCP al handler correspondiente.
+///
+/// Devuelve [`Response::err`] con código `"unknown_tool"` si la herramienta
+/// no está registrada.
 pub fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
     match tool {
         "pill_store" => handlers::pills::take(conn, input),

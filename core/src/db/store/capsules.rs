@@ -1,3 +1,5 @@
+//! Operaciones de store para la entidad [`Capsule`].
+
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection, TransactionBehavior};
 use serde::Serialize;
@@ -7,6 +9,7 @@ use crate::domain::capsule::{Capsule, CapsulePatch, NewCapsule};
 
 // ─── Tipos de resultado ───────────────────────────────────────────────────────
 
+/// Resultado de guardar una capsule nueva.
 #[derive(Debug, Serialize)]
 pub struct CapsuleStoreResult {
     pub id: i64,
@@ -17,6 +20,7 @@ pub struct CapsuleStoreResult {
     pub content: String,
 }
 
+/// Resultado de descartar una capsule (soft delete).
 #[derive(Debug, Serialize)]
 pub struct CapsuleDiscardResult {
     pub id: i64,
@@ -208,6 +212,7 @@ pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<bool> {
     Ok(true)
 }
 
+/// Mapea una fila de SQLite al tipo [`Capsule`].
 fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
     Ok(Capsule {
         id: row.get(0)?,

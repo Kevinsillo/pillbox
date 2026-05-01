@@ -1,8 +1,11 @@
+//! Subcomando `pillbox status`.
+
 use anyhow::Result;
 use rust_i18n::t;
 
 use crate::output;
 
+/// Muestra el estado global del sistema: DBs, bottle activo, servidor, MCP y skill.
 pub fn run() -> Result<()> {
     use output::fmt::{StatusBottle, StatusDb};
 

@@ -1,6 +1,13 @@
+//! Operaciones sobre la tabla `registered_bottles` de la DB global.
+//!
+//! La tabla `registered_bottles` actúa como registro centralizado de todas
+//! las DBs (locales y globales) conocidas por el usuario. Es la fuente de
+//! verdad para `conn_for_bottle` y `bottle_list`.
+
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 
+/// Registro de una DB de bottle en la tabla `registered_bottles` de la DB global.
 pub struct RegisteredBottle {
     pub id: i64,
     pub bottle_id: String,
@@ -30,6 +37,9 @@ pub fn register(
     Ok(())
 }
 
+/// Actualiza la ruta de DB de un registro existente.
+///
+/// Devuelve `Ok(true)` si se actualizó, `Ok(false)` si el `id` no existe.
 pub fn update_db_path(conn: &Connection, id: i64, new_db_path: &str) -> Result<bool> {
     let count = conn
         .execute(
@@ -40,6 +50,9 @@ pub fn update_db_path(conn: &Connection, id: i64, new_db_path: &str) -> Result<b
     Ok(count > 0)
 }
 
+/// Elimina un registro de la tabla `registered_bottles` por su `id` interno.
+///
+/// Devuelve `Ok(true)` si se eliminó, `Ok(false)` si no existía.
 pub fn unregister(conn: &Connection, id: i64) -> Result<bool> {
     let count = conn
         .execute("DELETE FROM registered_bottles WHERE id = ?1", params![id])
@@ -61,6 +74,7 @@ pub fn find_by_bottle_id(conn: &Connection, bottle_id: &str) -> Result<Option<Re
     }
 }
 
+/// Lista todos los registros ordenados por fecha de registro (más recientes primero).
 pub fn list(conn: &Connection) -> Result<Vec<RegisteredBottle>> {
     let mut stmt = conn.prepare(
         "SELECT id, bottle_id, name, display_name, db_path, registered_at, last_seen_at
@@ -73,6 +87,7 @@ pub fn list(conn: &Connection) -> Result<Vec<RegisteredBottle>> {
     Ok(rows)
 }
 
+/// Mapea una fila de SQLite al tipo [`RegisteredBottle`].
 fn row_to_registered(row: &rusqlite::Row<'_>) -> rusqlite::Result<RegisteredBottle> {
     Ok(RegisteredBottle {
         id: row.get(0)?,

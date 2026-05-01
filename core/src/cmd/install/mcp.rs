@@ -1,3 +1,5 @@
+//! Instalación y desinstalación del servidor MCP desde GitHub Releases.
+
 use anyhow::{Context, Result};
 
 use super::{github, manifest};

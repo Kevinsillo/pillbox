@@ -1,3 +1,5 @@
+//! Tipos de dominio para capsules — conocimiento personal global sin bottle.
+
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -15,6 +17,7 @@ pub enum CapsuleCompound {
 }
 
 impl CapsuleCompound {
+    /// Representación canónica en string para almacenar en DB.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Convention => "convention",

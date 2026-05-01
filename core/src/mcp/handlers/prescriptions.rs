@@ -1,3 +1,5 @@
+//! Handlers MCP para la entidad Prescription.
+
 use pillbox::{db::store, domain::prescription::NewPrescription};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -6,6 +8,11 @@ use crate::mcp::response::{
     anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
 };
 
+/// Abre una prescripción nueva en la DB y la devuelve serializada.
+///
+/// # Errors
+///
+/// Retorna error si la validación falla o si la inserción en la base de datos falla.
 pub fn open(conn: &mut Conn, input: Value) -> Response {
     let req: NewPrescription = match from_value(input) {
         Ok(v) => v,
@@ -20,6 +27,11 @@ pub fn open(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Cierra una prescripción activa por su ID de cadena.
+///
+/// # Errors
+///
+/// Retorna error si la consulta a la base de datos falla.
 pub fn close(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -35,6 +47,11 @@ pub fn close(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Lee una prescripción activa por su ID de cadena.
+///
+/// # Errors
+///
+/// Retorna error si la consulta a la base de datos falla. Retorna `not_found` si la prescripción no existe.
 pub fn read(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -51,6 +68,11 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Realiza un soft delete en cascada de una prescripción y sus pills asociadas.
+///
+/// # Errors
+///
+/// Retorna error si la consulta a la base de datos falla.
 pub fn discard(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {

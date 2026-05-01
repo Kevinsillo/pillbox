@@ -1,3 +1,5 @@
+//! Handlers MCP para la entidad Bottle.
+
 use pillbox::{
     config, db, db::store, db::store::registered_bottles,
     domain::bottle::{BottleScope, NewBottle},
@@ -6,6 +8,10 @@ use serde_json::Value;
 
 use crate::mcp::response::{anyhow_to_response, from_value, validate_input, Conn, Response};
 
+/// Crea un bottle nuevo y lo registra en la DB global.
+///
+/// Para scope local, abre la DB del proyecto directamente en
+/// `<directory>/.pillbox/pillbox.db` en lugar de usar el `conn` del dispatch.
 pub fn create(conn: &mut Conn, input: Value) -> Response {
     let req: NewBottle = match from_value(input) {
         Ok(v) => v,
@@ -54,6 +60,7 @@ pub fn create(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Lista todos los bottles registrados (enlazados y desenlazados).
 pub fn list(_conn: &mut Conn, _input: Value) -> Response {
     use pillbox::domain::bottle::Bottle;
 

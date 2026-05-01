@@ -1,3 +1,5 @@
+//! Handlers HTTP para la entidad Pill.
+
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -18,6 +20,7 @@ use super::{
     AppState,
 };
 
+/// Cuerpo JSON para crear una pill nueva via REST API.
 #[derive(Deserialize, Validate)]
 pub struct NewPillBody {
     #[validate(length(min = 1, max = 255))]
@@ -29,6 +32,7 @@ pub struct NewPillBody {
     pub author_email: Option<String>,
 }
 
+/// Handler `POST /api/bottles/:id/prescriptions/:rx_id/pills` — crea una pill nueva.
 pub async fn pill_create(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,
@@ -55,6 +59,7 @@ pub async fn pill_create(
     }
 }
 
+/// Handler `GET /api/.../pills/:id` — lee una pill (incluyendo archivadas) por ID.
 pub async fn pill_get(
     State(s): State<AppState>,
     Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
@@ -70,6 +75,7 @@ pub async fn pill_get(
     }
 }
 
+/// Handler `PATCH /api/.../pills/:id` — aplica un patch parcial sobre una pill.
 pub async fn pill_patch(
     State(s): State<AppState>,
     Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
@@ -89,6 +95,7 @@ pub async fn pill_patch(
     }
 }
 
+/// Handler `DELETE /api/.../pills/:id` — realiza un soft delete de una pill.
 pub async fn pill_delete(
     State(s): State<AppState>,
     Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
@@ -104,6 +111,7 @@ pub async fn pill_delete(
     }
 }
 
+/// Handler `DELETE /api/.../pills/:id/purge` — elimina permanentemente una pill.
 pub async fn pill_purge(
     State(s): State<AppState>,
     Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
@@ -119,6 +127,10 @@ pub async fn pill_purge(
     }
 }
 
+/// Handler `GET /api/pills/search` — busca pills con FTS5 en una o todas las DBs registradas.
+///
+/// Si `bottle_id` está presente busca solo en esa DB; si no, agrega resultados de todas
+/// las DBs registradas y los ordena por relevancia.
 pub async fn pill_search(
     State(s): State<AppState>,
     Query(params): Query<SearchParams>,

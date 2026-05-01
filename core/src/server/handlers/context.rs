@@ -1,3 +1,5 @@
+//! Handler HTTP para generar el bloque de contexto de un bottle.
+
 use axum::extract::{Path, Query, State};
 use pillbox::db::store;
 use serde::Deserialize;
@@ -5,6 +7,7 @@ use serde_json::json;
 
 use super::{conn_for_bottle, default_30, default_5, err_500, ok, ApiResponse, AppState};
 
+/// Parámetros de query para ajustar los límites del contexto generado.
 #[derive(Deserialize)]
 pub struct ContextParams {
     #[serde(default = "default_5")]
@@ -13,6 +16,7 @@ pub struct ContextParams {
     pub pill_limit: u32,
 }
 
+/// Handler `GET /api/bottles/:id/context` — devuelve pills recientes y contadores del bottle.
 pub async fn context_get(
     State(s): State<AppState>,
     Path(bottle_id): Path<String>,

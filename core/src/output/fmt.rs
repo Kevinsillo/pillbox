@@ -1,3 +1,5 @@
+//! Funciones de formato y presentación de entidades del dominio en terminal.
+
 use super::{table, truncate};
 use owo_colors::OwoColorize;
 use pillbox::domain::{bottle::Bottle, capsule::Capsule, pill::Pill, prescription::Prescription};
@@ -42,6 +44,7 @@ fn color_line(line: &str) -> String {
     out
 }
 
+/// Imprime el logo ASCII de pillbox junto con la versión del binario.
 pub fn print_logo(version: &str) {
     for (i, line) in LOGO.iter().enumerate() {
         if i == 6 {
@@ -72,6 +75,7 @@ fn print_b(action: &str) {
 
 // ─── Bottles ──────────────────────────────────────────────────────────────────
 
+/// Fila de datos para la tabla de listing de bottles registrados.
 pub struct BottleListRow {
     pub name: String,
     pub directory: String,
@@ -80,6 +84,7 @@ pub struct BottleListRow {
     pub is_active: bool,
 }
 
+/// Muestra la lista de bottles registrados con su estado de enlace.
 pub fn bottles_registered_list(rows: &[BottleListRow]) {
     let count = rows.len();
     println!("\nBottles    {}", count.to_string().bold());
@@ -137,6 +142,7 @@ pub fn bottles_registered_list(rows: &[BottleListRow]) {
     );
 }
 
+/// Muestra el estado actual de un bottle: nombre, scope, directorio, pills y prescripción abierta.
 pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, String)>) {
     let rx_val = match open_rx {
         Some((id, title)) => format!(
@@ -173,15 +179,18 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
 
 // ─── Status ───────────────────────────────────────────────────────────────────
 
+/// Datos de una DB (global o local) para mostrar en el panel de estado.
 pub struct StatusDb {
     pub path: String,
     pub result: Option<Result<(i64, i64, i64, i64, i64), String>>,
 }
 
+/// Información del bottle activo para mostrar en el panel de estado.
 pub struct StatusBottle {
     pub open_rx: Option<String>,
 }
 
+/// Muestra el panel de estado completo del sistema: binario, DBs, servidor, MCP y skill.
 pub fn status(
     bin_path: &str,
     global: StatusDb,
@@ -269,6 +278,7 @@ pub fn status(
     println!("{}\n", table::dict(rows));
 }
 
+/// Muestra el estado del servidor HTTP embebido: running/stopped, PID y puerto.
 pub fn serve_status(running: bool, pid: Option<u32>, port: u16) {
     let estado = if running {
         format!("{} {}", "●".green(), t!("serve.running"))
@@ -288,6 +298,7 @@ pub fn serve_status(running: bool, pid: Option<u32>, port: u16) {
     println!("{}\n", table::dict(rows));
 }
 
+/// Muestra el estado de un componente (MCP o skill) junto con su texto de ayuda.
 pub fn component_status_with_help(path: &std::path::Path, help: &str) {
     let status = if path.exists() {
         format!("{} {}", "●".green(), path.display())
@@ -307,12 +318,14 @@ pub fn component_status_with_help(path: &std::path::Path, help: &str) {
     println!("\n{}\n", table::dict(rows));
 }
 
+/// Imprime en stderr el mensaje de error cuando no se encuentra la DB local.
 pub fn db_not_found() {
     eprintln!("\n{} {}\n", "✗".red().bold(), t!("db.not_found"));
 }
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────
 
+/// Muestra la lista de prescripciones de un bottle, separando activas de archivadas.
 pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription], _limit: u32) {
     let (active, archived): (Vec<&Prescription>, Vec<&Prescription>) =
         rxs.iter().partition(|rx| rx.deleted_at.is_none());
@@ -418,6 +431,7 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
     }
 }
 
+/// Confirma en pantalla la apertura de una prescripción nueva.
 pub fn prescription_opened(id: &str, title: &str) {
     let short_id = &id[..id.len().min(8)];
     print_a(
@@ -426,16 +440,19 @@ pub fn prescription_opened(id: &str, title: &str) {
     );
 }
 
+/// Confirma en pantalla el cierre de una prescripción.
 pub fn prescription_closed(_title: &str) {
     print_b(&t!("prescriptions.msg.closed"));
 }
 
 // ─── Bottle init ──────────────────────────────────────────────────────────────
 
+/// Informa al usuario del inicio del proceso de inicialización de un bottle.
 pub fn bottle_init_start(dir: &str) {
     println!("\n{}\n", t!("bottle.init.start", dir = dir));
 }
 
+/// Confirma la creación del bottle mostrando su slug, nombre visible y ruta de la DB.
 pub fn bottle_init_created(name: &str, display_name: &str, db_path: &std::path::Path) {
     let db_str = db_path.display().to_string();
     let action = t!("bottle.init.created", name = name).to_string();
@@ -452,16 +469,19 @@ pub fn bottle_init_created(name: &str, display_name: &str, db_path: &std::path::
     );
 }
 
+/// Confirma que `.pillbox/` fue añadido al `.gitignore` del proyecto.
 pub fn bottle_init_gitignore() {
     print_b(&t!("bottle.init.gitignore.done"));
 }
 
+/// Imprime el mensaje de finalización del flujo de inicialización del bottle.
 pub fn bottle_init_done() {
     println!("   {}  {}\n", "→".dimmed(), t!("bottle.init.done").dimmed());
 }
 
 // ─── MCP / Skill install ──────────────────────────────────────────────────────
 
+/// Confirma la instalación del componente MCP mostrando ruta, config y versión.
 pub fn mcp_installed(path: &std::path::Path, config: &std::path::Path, version: &str) {
     let path_val = path.display().to_string().cyan().to_string();
     let cfg_val = config.display().to_string().cyan().to_string();
@@ -475,14 +495,17 @@ pub fn mcp_installed(path: &std::path::Path, config: &std::path::Path, version: 
     );
 }
 
+/// Confirma la desinstalación del componente MCP.
 pub fn mcp_uninstalled() {
     print_b(&t!("mcp.uninstalled"));
 }
 
+/// Informa que el componente MCP no está instalado.
 pub fn mcp_not_installed() {
     println!("\n{}\n", t!("mcp.not_installed").dimmed());
 }
 
+/// Confirma la instalación del skill mostrando ruta y versión.
 pub fn skill_installed(path: &std::path::Path, version: &str) {
     let path_val = path.display().to_string().cyan().to_string();
     print_a(
@@ -491,16 +514,19 @@ pub fn skill_installed(path: &std::path::Path, version: &str) {
     );
 }
 
+/// Confirma la desinstalación del skill.
 pub fn skill_uninstalled() {
     print_b(&t!("skill.uninstalled"));
 }
 
+/// Informa que el skill no está instalado.
 pub fn skill_not_installed() {
     println!("\n{}\n", t!("skill.not_installed").dimmed());
 }
 
 // ─── Migrate ──────────────────────────────────────────────────────────────────
 
+/// Muestra las instrucciones de ayuda para el comando `migrate` con las rutas de DB disponibles.
 pub fn migrate_help(bottle_name: Option<&str>, local_path: &str, global_path: &str) {
     let bottle_val = bottle_name
         .map(|n| n.to_string())
@@ -528,6 +554,7 @@ pub fn migrate_help(bottle_name: Option<&str>, local_path: &str, global_path: &s
     println!("{}\n", table::dict(rows));
 }
 
+/// Muestra el resumen de confirmación antes de migrar datos de local a global.
 pub fn migrate_confirm_global(
     bottle_name: &str,
     local_path: &str,
@@ -561,6 +588,7 @@ pub fn migrate_confirm_global(
     println!("  {}\n", t!("migrate.global.warning").dimmed());
 }
 
+/// Muestra el resumen de confirmación antes de migrar datos de global a local.
 pub fn migrate_confirm_local(
     bottle_name: &str,
     local_path: &str,
@@ -597,6 +625,7 @@ pub fn migrate_confirm_local(
     println!("  {}\n", t!("migrate.local.warning").dimmed());
 }
 
+/// Confirma el resultado de una migración local→global con el recuento de registros movidos.
 pub fn migrate_result_global(prescriptions: usize, pills: usize) {
     let p = prescriptions.to_string();
     let pi = pills.to_string();
@@ -608,6 +637,7 @@ pub fn migrate_result_global(prescriptions: usize, pills: usize) {
     );
 }
 
+/// Confirma el resultado de una migración global→local con el recuento de registros movidos.
 pub fn migrate_result_local(prescriptions: usize, pills: usize) {
     let p = prescriptions.to_string();
     let pi = pills.to_string();
@@ -621,6 +651,7 @@ pub fn migrate_result_local(prescriptions: usize, pills: usize) {
 
 // ─── Prescription show ────────────────────────────────────────────────────────
 
+/// Muestra el detalle completo de una prescripción con sus pills activas y archivadas.
 pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill]) {
     let estado = if rx.ended_at.is_some() {
         t!("prescriptions.state.closed").dimmed().to_string()
@@ -733,6 +764,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
 
 // ─── Pill detail ──────────────────────────────────────────────────────────────
 
+/// Muestra el detalle completo de una pill: metadatos y contenido formateado.
 pub fn pill_detail(pill: &Pill) {
     let short_id = format!("#{}", pill.id);
     let rx_short = &pill.prescription_id[..pill.prescription_id.len().min(8)];
@@ -770,6 +802,7 @@ pub fn pill_detail(pill: &Pill) {
 
 // ─── Capsules list ────────────────────────────────────────────────────────────
 
+/// Muestra la lista de capsules, separando activas de archivadas.
 pub fn capsules_list(capsules: &[Capsule]) {
     let (active, archived): (Vec<&Capsule>, Vec<&Capsule>) =
         capsules.iter().partition(|c| c.deleted_at.is_none());
@@ -852,6 +885,7 @@ pub fn capsules_list(capsules: &[Capsule]) {
 
 // ─── Capsule detail ───────────────────────────────────────────────────────────
 
+/// Muestra el detalle completo de una capsule: metadatos y contenido formateado.
 pub fn capsule_detail(capsule: &Capsule) {
     let short_id = format!("#{}", capsule.id);
     let updated = if capsule.updated_at != capsule.created_at {

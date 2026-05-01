@@ -1,3 +1,5 @@
+//! Tipos de dominio para búsqueda FTS5 en pills y capsules.
+
 use serde::{Deserialize, Serialize};
 
 /// Parámetros para búsqueda FTS5.

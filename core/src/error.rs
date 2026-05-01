@@ -1,6 +1,16 @@
+//! Errores de dominio tipados de Pillbox.
+//!
+//! [`PillboxError`] es el único tipo de error de negocio. Los errores de
+//! infraestructura (SQLite, I/O, red) se propagan como [`anyhow::Error`].
+
 use serde::Serialize;
 use thiserror::Error;
 
+/// Errores de dominio que pueden retornar las operaciones de Pillbox.
+///
+/// Serializable como JSON con `serde` para respuestas MCP/HTTP.
+/// Cada variante incluye los campos necesarios para que el cliente
+/// muestre un mensaje de error útil sin parsear strings.
 #[derive(Debug, Error, Serialize)]
 #[serde(tag = "error", rename_all = "snake_case")]
 pub enum PillboxError {

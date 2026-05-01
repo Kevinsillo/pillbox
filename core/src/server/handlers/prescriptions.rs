@@ -1,3 +1,5 @@
+//! Handlers HTTP para la entidad Prescription.
+
 use axum::{
     extract::{Path, State},
     Json,
@@ -12,12 +14,16 @@ use super::{
     AppState,
 };
 
+/// Cuerpo JSON para abrir una prescripción nueva via REST API.
 #[derive(Deserialize, Validate)]
 pub struct NewPrescriptionBody {
     #[validate(length(min = 1, max = 255))]
     pub title: String,
 }
 
+/// Handler `POST /api/bottles/:id/prescriptions` — abre una prescripción nueva.
+///
+/// Retorna 409 si ya existe una prescripción abierta en el bottle.
 pub async fn prescription_open(
     State(s): State<AppState>,
     Path(bottle_id): Path<String>,
@@ -60,6 +66,7 @@ pub async fn prescription_open(
     }
 }
 
+/// Handler `GET /api/bottles/:id/prescriptions/:rx_id` — lee una prescripción por ID.
 pub async fn prescription_get(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,
@@ -75,6 +82,7 @@ pub async fn prescription_get(
     }
 }
 
+/// Handler `PATCH /api/bottles/:id/prescriptions/:rx_id` — cierra una prescripción activa.
 pub async fn prescription_close(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,
@@ -89,6 +97,7 @@ pub async fn prescription_close(
     }
 }
 
+/// Handler `DELETE /api/bottles/:id/prescriptions/:rx_id` — realiza un soft delete en cascada.
 pub async fn prescription_delete(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,
@@ -103,6 +112,7 @@ pub async fn prescription_delete(
     }
 }
 
+/// Handler `DELETE /api/.../prescriptions/:rx_id/purge` — elimina permanentemente una prescripción.
 pub async fn prescription_purge(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,
@@ -121,6 +131,7 @@ pub async fn prescription_purge(
     }
 }
 
+/// Handler `GET /api/.../prescriptions/:rx_id/pills` — lista las pills de una prescripción.
 pub async fn prescription_pills(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,

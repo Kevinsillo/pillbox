@@ -1,3 +1,5 @@
+//! Subcomandos `pillbox mcp *`.
+
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
@@ -6,6 +8,9 @@ use crate::output;
 
 use super::install;
 
+/// Descarga e instala el servidor MCP desde la última release de GitHub.
+///
+/// Requiere Node.js >= 18 en el PATH.
 pub fn cmd_mcp_install() -> Result<()> {
     let node_ok = std::process::Command::new("node")
         .arg("--version")
@@ -37,6 +42,7 @@ pub fn cmd_mcp_install() -> Result<()> {
     Ok(())
 }
 
+/// Desinstala el servidor MCP eliminando su directorio y la entrada en `~/.claude.json`.
 pub fn cmd_mcp_uninstall() -> Result<()> {
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
     let claude_cfg = pillbox::config::claude_config_path();

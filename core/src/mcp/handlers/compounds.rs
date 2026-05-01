@@ -1,8 +1,13 @@
+//! Handler MCP para listar los compounds disponibles de pills y capsules.
+
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::mcp::response::{anyhow_to_response, Conn, Response};
 
+/// Lista los compounds activos de la tabla `pill_compounds` o `capsule_compounds`.
+///
+/// El nombre de la tabla se infiere del nombre de la herramienta (`tool`).
 pub fn list(conn: &mut Conn, tool: &str, _input: Value) -> Response {
     #[derive(Serialize)]
     struct CompoundEntry {

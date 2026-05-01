@@ -1,5 +1,10 @@
-/// Tipos que mapean directamente a filas de la base de datos.
-/// Sin lógica de negocio — solo representación de datos.
+//! Tipos que mapean directamente a filas de la base de datos.
+//!
+//! Sin lógica de negocio — son representaciones internas que usa la capa
+//! de store para leer y escribir en SQLite.
+
+/// Fila de la tabla `pills`.
+
 
 #[derive(Debug, Clone)]
 pub struct PillRow {
@@ -16,6 +21,7 @@ pub struct PillRow {
     pub deleted_at: Option<String>,
 }
 
+/// Fila de la tabla `capsules`.
 #[derive(Debug, Clone)]
 pub struct CapsuleRow {
     pub id: i64,
@@ -28,6 +34,7 @@ pub struct CapsuleRow {
     pub deleted_at: Option<String>,
 }
 
+/// Fila de la tabla `prescriptions`.
 #[derive(Debug, Clone)]
 pub struct PrescriptionRow {
     pub id: String,
@@ -38,6 +45,7 @@ pub struct PrescriptionRow {
     pub deleted_at: Option<String>,
 }
 
+/// Fila de la tabla `bottles`.
 #[derive(Debug, Clone)]
 pub struct BottleRow {
     pub id: i64,

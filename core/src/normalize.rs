@@ -1,20 +1,23 @@
+//! Normalización de nombres de usuario para almacenamiento en DB.
+
 use unicode_normalization::UnicodeNormalization;
 
 /// Normaliza el nombre de un bottle para usarlo como clave en DB.
 ///
-/// Reglas:
-/// - Lowercase
-/// - Trim de espacios en extremos
-/// - Colapsa espacios, guiones y underscores múltiples en un solo guión
+/// Reglas aplicadas en orden:
+/// - Lowercase y trim de espacios en extremos
+/// - Normalización Unicode NFC (macOS genera NFD por defecto)
+/// - Reemplaza cualquier carácter no alfanumérico por `-`, colapsando consecutivos
+/// - Elimina guiones en los extremos del resultado
 ///
-/// El nombre original (display_name) se preserva por separado.
+/// El nombre legible original (`display_name`) se preserva por separado y
+/// no pasa por esta función.
 pub fn bottle_name(raw: &str) -> String {
     let lower = raw.trim().to_lowercase();
 
-    // Normaliza unicode NFC para consistencia
+    // NFC para consistencia entre plataformas (macOS genera NFD por defecto)
     let nfc: String = lower.nfc().collect();
 
-    // Reemplaza caracteres no alfanuméricos (excepto `-`) por guión
     let mut result = String::with_capacity(nfc.len());
     let mut prev_dash = false;
 

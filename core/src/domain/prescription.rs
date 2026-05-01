@@ -1,3 +1,5 @@
+//! Tipos de dominio para prescriptions — sesiones de trabajo activas dentro de un bottle.
+
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 

@@ -1,3 +1,5 @@
+//! Operaciones de store para la entidad [`Prescription`].
+
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection, TransactionBehavior};
 use uuid::Uuid;
@@ -129,7 +131,15 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
     Ok(prescription)
 }
 
-/// Soft delete de una prescription y todas sus pills (cascade lógico).
+/// Soft delete de una prescription y todas sus pills.
+///
+/// El cascade es lógico: establece `deleted_at` en la prescription y en
+/// todas sus pills activas. No borra filas de forma permanente.
+///
+/// # Errors
+///
+/// Devuelve [`PillboxError::PrescriptionNotFound`] si la prescription no existe
+/// o ya estaba descartada.
 pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
@@ -143,7 +153,6 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
         return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
     }
 
-    // Cascade soft delete de las pills de esta prescription
     tx.execute(
         "UPDATE pills SET deleted_at = datetime('now')
          WHERE prescription_id = ?1 AND deleted_at IS NULL",
@@ -263,6 +272,7 @@ pub fn list_by_bottle(conn: &Connection, bottle_id: &str, limit: u32) -> Result<
     Ok(rows)
 }
 
+/// Mapea una fila de SQLite al tipo [`Prescription`].
 fn row_to_prescription(row: &rusqlite::Row<'_>) -> rusqlite::Result<Prescription> {
     Ok(Prescription {
         id: row.get(0)?,

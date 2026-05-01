@@ -1,3 +1,5 @@
+//! Servicio de ficheros estáticos de la WebUI embebidos en el binario con `rust-embed`.
+
 use axum::{
     body::Body,
     http::{header, Response, StatusCode},
@@ -5,6 +7,7 @@ use axum::{
 };
 use rust_embed::RustEmbed;
 
+/// Activos estáticos de la WebUI embebidos en tiempo de compilación desde `../webui/dist`.
 #[derive(RustEmbed)]
 #[folder = "../webui/dist"]
 pub struct Assets;
@@ -15,10 +18,12 @@ pub async fn serve(path: axum::extract::Path<String>) -> impl IntoResponse {
     serve_path(&path.0).await
 }
 
+/// Sirve `index.html` directamente en la ruta raíz `/`.
 pub async fn serve_root() -> impl IntoResponse {
     serve_path("index.html").await
 }
 
+/// Busca y devuelve el fichero embebido en `path`, con fallback a `index.html` para SPA routing.
 async fn serve_path(path: &str) -> Response<Body> {
     let path = path.trim_start_matches('/');
 

@@ -1,3 +1,5 @@
+//! Handlers HTTP de la REST API y utilidades de respuesta compartidas.
+
 mod bottles;
 mod capsules;
 mod context;
@@ -25,6 +27,7 @@ use super::AppState;
 
 // ─── Tipo de respuesta uniforme ───────────────────────────────────────────────
 
+/// Respuesta HTTP uniforme: par `(StatusCode, JSON)` que implementa `IntoResponse`.
 pub(super) struct ApiResponse(pub StatusCode, pub serde_json::Value);
 
 impl IntoResponse for ApiResponse {
@@ -33,18 +36,22 @@ impl IntoResponse for ApiResponse {
     }
 }
 
+/// Construye una respuesta 200 OK con el payload serializado en `data`.
 pub(super) fn ok(data: impl Serialize) -> ApiResponse {
     ApiResponse(StatusCode::OK, json!({ "ok": true, "data": data }))
 }
 
+/// Construye una respuesta 201 Created con el payload serializado en `data`.
 pub(super) fn ok_created(data: impl Serialize) -> ApiResponse {
     ApiResponse(StatusCode::CREATED, json!({ "ok": true, "data": data }))
 }
 
+/// Handler `GET /api/version` — devuelve la versión del binario.
 pub(super) async fn version_get() -> ApiResponse {
     ok(json!({ "version": env!("CARGO_PKG_VERSION") }))
 }
 
+/// Construye una respuesta de error con `status`, código `error` y mensaje legible.
 pub(super) fn err(status: StatusCode, error: &str, message: &str) -> ApiResponse {
     ApiResponse(
         status,
@@ -52,6 +59,7 @@ pub(super) fn err(status: StatusCode, error: &str, message: &str) -> ApiResponse
     )
 }
 
+/// Construye una respuesta de error enriquecida con campos adicionales de contexto.
 pub(super) fn err_with_context(
     status: StatusCode,
     error: &str,
@@ -66,6 +74,7 @@ pub(super) fn err_with_context(
     ApiResponse(status, body)
 }
 
+/// Respuesta 422 Unprocessable Entity para errores de validación de entrada.
 pub(super) fn err_422(e: impl ToString) -> ApiResponse {
     err(
         StatusCode::UNPROCESSABLE_ENTITY,
@@ -74,6 +83,7 @@ pub(super) fn err_422(e: impl ToString) -> ApiResponse {
     )
 }
 
+/// Respuesta 404 para un bottle no encontrado por `bottle_id`.
 pub(super) fn err_404_bottle(id: &str) -> ApiResponse {
     err_with_context(
         StatusCode::NOT_FOUND,
@@ -82,6 +92,7 @@ pub(super) fn err_404_bottle(id: &str) -> ApiResponse {
     )
 }
 
+/// Respuesta 404 para un registered_bottle no encontrado por `reg_id`.
 pub(super) fn err_404_registered_bottle(id: &str) -> ApiResponse {
     err_with_context(
         StatusCode::NOT_FOUND,
@@ -90,6 +101,7 @@ pub(super) fn err_404_registered_bottle(id: &str) -> ApiResponse {
     )
 }
 
+/// Respuesta 404 para una pill no encontrada por `pill_id`.
 pub(super) fn err_404_pill(id: i64) -> ApiResponse {
     err_with_context(
         StatusCode::NOT_FOUND,
@@ -98,6 +110,7 @@ pub(super) fn err_404_pill(id: i64) -> ApiResponse {
     )
 }
 
+/// Respuesta 404 para una prescription no encontrada por `prescription_id`.
 pub(super) fn err_404_prescription(id: &str) -> ApiResponse {
     err_with_context(
         StatusCode::NOT_FOUND,
@@ -106,6 +119,7 @@ pub(super) fn err_404_prescription(id: &str) -> ApiResponse {
     )
 }
 
+/// Respuesta 404 para una capsule no encontrada por `capsule_id`.
 pub(super) fn err_404_capsule(id: i64) -> ApiResponse {
     err_with_context(
         StatusCode::NOT_FOUND,
@@ -114,10 +128,12 @@ pub(super) fn err_404_capsule(id: i64) -> ApiResponse {
     )
 }
 
+/// Respuesta 500 Internal Server Error envolviendo un error de anyhow.
 pub(super) fn err_500(e: anyhow::Error) -> ApiResponse {
     err(StatusCode::INTERNAL_SERVER_ERROR, "error", &e.to_string())
 }
 
+/// Respuesta 409 Conflict con código de error, mensaje y datos adicionales.
 pub(super) fn err_409(error: &str, message: &str, data: serde_json::Value) -> ApiResponse {
     ApiResponse(
         StatusCode::CONFLICT,
@@ -138,16 +154,24 @@ pub(super) fn conn_for_bottle(
     db::connection::open_existing(std::path::Path::new(&reg.db_path)).map_err(err_500)
 }
 
+/// Abre una conexión a la DB global del sistema.
+///
+/// # Errors
+///
+/// Retorna `err_500` si la apertura de la conexión falla.
 pub(super) fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {
     db::connection::open(&state.global_db_path).map_err(err_500)
 }
 
+/// Valor por defecto 5 para límites de paginación.
 pub(super) fn default_5() -> u32 {
     5
 }
+/// Valor por defecto 30 para límites de paginación.
 pub(super) fn default_30() -> u32 {
     30
 }
+/// Valor por defecto 50 para límites de paginación.
 pub(super) fn default_50() -> u32 {
     50
 }

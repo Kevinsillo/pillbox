@@ -1,9 +1,15 @@
+//! Subcomandos `pillbox pill *`.
+
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
 use crate::output;
 
+/// Muestra el detalle de una pill por su ID numérico, incluyendo descartadas.
+///
+/// Intenta primero la DB resuelta por contexto (local o global); si no existe,
+/// usa la DB global como fallback.
 pub fn cmd_pill_show(id: i64) -> Result<()> {
     use pillbox::db::{connection, store::pills};
 

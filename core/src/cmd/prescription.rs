@@ -1,3 +1,5 @@
+//! Subcomandos `pillbox prescription *`.
+
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
@@ -7,6 +9,7 @@ use crate::output;
 use super::shared::find_current_bottle;
 use super::shared::open_resolved_db;
 
+/// Abre una nueva prescription para el bottle del directorio actual.
 pub fn cmd_prescription_open(title: String) -> Result<()> {
     use pillbox::db::store::prescriptions;
     use pillbox::domain::prescription::NewPrescription;
@@ -49,6 +52,7 @@ pub fn cmd_prescription_open(title: String) -> Result<()> {
     Ok(())
 }
 
+/// Lista las prescriptions del bottle actual (más recientes primero).
 pub fn cmd_prescription_list(limit: u32) -> Result<()> {
     use pillbox::db::store::prescriptions;
 
@@ -60,6 +64,7 @@ pub fn cmd_prescription_list(limit: u32) -> Result<()> {
     Ok(())
 }
 
+/// Muestra el detalle de una prescription (incluyendo descartadas) y sus pills.
 pub fn cmd_prescription_show(id: String) -> Result<()> {
     use pillbox::db::store::{pills, prescriptions};
 
@@ -82,6 +87,7 @@ pub fn cmd_prescription_show(id: String) -> Result<()> {
     Ok(())
 }
 
+/// Cierra la prescription abierta del bottle actual.
 pub fn cmd_prescription_close() -> Result<()> {
     use pillbox::db::store::prescriptions;
 

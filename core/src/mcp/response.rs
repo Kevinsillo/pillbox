@@ -1,3 +1,5 @@
+//! Tipos de respuesta MCP y helpers compartidos por todos los handlers.
+
 use pillbox::error::PillboxError;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -6,6 +8,7 @@ use validator::Validate;
 
 // ─── Response ─────────────────────────────────────────────────────────────────
 
+/// Respuesta JSON uniforme para todas las herramientas MCP.
 #[derive(Serialize)]
 pub struct Response {
     pub ok: bool,
@@ -18,6 +21,7 @@ pub struct Response {
 }
 
 impl Response {
+    /// Construye una respuesta de éxito con `ok: true` y los datos serializados.
     pub fn ok(data: impl Serialize) -> Self {
         Self {
             ok: true,
@@ -27,6 +31,7 @@ impl Response {
         }
     }
 
+    /// Construye una respuesta de error con `ok: false`, código y mensaje.
     pub fn err(error: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
             ok: false,
@@ -36,6 +41,7 @@ impl Response {
         }
     }
 
+    /// Construye una respuesta de error con datos adicionales (ej: prescription existente).
     pub fn err_with_data(
         error: impl Into<String>,
         message: impl Into<String>,
@@ -52,19 +58,23 @@ impl Response {
 
 // ─── Helpers compartidos por handlers ─────────────────────────────────────────
 
+/// Respuesta de error 404 genérica para cualquier entidad.
 pub fn not_found(entity: &str, id: impl std::fmt::Display) -> Response {
     Response::err("not_found", format!("{} {} no encontrada", entity, id))
 }
 
+/// Deserializa un [`Value`] JSON al tipo `T`, devolviendo [`Response::err`] si falla.
 pub fn from_value<T: for<'de> Deserialize<'de>>(v: Value) -> Result<T, Response> {
     serde_json::from_value(v).map_err(|e| Response::err("invalid_input", e.to_string()))
 }
 
+/// Valida una struct con `validator`, devolviendo [`Response::err`] si hay errores.
 pub fn validate_input<T: Validate>(v: &T) -> Result<(), Response> {
     v.validate()
         .map_err(|e| Response::err("validation_error", e.to_string()))
 }
 
+/// Convierte un [`anyhow::Error`] en [`Response`], usando el código tipado si es [`PillboxError`].
 pub fn anyhow_to_response(e: anyhow::Error) -> Response {
     if let Some(pe) = e.downcast_ref::<PillboxError>() {
         return pillbox_to_response(pe);
@@ -72,6 +82,8 @@ pub fn anyhow_to_response(e: anyhow::Error) -> Response {
     Response::err("internal_error", e.to_string())
 }
 
+/// Convierte un [`PillboxError`] tipado en [`Response`], incluyendo datos adicionales
+/// para la variante `PrescriptionAlreadyOpen`.
 fn pillbox_to_response(pe: &PillboxError) -> Response {
     match pe {
         PillboxError::PrescriptionAlreadyOpen {
@@ -93,5 +105,5 @@ fn pillbox_to_response(pe: &PillboxError) -> Response {
     }
 }
 
-// Alias para evitar importar Connection en todos los handlers
+/// Alias de [`rusqlite::Connection`] para simplificar las firmas de los handlers.
 pub type Conn = Connection;

@@ -1,3 +1,5 @@
+//! Tipos de dominio para bottles — contenedores de conocimiento por proyecto.
+
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -20,14 +22,18 @@ pub struct NewBottle {
     pub scope: BottleScope,
 }
 
+/// Scope de la DB donde vive el bottle.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BottleScope {
+    /// DB local del proyecto: `.pillbox/pillbox.db`
     Local,
+    /// DB global del usuario: `~/.pillbox/pillbox.db`
     Global,
 }
 
 impl BottleScope {
+    /// Representación canónica en string para almacenar en DB.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Local => "local",
@@ -42,6 +48,7 @@ impl std::fmt::Display for BottleScope {
     }
 }
 
+/// Valor por defecto de `linked` al deserializar — `true` cuando el campo está ausente.
 fn default_true() -> bool {
     true
 }

@@ -1,7 +1,12 @@
+//! Subcomando `pillbox uninstall`.
+
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
+/// Desinstala interactivamente los componentes de Pillbox: MCP, skill, DB global y binario.
+///
+/// Cada componente pide confirmación por separado antes de eliminarlo.
 pub fn run() -> Result<()> {
     use inquire::Confirm;
 

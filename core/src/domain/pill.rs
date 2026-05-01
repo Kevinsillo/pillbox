@@ -1,3 +1,5 @@
+//! Tipos de dominio para pills — unidades de conocimiento ligadas a una prescription.
+
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -17,6 +19,7 @@ pub enum PillCompound {
 }
 
 impl PillCompound {
+    /// Representación canónica en string para almacenar en DB.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Decision => "decision",

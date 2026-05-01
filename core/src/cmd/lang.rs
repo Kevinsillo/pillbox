@@ -1,9 +1,12 @@
+//! Subcomandos `pillbox lang *`.
+
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
 use crate::{i18n, output};
 
+/// Muestra el idioma actual y la lista de idiomas soportados.
 pub fn cmd_lang_show(render_help: &str) -> Result<()> {
     let current = rust_i18n::locale().to_string();
     let rows: Vec<[String; 2]> = i18n::SUPPORTED
@@ -35,6 +38,7 @@ pub fn cmd_lang_show(render_help: &str) -> Result<()> {
     Ok(())
 }
 
+/// Cambia el idioma del CLI al código dado y lo persiste en `~/.pillbox/lang`.
 pub fn cmd_lang_set(code: String) -> Result<()> {
     let code = code.to_lowercase();
     if !i18n::is_supported(&code) {

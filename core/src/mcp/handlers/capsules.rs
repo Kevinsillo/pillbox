@@ -1,3 +1,5 @@
+//! Handlers MCP para la entidad Capsule.
+
 use pillbox::{
     db::store,
     domain::capsule::{CapsulePatch, NewCapsule},
@@ -9,6 +11,7 @@ use crate::mcp::response::{
     anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
 };
 
+/// Guarda una capsule nueva en la DB global.
 pub fn take(conn: &mut Conn, input: Value) -> Response {
     let req: NewCapsule = match from_value(input) {
         Ok(v) => v,
@@ -23,6 +26,7 @@ pub fn take(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Lee una capsule activa por ID.
 pub fn read(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -39,6 +43,7 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Actualiza campos de una capsule existente (patch parcial).
 pub fn revise(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -59,6 +64,7 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Soft delete de una capsule por ID.
 pub fn discard(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -75,6 +81,7 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Busca capsules por texto con FTS5 y expansión fuzzy.
 pub fn search(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {

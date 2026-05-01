@@ -1,3 +1,5 @@
+//! Subcomandos `pillbox bottle *`.
+
 use anyhow::{Context, Result};
 use rust_i18n::t;
 
@@ -5,6 +7,7 @@ use crate::output;
 
 use super::shared::{find_current_bottle, open_resolved_db, spinner};
 
+/// Lista todos los bottles registrados en la DB global.
 pub fn cmd_bottle_list() -> Result<()> {
     use pillbox::db::{
         connection,
@@ -65,6 +68,7 @@ pub fn cmd_bottle_list() -> Result<()> {
     Ok(())
 }
 
+/// Muestra el estado del bottle del directorio actual: pills, prescription abierta, scope.
 pub fn cmd_bottle_status() -> Result<()> {
     let (conn, _) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
@@ -91,6 +95,7 @@ pub fn cmd_bottle_status() -> Result<()> {
     Ok(())
 }
 
+/// Wizard interactivo para inicializar un bottle en el directorio actual.
 pub fn cmd_bottle_init() -> Result<()> {
     use inquire::{Confirm, Select, Text};
     use pillbox::db::{connection, store::bottles};
@@ -188,6 +193,7 @@ pub fn cmd_bottle_init() -> Result<()> {
     Ok(())
 }
 
+/// Elimina el registro de un bottle de la DB global, previa confirmación del slug.
 pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
     use inquire::Text;
     use owo_colors::OwoColorize;
@@ -267,6 +273,7 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
     Ok(())
 }
 
+/// Corrige la ruta de DB de un bottle desvinculado apuntando a su nueva ubicación.
 pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
     use inquire::Text;
     use owo_colors::OwoColorize;
@@ -356,6 +363,7 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
     Ok(())
 }
 
+/// Añade `.pillbox/` al `.gitignore` del directorio, evitando duplicados.
 fn add_to_gitignore(dir: &std::path::Path) -> Result<()> {
     use std::io::Write;
     let gi_path = dir.join(".gitignore");
@@ -380,6 +388,7 @@ fn add_to_gitignore(dir: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
+/// Registra una DB local en la tabla `registered_bottles` de la DB global.
 fn register_in_global(
     global_path: &std::path::Path,
     bottle_id: &str,
@@ -398,6 +407,7 @@ fn register_in_global(
     Ok(())
 }
 
+/// Muestra la información de migración disponible para el bottle actual.
 pub fn cmd_migrate_help() -> Result<()> {
     use pillbox::db::{connection, store::bottles};
 
@@ -425,6 +435,9 @@ pub fn cmd_migrate_help() -> Result<()> {
     Ok(())
 }
 
+/// Migra el bottle local del directorio actual a la DB global.
+///
+/// Pide confirmación antes de proceder. Tras la migración elimina la DB local.
 pub fn cmd_migrate_global() -> Result<()> {
     use inquire::Confirm;
     use pillbox::db::{connection, migrate};
@@ -504,6 +517,10 @@ pub fn cmd_migrate_global() -> Result<()> {
     Ok(())
 }
 
+/// Mueve un bottle de la DB global a una DB local en el directorio actual.
+///
+/// Presenta un selector con todos los bottles globales disponibles y pide
+/// confirmación antes de proceder. Tras la migración elimina los datos del global.
 pub fn cmd_migrate_local() -> Result<()> {
     use inquire::{Confirm, Select};
     use pillbox::db::{connection, migrate, store::bottles};

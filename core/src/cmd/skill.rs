@@ -1,3 +1,5 @@
+//! Subcomandos `pillbox skill *`.
+
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
@@ -6,6 +8,7 @@ use crate::output;
 
 use super::install;
 
+/// Descarga e instala la skill de Claude Code desde la última release de GitHub.
 pub fn cmd_skill_install() -> Result<()> {
     let skill_path = pillbox::config::skill_path();
     let skill_dir = skill_path.parent().unwrap().to_path_buf();
@@ -17,6 +20,7 @@ pub fn cmd_skill_install() -> Result<()> {
     Ok(())
 }
 
+/// Desinstala la skill eliminando su directorio.
 pub fn cmd_skill_uninstall() -> Result<()> {
     let skill_dir = pillbox::config::skill_path()
         .parent()

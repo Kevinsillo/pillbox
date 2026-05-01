@@ -1,8 +1,15 @@
+//! Utilidades compartidas entre subcomandos del CLI.
+
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use rust_i18n::t;
 use std::time::Duration;
 
+/// Abre la DB resuelta por [`pillbox::config::resolve_db_path`] y devuelve la conexión y su ruta.
+///
+/// # Errors
+///
+/// Devuelve error si no se encuentra ninguna DB (global ni local).
 pub fn open_resolved_db() -> Result<(rusqlite::Connection, std::path::PathBuf)> {
     let path = pillbox::config::resolve_db_path()
         .ok_or_else(|| anyhow::anyhow!("{}", t!("db.open_not_found")))?;
@@ -13,6 +20,15 @@ pub fn open_resolved_db() -> Result<(rusqlite::Connection, std::path::PathBuf)> 
     Ok((conn, abs))
 }
 
+/// Encuentra el bottle asociado al directorio de trabajo actual.
+///
+/// Busca primero en la DB global (scope global) y luego en las DBs locales
+/// registradas (scope local). Si el `cwd` está dentro del directorio de más
+/// de un bottle, elige el más específico (match de prefijo más largo).
+///
+/// # Errors
+///
+/// Devuelve error si no se encuentra ningún bottle para el directorio actual.
 pub fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
     use pillbox::db::{
         connection,
@@ -59,6 +75,7 @@ pub fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
         .ok_or_else(|| anyhow::anyhow!("{}", t!("bottle.error.not_found")))
 }
 
+/// Crea un spinner de progreso con tick automático cada 80 ms.
 pub fn spinner(msg: impl Into<std::borrow::Cow<'static, str>>) -> ProgressBar {
     let pb = ProgressBar::new_spinner();
     pb.enable_steady_tick(Duration::from_millis(80));

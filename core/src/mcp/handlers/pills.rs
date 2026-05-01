@@ -1,3 +1,5 @@
+//! Handlers MCP para la entidad Pill.
+
 use pillbox::{
     db::store,
     domain::{
@@ -12,6 +14,11 @@ use crate::mcp::response::{
     anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
 };
 
+/// Crea una pill nueva a partir de los datos del input y la persiste en la DB.
+///
+/// # Errors
+///
+/// Retorna error si la validación falla o si la inserción en la base de datos falla.
 pub fn take(conn: &mut Conn, input: Value) -> Response {
     let req: NewPill = match from_value(input) {
         Ok(v) => v,
@@ -26,6 +33,11 @@ pub fn take(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Lee una pill activa por su ID numérico.
+///
+/// # Errors
+///
+/// Retorna error si la consulta a la base de datos falla. Retorna `not_found` si la pill no existe.
 pub fn read(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -42,6 +54,11 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Aplica un patch parcial sobre una pill existente.
+///
+/// # Errors
+///
+/// Retorna error si la validación del patch falla o si la actualización en la base de datos falla.
 pub fn revise(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -62,6 +79,11 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Realiza un soft delete de una pill por su ID numérico.
+///
+/// # Errors
+///
+/// Retorna error si la consulta a la base de datos falla. Retorna `not_found` si la pill no existe.
 pub fn discard(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -78,6 +100,11 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Busca pills mediante FTS5 con expansión fuzzy Jaro-Winkler.
+///
+/// # Errors
+///
+/// Retorna error si la búsqueda en la base de datos falla.
 pub fn search(conn: &mut Conn, input: Value) -> Response {
     let params: SearchParams = match from_value(input) {
         Ok(v) => v,
@@ -89,6 +116,15 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Genera un bloque de contexto con pills y prescripciones recientes de un bottle.
+///
+/// Retorna un JSON con `context` (texto ensamblado), `prescription_count` y `pill_count`.
+/// Los límites `prescription_limit` (defecto 5) y `pill_limit` (defecto 30) permiten
+/// ajustar cuántos registros se incluyen en el contexto generado.
+///
+/// # Errors
+///
+/// Retorna error si la consulta a la base de datos falla.
 pub fn context(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {

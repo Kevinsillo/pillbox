@@ -1,3 +1,8 @@
+//! Punto de entrada del binario `pillbox`.
+//!
+//! Parsea los argumentos de la CLI con `clap`, detecta el idioma, abre la DB
+//! resuelta y delega cada subcomando al módulo `cmd` correspondiente.
+
 mod cmd;
 mod i18n;
 mod mcp;
@@ -307,6 +312,7 @@ async fn main() -> Result<()> {
 
 // ─── Helpers de ayuda (necesitan Cli::command()) ─────────────────────────────
 
+/// Resuelve una clave i18n para la ayuda, usando `fallback` si la clave no está traducida.
 fn t_help(key: &str, fallback: Option<String>) -> String {
     let translated = t!(key);
     if translated != key {
@@ -316,6 +322,7 @@ fn t_help(key: &str, fallback: Option<String>) -> String {
     }
 }
 
+/// Renderiza la ayuda de un subcomando `clap` con traducciones i18n y colores ANSI.
 fn render_help_cmd(cmd: &mut clap::Command, name: &str) -> String {
     let mut out = String::new();
     let about_key = format!("help.about.{}", name);
@@ -351,17 +358,20 @@ fn render_help_cmd(cmd: &mut clap::Command, name: &str) -> String {
     out
 }
 
+/// Renderiza la ayuda de un subcomando concreto de `pillbox`.
 fn render_help(subcmd: &str) -> String {
     let mut cmd = Cli::command();
     let sub = cmd.find_subcommand_mut(subcmd).unwrap();
     render_help_cmd(sub, subcmd)
 }
 
+/// Renderiza la ayuda raíz del binario `pillbox`.
 fn render_root_help() -> String {
     let mut cmd = Cli::command();
     render_help_cmd(&mut cmd, "pillbox")
 }
 
+/// Imprime el logo y la ayuda raíz en la salida estándar.
 fn cmd_root_help() -> Result<()> {
     output::fmt::print_logo(env!("CARGO_PKG_VERSION"));
     let rows = vec![["".to_string(), render_root_help()]];
@@ -369,22 +379,26 @@ fn cmd_root_help() -> Result<()> {
     Ok(())
 }
 
+/// Imprime la ayuda de un subcomando en una tabla `dict`.
 fn cmd_sub_help(subcmd: &str) -> Result<()> {
     let rows = vec![["".to_string(), render_help(subcmd)]];
     println!("\n{}\n", output::table::dict(rows));
     Ok(())
 }
 
+/// Muestra el estado de instalación del servidor MCP junto a su ayuda.
 fn cmd_mcp_status() -> Result<()> {
     output::fmt::component_status_with_help(&pillbox::config::mcp_path(), &render_help("mcp"));
     Ok(())
 }
 
+/// Muestra el estado de instalación de la skill junto a su ayuda.
 fn cmd_skill_status() -> Result<()> {
     output::fmt::component_status_with_help(&pillbox::config::skill_path(), &render_help("skill"));
     Ok(())
 }
 
+/// Muestra el estado del servidor HTTP junto al submenú de ayuda de `serve`.
 fn cmd_serve_info() -> Result<()> {
     let pid_path = pillbox::config::pid_path();
     let port = pillbox::config::DEFAULT_PORT;

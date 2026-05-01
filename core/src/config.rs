@@ -1,3 +1,8 @@
+//! Constantes y rutas de configuración de Pillbox.
+//!
+//! Centraliza todas las rutas del sistema (`~/.pillbox/`, `.pillbox/`) y
+//! los límites de validación usados en múltiples módulos.
+
 use std::path::PathBuf;
 
 /// Puerto por defecto del servidor HTTP.

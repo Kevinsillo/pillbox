@@ -1,3 +1,5 @@
+//! Handlers HTTP para la entidad Capsule (conocimiento personal global).
+
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -13,12 +15,14 @@ use super::{
     err_404_capsule, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
 };
 
+/// Parámetros de query para listar capsules con filtro opcional por compound.
 #[derive(Deserialize)]
 pub struct CapsuleListParams {
     pub compound: Option<String>,
     pub limit: Option<u32>,
 }
 
+/// Parámetros de query para la búsqueda FTS5 de capsules.
 #[derive(Deserialize)]
 pub struct CapsuleSearchParams {
     pub query: String,
@@ -26,6 +30,7 @@ pub struct CapsuleSearchParams {
     pub limit: Option<u32>,
 }
 
+/// Handler `POST /api/capsules` — crea una capsule nueva en la DB global.
 pub async fn capsule_create(
     State(s): State<AppState>,
     Json(input): Json<NewCapsule>,
@@ -43,6 +48,7 @@ pub async fn capsule_create(
     }
 }
 
+/// Handler `GET /api/capsules/:id` — lee una capsule (incluyendo archivadas) por ID.
 pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
     let conn = match open_global_conn(&s) {
         Ok(c) => c,
@@ -55,6 +61,7 @@ pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiR
     }
 }
 
+/// Handler `DELETE /api/capsules/:id/purge` — elimina permanentemente una capsule.
 pub async fn capsule_purge(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
     use serde_json::json;
     let mut conn = match open_global_conn(&s) {
@@ -68,6 +75,7 @@ pub async fn capsule_purge(State(s): State<AppState>, Path(id): Path<i64>) -> Ap
     }
 }
 
+/// Handler `PATCH /api/capsules/:id` — aplica un patch parcial sobre una capsule.
 pub async fn capsule_patch(
     State(s): State<AppState>,
     Path(id): Path<i64>,
@@ -87,6 +95,7 @@ pub async fn capsule_patch(
     }
 }
 
+/// Handler `DELETE /api/capsules/:id` — realiza un soft delete de una capsule.
 pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
     let mut conn = match open_global_conn(&s) {
         Ok(c) => c,
@@ -99,6 +108,7 @@ pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<i64>) -> A
     }
 }
 
+/// Handler `GET /api/capsules/search` — busca capsules con FTS5 y expansión fuzzy.
 pub async fn capsule_search(
     State(s): State<AppState>,
     Query(params): Query<CapsuleSearchParams>,
@@ -118,6 +128,7 @@ pub async fn capsule_search(
     }
 }
 
+/// Handler `GET /api/capsules` — lista capsules activas con filtro opcional por compound.
 pub async fn capsule_list(
     State(s): State<AppState>,
     Query(params): Query<CapsuleListParams>,

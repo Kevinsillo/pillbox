@@ -1,3 +1,5 @@
+//! Handlers HTTP para la entidad Bottle y registered_bottles.
+
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -14,12 +16,14 @@ use super::{
     err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
 };
 
+/// Parámetros de query para listar prescripciones de un bottle.
 #[derive(Deserialize)]
 pub struct BottlePrescriptionsParams {
     #[serde(default = "default_50")]
     pub limit: u32,
 }
 
+/// Handler `GET /api/bottles/:id` — devuelve un bottle por su UUID.
 pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
     let conn = match conn_for_bottle(&s, &id) {
         Ok(c) => c,
@@ -32,6 +36,7 @@ pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<String>) -> Ap
     }
 }
 
+/// Handler `GET /api/bottles` — lista todos los bottles registrados en la DB global.
 pub async fn bottle_list(State(s): State<AppState>) -> ApiResponse {
     let global_conn = match open_global_conn(&s) {
         Ok(c) => c,
@@ -85,6 +90,7 @@ pub async fn bottle_list(State(s): State<AppState>) -> ApiResponse {
     ok(all_bottles)
 }
 
+/// Handler `POST /api/bottles` — crea un bottle nuevo y lo registra en la DB global.
 pub async fn bottle_create(State(s): State<AppState>, Json(input): Json<NewBottle>) -> ApiResponse {
     if let Err(e) = input.validate() {
         return err_422(e);
@@ -110,11 +116,13 @@ pub async fn bottle_create(State(s): State<AppState>, Json(input): Json<NewBottl
     ok_created(bottle)
 }
 
+/// Cuerpo JSON para actualizar la ruta de un registered_bottle.
 #[derive(Deserialize, Serialize)]
 pub struct UpdateRegisteredBottleBody {
     pub db_path: String,
 }
 
+/// Handler `PATCH /api/registered_bottles/:id` — actualiza la ruta de DB de un registro.
 pub async fn registered_bottle_patch(
     State(s): State<AppState>,
     Path(id): Path<String>,
@@ -143,6 +151,7 @@ pub async fn registered_bottle_patch(
     }
 }
 
+/// Handler `DELETE /api/registered_bottles/:id` — elimina un registro de la DB global.
 pub async fn registered_bottle_delete(
     State(s): State<AppState>,
     Path(id): Path<String>,
@@ -162,6 +171,7 @@ pub async fn registered_bottle_delete(
     }
 }
 
+/// Handler `DELETE /api/bottles/:id` — elimina un bottle y lo desregistra de la DB global.
 pub async fn bottle_delete(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
     let mut conn = match conn_for_bottle(&s, &id) {
         Ok(c) => c,
@@ -181,12 +191,14 @@ pub async fn bottle_delete(State(s): State<AppState>, Path(id): Path<String>) ->
     }
 }
 
+/// Parámetros de query para las estadísticas de un bottle.
 #[derive(Deserialize)]
 pub struct BottleStatsParams {
     #[serde(default = "default_30")]
     pub days: u32,
 }
 
+/// Handler `GET /api/bottles/:id/stats` — devuelve estadísticas de actividad del bottle.
 pub async fn bottle_stats(
     State(s): State<AppState>,
     Path(id): Path<String>,
@@ -219,6 +231,7 @@ pub async fn bottle_stats(
     }))
 }
 
+/// Handler `GET /api/bottles/:id/prescriptions` — lista las prescripciones del bottle.
 pub async fn bottle_prescriptions(
     State(s): State<AppState>,
     Path(id): Path<String>,

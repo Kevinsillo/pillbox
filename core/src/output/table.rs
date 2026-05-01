@@ -1,3 +1,5 @@
+//! Constructores de tablas para la salida en terminal usando `tabled`.
+
 use owo_colors::OwoColorize;
 use tabled::{builder::Builder, settings::Style};
 
@@ -37,6 +39,7 @@ pub fn dict(rows: Vec<[String; 2]>) -> String {
     b.build().with(Style::modern_rounded()).to_string()
 }
 
+/// Calcula la longitud visible de una cadena ignorando las secuencias de escape ANSI.
 fn ansi_stripped_len(s: &str) -> usize {
     let mut len = 0usize;
     let mut chars = s.chars().peekable();

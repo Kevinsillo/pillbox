@@ -1,3 +1,8 @@
+//! Protocolo MCP (Model Context Protocol) de Pillbox.
+//!
+//! Lee JSON de stdin (`{"tool": "...", "input": {...}}`), ejecuta la operación
+//! y escribe la respuesta JSON en stdout. Usado por `pillbox exec`.
+
 use std::io::Read;
 
 use anyhow::Result;
@@ -14,6 +19,7 @@ use response::Response;
 
 // ─── Protocolo ────────────────────────────────────────────────────────────────
 
+/// Petición MCP deserializada desde stdin.
 #[derive(Deserialize)]
 struct Request {
     tool: String,
@@ -31,6 +37,7 @@ const CAPSULE_TOOLS: &[&str] = &[
 
 // ─── Punto de entrada ─────────────────────────────────────────────────────────
 
+/// Punto de entrada del modo MCP: lee de stdin, ejecuta y escribe en stdout.
 pub fn run() -> Result<()> {
     let mut raw = String::new();
     std::io::stdin().read_to_string(&mut raw)?;
@@ -44,6 +51,10 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
+/// Parsea la request, abre la DB adecuada y delega al dispatcher.
+///
+/// Las herramientas de capsule usan siempre la DB global; el resto usan
+/// la DB resuelta por contexto (local o global).
 fn execute(raw: &str) -> Result<Response> {
     let req: Request =
         serde_json::from_str(raw).map_err(|e| anyhow::anyhow!("request_parse_error: {}", e))?;

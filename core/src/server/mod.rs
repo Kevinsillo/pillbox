@@ -25,6 +25,14 @@ pub struct AppState {
     pub global_db_path: Arc<PathBuf>,
 }
 
+/// Arranca el servidor HTTP en `127.0.0.1:<port>` y registra el servicio mDNS.
+///
+/// Cada request abre su propia conexión SQLite al `db_path` indicado; WAL mode
+/// permite concurrencia sin pool. Se detiene gracefully al recibir CTRL+C.
+///
+/// # Errors
+///
+/// Retorna error si el bind del puerto falla o si axum no puede servir conexiones.
 pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result<()> {
     let state = AppState {
         db_path: Arc::new(db_path),

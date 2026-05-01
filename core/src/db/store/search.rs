@@ -1,3 +1,8 @@
+//! Búsqueda FTS5 con expansión fuzzy (Jaro-Winkler) para pills y capsules.
+//!
+//! El pipeline es: extracción de términos → vocabulario FTS5 →
+//! expansión fuzzy con rayon → construcción de query FTS5 → ejecución.
+
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
@@ -132,6 +137,10 @@ fn sanitize_fts_query(query: &str) -> String {
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
 
+/// Busca pills mediante FTS5 con expansión fuzzy (Jaro-Winkler).
+///
+/// Devuelve resultados ordenados por relevancia (rank FTS5 ascendente,
+/// más cercano a 0 = más relevante). Una query vacía devuelve `vec![]`.
 pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
     let terms = extract_terms(&params_in.query);
     if terms.is_empty() {
@@ -179,6 +188,9 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
 
 // ─── Capsules ─────────────────────────────────────────────────────────────────
 
+/// Busca capsules mediante FTS5 con expansión fuzzy (Jaro-Winkler).
+///
+/// Aplica los mismos umbrales de similitud que [`pill_find`].
 pub fn capsule_find(
     conn: &Connection,
     query: &str,
@@ -226,12 +238,17 @@ pub fn capsule_find(
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
+/// Resultado del contexto Markdown generado para un bottle.
 pub struct ContextResult {
     pub context: String,
     pub prescription_count: usize,
     pub pill_count: usize,
 }
 
+/// Genera un resumen Markdown del contexto de un bottle.
+///
+/// Incluye las `prescription_limit` prescriptions más recientes y las
+/// `pill_limit` pills más recientes, truncando contenidos largos a 400 caracteres.
 pub fn pill_context(
     conn: &Connection,
     bottle_id: &str,
@@ -340,6 +357,7 @@ pub fn pill_context(
     })
 }
 
+/// Devuelve las `limit` pills más recientes de un bottle, ordenadas por fecha de creación descendente.
 pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
         "SELECT p.id, p.sync_id, p.compound, p.title, p.content, p.prescription_id,
@@ -373,6 +391,10 @@ pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Ve
     Ok(pills)
 }
 
+/// Mapea una fila de SQLite al tipo [`SearchResult`].
+///
+/// `has_prescription_id` indica si la consulta incluye las columnas
+/// `prescription_id` y `bottle_id` (solo en búsquedas de pills).
 fn row_to_search_result(
     row: &rusqlite::Row<'_>,
     has_prescription_id: bool,

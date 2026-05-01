@@ -1,8 +1,11 @@
+//! Acceso a la API de GitHub Releases para obtener versiones y descargar assets.
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
 use super::manifest::Manifest;
 
+/// Respuesta mínima de la API de GitHub Releases.
 #[derive(Deserialize)]
 struct GithubRelease {
     pub tag_name: String,
