@@ -20,6 +20,8 @@ pub fn cmd_prescription_open(title: String) -> Result<()> {
         &NewPrescription {
             bottle_id: bottle.id,
             title,
+            author_name: None,
+            author_email: None,
         },
     ) {
         Ok(rx) => output::fmt::prescription_opened(&rx.id, &rx.title),

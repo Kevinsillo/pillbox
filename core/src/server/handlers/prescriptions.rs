@@ -33,6 +33,8 @@ pub async fn prescription_open(
     let new_rx = NewPrescription {
         bottle_id,
         title: input.title,
+        author_name: None,
+        author_email: None,
     };
     match store::prescriptions::open(&mut conn, &new_rx) {
         Ok(rx) => ok_created(rx),

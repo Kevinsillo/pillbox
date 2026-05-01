@@ -427,6 +427,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle.id.clone(),
                 title: "Sesión de búsqueda".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -614,6 +616,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle.id.clone(),
                 title: "rx utf8".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -737,6 +741,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_b.id.clone(),
                 title: "Sesión B".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();

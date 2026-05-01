@@ -366,6 +366,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle.id.clone(),
                 title: "Sesión de prueba".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();

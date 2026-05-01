@@ -132,6 +132,12 @@ CREATE TABLE prescriptions (
     -- El resumen de la sesión se guarda como pill con compound=prescription_summary,
     -- no como campo aquí — así es searchable vía FTS5 y vive en el timeline.
     title      TEXT NOT NULL,
+    -- Autoría de la prescription: nombre y email del usuario humano detrás del agente.
+    -- Resolución (responsabilidad del MCP/cliente): (1) git config user.name/user.email,
+    -- (2) ~/.pillbox/identity.json (campos name/email), (3) preguntar al usuario y persistir
+    -- en ese fichero. Pueden ser NULL si no se ha resuelto.
+    author_name  TEXT,
+    author_email TEXT,
     started_at TEXT NOT NULL DEFAULT (datetime('now')),
     ended_at   TEXT,
     -- Soft delete: al descartar una prescripción, sus pills también se soft-deletan

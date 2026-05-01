@@ -65,8 +65,15 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
     let id = Uuid::now_v7().to_string();
 
     tx.execute(
-        "INSERT INTO prescriptions (id, bottle_id, title) VALUES (?1, ?2, ?3)",
-        params![id, input.bottle_id, input.title],
+        "INSERT INTO prescriptions (id, bottle_id, title, author_name, author_email)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![
+            id,
+            input.bottle_id,
+            input.title,
+            input.author_name,
+            input.author_email
+        ],
     )
     .context("failed to insert prescription")?;
 
@@ -77,7 +84,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
 
     let prescription = tx
         .query_row(
-            "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
+            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions WHERE id = ?1",
             params![id],
             row_to_prescription,
@@ -111,7 +118,7 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
 
     let prescription = tx
         .query_row(
-            "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
+            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions WHERE id = ?1",
             params![id],
             row_to_prescription,
@@ -208,7 +215,7 @@ pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<()> {
 pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
     let pattern = format!("{}%", id);
     match conn.query_row(
-        "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
+        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions
          WHERE (id = ?1 OR id LIKE ?2)
          ORDER BY started_at DESC LIMIT 1",
@@ -225,7 +232,7 @@ pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
 pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
     let pattern = format!("{}%", id);
     match conn.query_row(
-        "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
+        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions
          WHERE (id = ?1 OR id LIKE ?2) AND deleted_at IS NULL
          ORDER BY started_at DESC LIMIT 1",
@@ -241,7 +248,7 @@ pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
 /// Devuelve las últimas N prescriptions de un bottle (más recientes primero).
 pub fn list_by_bottle(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Prescription>> {
     let mut stmt = conn.prepare(
-        "SELECT id, bottle_id, title, started_at, ended_at, deleted_at
+        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions
          WHERE bottle_id = ?1
          ORDER BY started_at DESC
@@ -261,9 +268,11 @@ fn row_to_prescription(row: &rusqlite::Row<'_>) -> rusqlite::Result<Prescription
         id: row.get(0)?,
         bottle_id: row.get(1)?,
         title: row.get(2)?,
-        started_at: row.get(3)?,
-        ended_at: row.get(4)?,
-        deleted_at: row.get(5)?,
+        author_name: row.get(3)?,
+        author_email: row.get(4)?,
+        started_at: row.get(5)?,
+        ended_at: row.get(6)?,
+        deleted_at: row.get(7)?,
     })
 }
 
@@ -299,6 +308,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
                 title: "Implementar auth".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -320,6 +331,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
                 title: "Primera sesión".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -329,6 +342,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
                 title: "Segunda sesión".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap_err();
@@ -355,6 +370,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: "uuid-inexistente".into(),
                 title: "Sesión".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap_err();
@@ -376,6 +393,8 @@ mod tests {
             &NewPrescription {
                 bottle_id,
                 title: "Lectura".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -394,6 +413,8 @@ mod tests {
             &NewPrescription {
                 bottle_id,
                 title: "A descartar".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -412,6 +433,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
                 title: "Sesión 1".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -422,6 +445,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
                 title: "Sesión 2".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -444,6 +469,8 @@ mod tests {
                 &NewPrescription {
                     bottle_id: bottle_id.clone(),
                     title: format!("S{i}"),
+                    author_name: None,
+                    author_email: None,
                 },
             )
             .unwrap();
@@ -463,6 +490,8 @@ mod tests {
             &NewPrescription {
                 bottle_id,
                 title: "S".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -481,6 +510,8 @@ mod tests {
             &NewPrescription {
                 bottle_id,
                 title: "Sesión a purgar".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -548,6 +579,8 @@ mod tests {
             &NewPrescription {
                 bottle_id,
                 title: "Sesión a descartar".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -583,6 +616,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
                 title: "Sesión a archivar".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -604,6 +639,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
                 title: "Activa".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -615,6 +652,8 @@ mod tests {
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
                 title: "Archivada".into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap();
@@ -635,7 +674,12 @@ mod tests {
         let bottle_id = make_bottle(&mut conn, "read-any-archived");
         let rx = open(
             &mut conn,
-            &NewPrescription { bottle_id, title: "A archivar".into() },
+            &NewPrescription {
+                bottle_id,
+                title: "A archivar".into(),
+                author_name: None,
+                author_email: None,
+            },
         )
         .unwrap();
         discard(&mut conn, &rx.id).unwrap();
@@ -651,12 +695,45 @@ mod tests {
         let bottle_id = make_bottle(&mut conn, "read-vs-read-any");
         let rx = open(
             &mut conn,
-            &NewPrescription { bottle_id, title: "Test".into() },
+            &NewPrescription {
+                bottle_id,
+                title: "Test".into(),
+                author_name: None,
+                author_email: None,
+            },
         )
         .unwrap();
         discard(&mut conn, &rx.id).unwrap();
 
         assert!(read(&conn, &rx.id).unwrap().is_none());
         assert!(read_any(&conn, &rx.id).unwrap().is_some());
+    }
+
+    #[test]
+    fn author_fields_round_trip() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "author-round-trip");
+
+        let rx = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id,
+                title: "Con autor".into(),
+                author_name: Some("Kevin Illanas".into()),
+                author_email: Some("kevin@example.com".into()),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(rx.author_name.as_deref(), Some("Kevin Illanas"));
+        assert_eq!(rx.author_email.as_deref(), Some("kevin@example.com"));
+
+        let found = read(&conn, &rx.id).unwrap().unwrap();
+        assert_eq!(found.author_name.as_deref(), Some("Kevin Illanas"));
+        assert_eq!(found.author_email.as_deref(), Some("kevin@example.com"));
+
+        let listed = list_by_bottle(&conn, &rx.bottle_id, 10).unwrap();
+        assert_eq!(listed[0].author_name.as_deref(), Some("Kevin Illanas"));
+        assert_eq!(listed[0].author_email.as_deref(), Some("kevin@example.com"));
     }
 }

@@ -10,6 +10,14 @@ pub struct NewPrescription {
     /// Título de la tarea/funcionalidad/bug que se va a trabajar.
     #[validate(length(min = 1, max = 255))]
     pub title: String,
+
+    /// Nombre del autor humano detrás del agente. Resuelto por el cliente (MCP)
+    /// vía git config / ~/.pillbox/identity.json / prompt al usuario.
+    pub author_name: Option<String>,
+
+    /// Email del autor humano detrás del agente. Resuelto por el cliente (MCP)
+    /// vía git config / ~/.pillbox/identity.json / prompt al usuario.
+    pub author_email: Option<String>,
 }
 
 /// Prescription tal como se devuelve al leerla.
@@ -18,6 +26,8 @@ pub struct Prescription {
     pub id: String,
     pub bottle_id: String,
     pub title: String,
+    pub author_name: Option<String>,
+    pub author_email: Option<String>,
     pub started_at: String,
     pub ended_at: Option<String>,
     pub deleted_at: Option<String>,
