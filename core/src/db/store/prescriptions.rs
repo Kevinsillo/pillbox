@@ -255,6 +255,15 @@ pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
 }
 
 /// Devuelve las últimas N prescriptions de un bottle (más recientes primero).
+pub fn count_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
+    let n: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM prescriptions WHERE bottle_id = ?1",
+        params![bottle_id],
+        |r| r.get(0),
+    )?;
+    Ok(n)
+}
+
 pub fn list_by_bottle(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Prescription>> {
     let mut stmt = conn.prepare(
         "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at

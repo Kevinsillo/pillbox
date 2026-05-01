@@ -126,7 +126,10 @@ enum BottleCommand {
     /// Estado del bottle del directorio actual.
     Status,
     /// Lista los bottles registrados en la DB global.
-    List,
+    List {
+        #[arg(short, long, default_value = "20")]
+        limit: u32,
+    },
     /// Migra el bottle entre DB local y global.
     Migrate {
         #[command(subcommand)]
@@ -168,6 +171,8 @@ enum PrescriptionCommand {
     Show {
         /// ID (o prefijo) de la prescription.
         id: String,
+        #[arg(short, long, default_value = "20")]
+        limit: u32,
     },
     /// Cierra la prescripción abierta del bottle actual.
     Close,
@@ -261,7 +266,7 @@ async fn main() -> Result<()> {
         Some(Command::Bottle { cmd }) => match cmd {
             Some(BottleCommand::Init) => cmd::bottle::cmd_bottle_init(),
             Some(BottleCommand::Status) => cmd::bottle::cmd_bottle_status(),
-            Some(BottleCommand::List) => cmd::bottle::cmd_bottle_list(),
+            Some(BottleCommand::List { limit }) => cmd::bottle::cmd_bottle_list(limit),
             Some(BottleCommand::Migrate { subcommand }) => match subcommand {
                 None => cmd::bottle::cmd_migrate_help(),
                 Some(MigrateCommand::Global) => cmd::bottle::cmd_migrate_global(),
@@ -287,7 +292,7 @@ async fn main() -> Result<()> {
             Some(PrescriptionCommand::List { limit }) => {
                 cmd::prescription::cmd_prescription_list(limit)
             }
-            Some(PrescriptionCommand::Show { id }) => cmd::prescription::cmd_prescription_show(id),
+            Some(PrescriptionCommand::Show { id, limit }) => cmd::prescription::cmd_prescription_show(id, limit),
             Some(PrescriptionCommand::Close) => cmd::prescription::cmd_prescription_close(),
             None => cmd_sub_help("prescription"),
         },

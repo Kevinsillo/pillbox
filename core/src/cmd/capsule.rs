@@ -39,7 +39,8 @@ pub fn cmd_capsule_list(limit: u32) -> Result<()> {
     }
 
     let conn = connection::open(&global_path)?;
+    let total = capsules::count(&conn)?;
     let list = capsules::list(&conn, Some(limit), None)?;
-    output::fmt::capsules_list(&list);
+    output::fmt::capsules_list(&list, total);
     Ok(())
 }

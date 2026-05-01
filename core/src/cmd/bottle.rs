@@ -8,7 +8,7 @@ use crate::output;
 use super::shared::{find_current_bottle, open_resolved_db, spinner};
 
 /// Lista todos los bottles registrados en la DB global.
-pub fn cmd_bottle_list() -> Result<()> {
+pub fn cmd_bottle_list(limit: u32) -> Result<()> {
     use pillbox::db::{
         connection,
         store::{bottles, registered_bottles},
@@ -64,7 +64,9 @@ pub fn cmd_bottle_list() -> Result<()> {
     }
 
     rows.sort_by(|a, b| a.name.cmp(&b.name));
-    output::fmt::bottles_registered_list(&rows);
+    let total = rows.len() as u32;
+    rows.truncate(limit as usize);
+    output::fmt::bottles_registered_list(&rows, total);
     Ok(())
 }
 

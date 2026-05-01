@@ -15,7 +15,7 @@ pub fn plain_list(headers: &[&str], rows: Vec<Vec<String>>) -> String {
 
     let mut result = String::new();
     let mut first = true;
-    for line in raw.lines() {
+    for line in raw.trim_end().lines() {
         result.push_str("  ");
         result.push_str(line);
         result.push('\n');

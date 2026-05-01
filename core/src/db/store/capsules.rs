@@ -164,6 +164,15 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<CapsuleDiscardRe
 }
 
 /// Lista capsules globales con filtros opcionales (incluye archivadas).
+pub fn count(conn: &Connection) -> Result<u32> {
+    let n: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM capsules",
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(n)
+}
+
 pub fn list(conn: &Connection, limit: Option<u32>, compound: Option<&str>) -> Result<Vec<Capsule>> {
     let limit = limit.unwrap_or(50);
     let mut stmt = conn.prepare(

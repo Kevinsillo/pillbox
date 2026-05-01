@@ -58,14 +58,15 @@ pub fn cmd_prescription_list(limit: u32) -> Result<()> {
 
     let (conn, db_path) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
+    let total = prescriptions::count_by_bottle(&conn, &bottle.id)?;
     let rxs = prescriptions::list_by_bottle(&conn, &bottle.id, limit)?;
 
-    output::fmt::prescriptions_list(&bottle.name, &db_path.display().to_string(), &rxs, limit);
+    output::fmt::prescriptions_list(&bottle.name, &db_path.display().to_string(), &rxs, total);
     Ok(())
 }
 
 /// Muestra el detalle de una prescription (incluyendo descartadas) y sus pills.
-pub fn cmd_prescription_show(id: String) -> Result<()> {
+pub fn cmd_prescription_show(id: String, limit: u32) -> Result<()> {
     use pillbox::db::store::{pills, prescriptions};
 
     let (conn, _) = open_resolved_db()?;
@@ -83,7 +84,7 @@ pub fn cmd_prescription_show(id: String) -> Result<()> {
     };
 
     let pill_list = pills::list_by_prescription(&conn, &rx.id)?;
-    output::fmt::prescription_show(&rx, &pill_list);
+    output::fmt::prescription_show(&rx, &pill_list, limit);
     Ok(())
 }
 
