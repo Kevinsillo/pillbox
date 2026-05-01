@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
 import type { Prescription, Pill } from '@/core/domain/types'
+import { formatAuthor } from '@/core/domain/author'
 import PillCard from '@/components/PillCard.vue'
 import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
@@ -38,6 +39,9 @@ onMounted(load)
 
 const isOpen = computed(() => rx.value?.ended_at === null && rx.value?.deleted_at === null)
 const isArchived = computed(() => !!rx.value?.deleted_at)
+const authorDisplay = computed(() =>
+    rx.value ? formatAuthor(rx.value.author_name, rx.value.author_email) : null
+)
 
 const activePills = computed(() => pills.value.filter(p => p.deleted_at === null))
 const archivedPills = computed(() => pills.value.filter(p => p.deleted_at !== null))
@@ -104,6 +108,7 @@ async function purgeRx() {
                             {{ $t('prescription_detail.started_at') }} {{ new Date(rx.started_at).toLocaleString() }}
                             <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ new Date(rx.ended_at).toLocaleString() }}</span>
                         </p>
+                        <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">{{ authorDisplay }}</p>
                     </div>
                 </div>
                 <div class="flex gap-2">

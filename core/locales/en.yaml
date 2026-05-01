@@ -122,6 +122,7 @@ pills:
       num: "#"
       compound: "Compound"
       title: "Title"
+      author: "Author"
 
 pill:
   detail:
@@ -130,6 +131,7 @@ pill:
     title: "Title"
     prescription: "Prescription"
     created: "Created"
+    author: "Author"
   error:
     not_found: "Pill #%{id} not found."
 
@@ -164,6 +166,7 @@ prescriptions:
       id: "ID"
       title: "Title"
       state: "Status"
+      author: "Author"
       archived_at: "Archived At"
     archived_section: "Archived (%{count})"
   msg:
@@ -180,6 +183,7 @@ prescription:
     title: "Title"
     state: "Status"
     started: "Started"
+    author: "Author"
   pills:
     archived_section: "Archived (%{count})"
 

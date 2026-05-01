@@ -104,7 +104,8 @@
     "modal_title": "New prescription",
     "field_title_placeholder": "Implement feature X",
     "archived_heading": "Archived",
-    "archived_badge": "Archived"
+    "archived_badge": "Archived",
+    "author": "Author"
   },
   "prescription_detail": {
     "status_open": "open",
@@ -121,7 +122,8 @@
     "confirm_delete_rx": "Delete this prescription and all its pills?",
     "confirm_delete_pill": "Delete pill \"{title}\"?",
     "archived_pills_heading": "Archived",
-    "archived_badge": "Archived"
+    "archived_badge": "Archived",
+    "author": "Author"
   },
   "capsules": {
     "heading": "Capsules",
@@ -158,14 +160,16 @@
   "pill_detail": {
     "created_at": "Created",
     "updated_at": "Updated",
-    "archived_badge": "Archived"
+    "archived_badge": "Archived",
+    "author": "Author"
   },
   "pill_edit": {
     "heading": "Editing pill"
   },
   "pill_card": {
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "author": "Author"
   },
   "api_errors": {
     "bottle_not_found": "The selected bottle does not exist or was deleted. Select another one from the sidebar.",

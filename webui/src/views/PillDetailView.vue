@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CompoundBadge from "@/components/CompoundBadge.vue"
 import type { Pill } from "@/core/domain/types"
+import { formatAuthor } from "@/core/domain/author"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { useConfirm } from "@/composables/useConfirm"
 import { marked } from "marked"
@@ -20,6 +21,9 @@ const pill = ref<Pill | null>(null)
 const loading = ref(false)
 
 const isArchived = computed(() => !!pill.value?.deleted_at)
+const authorDisplay = computed(() =>
+    pill.value ? formatAuthor(pill.value.author_name, pill.value.author_email) : null
+)
 
 async function load() {
     loading.value = true
@@ -93,7 +97,9 @@ const renderedContent = computed(() => (pill.value ? (marked.parse(pill.value.co
                                 · {{ $t("pill_detail.updated_at") }} {{ new Date(pill.updated_at).toLocaleString() }}
                             </span>
                         </p>
-                        <p v-if="pill.author_name" class="text-xs text-zinc-600 mt-0.5">{{ pill.author_name }}</p>
+                        <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">
+                            {{ $t('pill_detail.author') }}: {{ authorDisplay }}
+                        </p>
                     </div>
                 </div>
                 <div class="flex gap-2">

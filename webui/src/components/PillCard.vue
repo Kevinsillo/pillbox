@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import type { Pill } from '@/core/domain/types'
+import { formatAuthor } from '@/core/domain/author'
 import CompoundBadge from './CompoundBadge.vue'
 import IFileText from '~icons/lucide/file-text'
 import ITrash2 from '~icons/lucide/trash-2'
@@ -32,7 +33,7 @@ defineEmits<{ delete: [] }>()
                     <CompoundBadge :compound="pill.compound" />
                     <p class="text-(--text-h) font-medium text-sm">{{ pill.title }}</p>
                 </div>
-                <p class="text-xs text-zinc-600">{{ new Date(pill.updated_at).toLocaleString() }}</p>
+                <p class="text-xs text-zinc-600">{{ new Date(pill.updated_at).toLocaleString() }}<template v-if="formatAuthor(pill.author_name, pill.author_email)"> · {{ formatAuthor(pill.author_name, pill.author_email) }}</template></p>
             </div>
         </div>
         <div v-if="editable && pill.prescription_id" class="flex gap-2 shrink-0" @click.prevent>

@@ -104,7 +104,8 @@
     "modal_title": "Nouvelle prescription",
     "field_title_placeholder": "Implémenter la fonctionnalité X",
     "archived_heading": "Archivées",
-    "archived_badge": "Archivée"
+    "archived_badge": "Archivée",
+    "author": "Auteur"
   },
   "prescription_detail": {
     "status_open": "ouverte",
@@ -121,7 +122,8 @@
     "confirm_delete_rx": "Supprimer cette prescription et toutes ses pills ?",
     "confirm_delete_pill": "Supprimer la pill \"{title}\" ?",
     "archived_pills_heading": "Archivées",
-    "archived_badge": "Archivée"
+    "archived_badge": "Archivée",
+    "author": "Auteur"
   },
   "capsules": {
     "heading": "Capsules",
@@ -158,14 +160,16 @@
   "pill_detail": {
     "created_at": "Créée",
     "updated_at": "Mise à jour",
-    "archived_badge": "Archivée"
+    "archived_badge": "Archivée",
+    "author": "Auteur"
   },
   "pill_edit": {
     "heading": "Modifier la pill"
   },
   "pill_card": {
     "edit": "Modifier",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "author": "Auteur"
   },
   "api_errors": {
     "bottle_not_found": "La bottle sélectionnée n'existe pas ou a été supprimée. Sélectionnez-en une autre dans la barre latérale.",

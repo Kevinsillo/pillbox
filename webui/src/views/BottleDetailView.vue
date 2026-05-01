@@ -6,10 +6,9 @@ import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository
 import type { Bottle, Prescription } from '@/core/domain/types'
 import { RouterLink, useRouter } from 'vue-router'
 import IArrowLeft from '~icons/lucide/arrow-left'
-import IClipboard from '~icons/lucide/clipboard'
 import ITrash2 from '~icons/lucide/trash-2'
 import IZap from '~icons/lucide/zap'
-import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
+import PrescriptionCard from '@/components/PrescriptionCard.vue'
 import { useActiveBottle } from '@/composables/useActiveBottle'
 
 const { t } = useI18n()
@@ -41,7 +40,7 @@ async function load() {
 
 onMounted(load)
 
-const isOpen = (rx: Prescription) => rx.ended_at === null && rx.deleted_at === null
+
 
 async function deleteBottle() {
     if (!bottle.value) return
@@ -110,45 +109,24 @@ async function deleteBottle() {
                 </h2>
                 <div v-if="prescriptions.length === 0" class="text-zinc-500 text-sm">{{ $t('bottle_detail.empty') }}</div>
                 <div v-else class="space-y-2">
-                    <RouterLink
+                    <PrescriptionCard
                         v-for="rx in activePrescriptions"
                         :key="rx.id"
-                        :to="`/bottles/${props.bottle_id}/prescriptions/${rx.id}`"
-                        class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
-                    >
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
-                                <IClipboard class="w-4 h-4 text-zinc-400" />
-                            </div>
-                            <div class="space-y-1 min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <PrescriptionStatusBadge :open="isOpen(rx)" />
-                                    <span class="text-(--text-h) text-sm font-medium">{{ rx.title }}</span>
-                                </div>
-                                <p class="text-xs text-zinc-600">{{ new Date(rx.started_at).toLocaleString() }}</p>
-                            </div>
-                        </div>
-                    </RouterLink>
+                        :prescription="rx"
+                        :bottle-id="props.bottle_id"
+                    />
 
                     <template v-if="archivedPrescriptions.length > 0">
                         <h3 class="text-xs font-semibold text-zinc-600 uppercase tracking-wider mt-4 mb-2">
                             {{ $t('bottle_detail.archived_heading') }} ({{ archivedPrescriptions.length }})
                         </h3>
-                        <div v-for="rx in archivedPrescriptions" :key="rx.id" class="opacity-50 relative">
-                            <RouterLink
-                                :to="`/bottles/${props.bottle_id}/prescriptions/${rx.id}`"
-                                class="flex items-center gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
-                            >
-                                <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
-                                    <IClipboard class="w-4 h-4 text-zinc-400" />
-                                </div>
-                                <div class="space-y-1 min-w-0">
-                                    <span class="text-(--text-h) text-sm font-medium">{{ rx.title }}</span>
-                                    <p class="text-xs text-zinc-600">{{ new Date(rx.started_at).toLocaleString() }}</p>
-                                </div>
-                            </RouterLink>
-                            <span class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text) pointer-events-none">{{ $t('bottle_detail.archived_badge') }}</span>
-                        </div>
+                        <PrescriptionCard
+                            v-for="rx in archivedPrescriptions"
+                            :key="rx.id"
+                            :prescription="rx"
+                            :bottle-id="props.bottle_id"
+                            :archived="true"
+                        />
                     </template>
                 </div>
             </div>

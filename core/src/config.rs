@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Puerto por defecto del servidor HTTP.
 pub const DEFAULT_PORT: u16 = 4242;

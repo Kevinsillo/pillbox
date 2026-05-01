@@ -34,6 +34,8 @@ export interface Prescription {
     id: string
     bottle_id: string
     title: string
+    author_name: string | null
+    author_email: string | null
     started_at: string
     ended_at: string | null
     deleted_at: string | null

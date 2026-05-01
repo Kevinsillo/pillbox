@@ -342,7 +342,11 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
                 } else {
                     t!("prescriptions.state.open").green().to_string()
                 };
-                vec![short_id.to_string(), truncate(&rx.title, 40), estado]
+                let author = match &rx.author_name {
+                    Some(name) => truncate(name, 18),
+                    None => "-".dimmed().to_string(),
+                };
+                vec![short_id.to_string(), truncate(&rx.title, 40), estado, author]
             })
             .collect();
         println!(
@@ -352,6 +356,7 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
                     t!("prescriptions.list.col.id").as_ref(),
                     t!("prescriptions.list.col.title").as_ref(),
                     t!("prescriptions.list.col.state").as_ref(),
+                    t!("prescriptions.list.col.author").as_ref(),
                 ],
                 rows
             )
@@ -382,10 +387,15 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
                     .unwrap_or("—")
                     .dimmed()
                     .to_string();
+                let author = match &rx.author_name {
+                    Some(name) => truncate(name, 18).dimmed().to_string(),
+                    None => "-".dimmed().to_string(),
+                };
                 vec![
                     short_id.dimmed().to_string(),
                     truncate(&rx.title, 36).dimmed().to_string(),
                     estado,
+                    author,
                     archived_date,
                 ]
             })
@@ -397,6 +407,7 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
                     t!("prescriptions.list.col.id").as_ref(),
                     t!("prescriptions.list.col.title").as_ref(),
                     t!("prescriptions.list.col.state").as_ref(),
+                    t!("prescriptions.list.col.author").as_ref(),
                     t!("prescriptions.list.col.archived_at").as_ref(),
                 ],
                 rows
@@ -617,6 +628,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
         t!("prescriptions.state.open").green().to_string()
     };
     let short_id = &rx.id[..rx.id.len().min(8)];
+    let author_val = rx.author_name.as_deref().unwrap_or("-").to_string();
     let rows = vec![
         [
             t!("prescription.show.id").bold().to_string(),
@@ -630,6 +642,10 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
         [
             t!("prescription.show.started").bold().to_string(),
             rx.started_at.clone(),
+        ],
+        [
+            t!("prescription.show.author").bold().to_string(),
+            author_val,
         ],
     ];
     println!("\n{}", table::dict(rows));
@@ -661,6 +677,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
                     p.id.to_string(),
                     truncate(&p.compound, 16),
                     truncate(&p.title, 50),
+                    p.author_name.as_deref().map(|n| truncate(n, 18)).unwrap_or_else(|| "-".dimmed().to_string()),
                 ]
             })
             .collect();
@@ -671,6 +688,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
                     t!("pills.list.col.num").as_ref(),
                     t!("pills.list.col.compound").as_ref(),
                     t!("pills.list.col.title").as_ref(),
+                    t!("pills.list.col.author").as_ref(),
                 ],
                 table_rows,
             )
@@ -692,6 +710,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
                     p.id.to_string().dimmed().to_string(),
                     truncate(&p.compound, 16).dimmed().to_string(),
                     truncate(&p.title, 50).dimmed().to_string(),
+                    p.author_name.as_deref().map(|n| truncate(n, 18).dimmed().to_string()).unwrap_or_else(|| "-".dimmed().to_string()),
                 ]
             })
             .collect();
@@ -702,6 +721,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
                     t!("pills.list.col.num").as_ref(),
                     t!("pills.list.col.compound").as_ref(),
                     t!("pills.list.col.title").as_ref(),
+                    t!("pills.list.col.author").as_ref(),
                 ],
                 table_rows,
             )
@@ -716,6 +736,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
 pub fn pill_detail(pill: &Pill) {
     let short_id = format!("#{}", pill.id);
     let rx_short = &pill.prescription_id[..pill.prescription_id.len().min(8)];
+    let author_val = pill.author_name.as_deref().unwrap_or("-").to_string();
     let rows = vec![
         [t!("pill.detail.id").bold().to_string(), short_id],
         [
@@ -733,6 +754,10 @@ pub fn pill_detail(pill: &Pill) {
         [
             t!("pill.detail.created").bold().to_string(),
             pill.created_at.clone(),
+        ],
+        [
+            t!("pill.detail.author").bold().to_string(),
+            author_val,
         ],
     ];
     println!("\n{}", table::dict(rows));

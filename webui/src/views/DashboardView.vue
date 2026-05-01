@@ -11,8 +11,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import IArrowRight from '~icons/lucide/arrow-right'
-import IClipboard from '~icons/lucide/clipboard'
-import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
+import PrescriptionCard from '@/components/PrescriptionCard.vue'
 
 const { t } = useI18n()
 const { activeBottleId } = useActiveBottle()
@@ -110,23 +109,12 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
                 <div v-if="closedRx.length > 0">
                     <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">{{ $t('dashboard.last_prescriptions') }}</h2>
                     <div class="space-y-2">
-                        <RouterLink
+                        <PrescriptionCard
                             v-for="rx in closedRx"
                             :key="rx.id"
-                            :to="`/bottles/${activeBottleId}/prescriptions/${rx.id}`"
-                            class="flex items-center gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
-                        >
-                            <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
-                                <IClipboard class="w-4 h-4 text-zinc-400" />
-                            </div>
-                            <div class="space-y-1 min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <PrescriptionStatusBadge :open="false" />
-                                    <p class="text-sm text-(--text-h) font-medium">{{ rx.title }}</p>
-                                </div>
-                                <p class="text-xs text-zinc-600">{{ new Date(rx.ended_at!).toLocaleDateString() }}</p>
-                            </div>
-                        </RouterLink>
+                            :prescription="rx"
+                            :bottle-id="activeBottleId ?? ''"
+                        />
                     </div>
                     <RouterLink :to="`/bottles/${activeBottleId}`"
                                 class="text-xs text-zinc-500 hover:text-zinc-300 mt-2 inline-block">
