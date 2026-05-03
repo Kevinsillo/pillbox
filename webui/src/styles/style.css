@@ -226,3 +226,26 @@ button {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+
+/* TransitionGroup polling animations */
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+.list-leave-active {
+  position: absolute;
+  width: 100%;
+  transition: opacity 250ms ease, transform 250ms ease;
+}

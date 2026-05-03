@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
 import { useActiveBottle } from '@/composables/useActiveBottle'
+import { usePoll } from '@/composables/usePoll'
 import type { Bottle } from '@/core/domain/types'
 import { RouterLink } from 'vue-router'
 import { useConfirm } from '@/composables/useConfirm'
@@ -14,12 +15,17 @@ const { t } = useI18n()
 const { confirm, prompt, alert } = useConfirm()
 const { activeBottleId } = useActiveBottle()
 const bottles = ref<Bottle[]>([])
-const loading = ref(false)
+
+let currentToken = 0
 
 async function load() {
-    loading.value = true
-    try { bottles.value = await bottlesApi.list() } finally { loading.value = false }
+    const token = ++currentToken
+    const next = await bottlesApi.list()
+    if (token !== currentToken) return
+    bottles.value = next
 }
+
+const poll = usePoll(load, 5000)
 
 async function updateRegistration(b: Bottle) {
     if (!b.reg_id) return
@@ -35,7 +41,7 @@ async function updateRegistration(b: Bottle) {
     } catch { return }
     try {
         await bottlesApi.updateRegistration(b.reg_id, result.value)
-        await load()
+        poll.restart()
     } catch (e: unknown) {
         await alert(e instanceof Error ? e.message : t('common.error'))
     }
@@ -51,8 +57,6 @@ async function deleteRegistration(b: Bottle) {
         bottles.value = bottles.value.filter(x => x.reg_id !== b.reg_id)
     } catch { /* el error ya se muestra en el servidor */ }
 }
-
-onMounted(load)
 </script>
 
 <template>
@@ -61,15 +65,20 @@ onMounted(load)
             <h1 class="text-2xl font-bold text-(--text-h)">{{ $t('nav.bottles') }}</h1>
         </div>
 
-        <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
+        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
 
         <div v-else-if="bottles.length === 0" class="text-center py-16 text-zinc-500">
             <p>{{ $t('bottles.empty') }}</p>
         </div>
 
-        <div v-else class="space-y-2">
-            <template v-for="b in bottles" :key="b.linked ? b.id : b.reg_id">
-
+        <TransitionGroup
+            v-else
+            name="list"
+            tag="div"
+            class="space-y-2 relative transition-opacity duration-300"
+            :class="poll.loaded.value ? 'opacity-100' : 'opacity-0'"
+        >
+            <div v-for="b in bottles" :key="b.linked ? `b-${b.id}` : `r-${b.reg_id}`">
                 <!-- Bottle vinculado (normal) -->
                 <RouterLink
                     v-if="b.linked"
@@ -136,8 +145,7 @@ onMounted(load)
                         </button>
                     </div>
                 </div>
-
-            </template>
-        </div>
+            </div>
+        </TransitionGroup>
     </div>
 </template>

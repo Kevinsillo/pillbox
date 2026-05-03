@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { bottlesApi } from "@/core/infrastructure/repositories/BottlesRepository"
+import type { BottleStats } from "@/core/domain/types"
 import { BarElement, CategoryScale, Chart as ChartJS, LinearScale, Tooltip } from "chart.js"
-import { computed, ref, watch } from "vue"
+import { computed } from "vue"
 import { Bar } from "vue-chartjs"
 import { useI18n } from "vue-i18n"
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip)
 
 const { t } = useI18n()
-
-const props = defineProps<{ bottleId: string }>()
 
 type Period = "1d" | "1w" | "1m" | "1y"
 
@@ -20,35 +18,20 @@ const PERIODS: { key: Period; days: number; labelKey: string }[] = [
     { key: "1y", days: 365, labelKey: "dashboard.chart_period_1y" },
 ]
 
-const activePeriod = ref<Period>("1m")
-const labels = ref<string[]>([])
-const counts = ref<number[]>([])
-const loading = ref(false)
-
-async function load(days: number) {
-    loading.value = true
-    try {
-        const stats = await bottlesApi.stats(props.bottleId, days)
-        labels.value = stats.pills_per_day.map(d => d.date)
-        counts.value = stats.pills_per_day.map(d => d.count)
-    } finally {
-        loading.value = false
-    }
-}
-
-watch(
-    () => props.bottleId,
-    () => {
-        const period = PERIODS.find(p => p.key === activePeriod.value)!
-        load(period.days)
-    },
-    { immediate: true },
+const props = withDefaults(
+    defineProps<{ stats: BottleStats | null; activePeriod?: Period }>(),
+    { activePeriod: "1m" },
 )
 
+const emit = defineEmits<{ 'period-change': [days: number, key: Period] }>()
+
+const labels = computed<string[]>(() => props.stats?.pills_per_day.map(d => d.date) ?? [])
+const counts = computed<number[]>(() => props.stats?.pills_per_day.map(d => d.count) ?? [])
+
 function selectPeriod(p: Period) {
-    activePeriod.value = p
+    if (p === props.activePeriod) return
     const period = PERIODS.find(x => x.key === p)!
-    load(period.days)
+    emit('period-change', period.days, period.key)
 }
 
 const chartData = computed(() => ({
@@ -91,7 +74,7 @@ const chartOptions = computed(() => ({
                 font: { size: 10 },
                 maxRotation: 0,
                 autoSkip: true,
-                maxTicksLimit: activePeriod.value === "1y" ? 12 : activePeriod.value === "1m" ? 6 : undefined,
+                maxTicksLimit: props.activePeriod === "1y" ? 12 : props.activePeriod === "1m" ? 6 : undefined,
             },
             border: { display: false },
         },
@@ -107,6 +90,8 @@ const chartOptions = computed(() => ({
         },
     },
 }))
+
+const hasData = computed(() => props.stats !== null)
 </script>
 
 <template>
@@ -117,7 +102,7 @@ const chartOptions = computed(() => ({
                 <button
                     v-for="p in PERIODS"
                     :key="p.key"
-                    :class="activePeriod === p.key ? 'bg-(--accent-bg) text-(--text-h)' : 'text-zinc-500 hover:text-(--text-h)'"
+                    :class="props.activePeriod === p.key ? 'bg-(--accent-bg) text-(--text-h)' : 'text-zinc-500 hover:text-(--text-h)'"
                     class="px-2 py-0.5 rounded text-xs transition-colors"
                     @click="selectPeriod(p.key)"
                 >
@@ -126,7 +111,7 @@ const chartOptions = computed(() => ({
             </div>
         </div>
         <div class="h-28 relative">
-            <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
+            <div v-if="!hasData" class="absolute inset-0 flex items-center justify-center">
                 <span class="text-xs text-zinc-600">…</span>
             </div>
             <Bar v-else :data="chartData" :options="chartOptions" />
