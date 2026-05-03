@@ -1,3 +1,36 @@
+## [0.10.0] - 2026-05-03
+
+### 🚀 Features
+
+- *(core)* Añadir author_name/author_email a prescriptions en todas las capas
+- *(author)* Mostrar autor en cli, webui y mcp
+- *(cli)* Añadir límite paginado a todos los comandos list y prescription show
+- *(bottle)* Añadir subcomando vinculate para registro multi-usuario
+- *(serve)* Reemplazar daemon inline por servicio del sistema OS
+- *(webui)* Añadir polling en tiempo real y animaciones de lista
+
+### 🐛 Bug Fixes
+
+- Ajustes en CLI, MCP y webui
+- *(migrate)* Corregir actualización de scope y db_path al migrar bottle
+- *(webui)* Corregir colores del chip "archivada" en modo claro y añadirlo a prescriptions
+- *(webui)* Corregir chip archivada en prescription cards de BottleDetailView
+
+### 🚜 Refactor
+
+- *(webui)* Separar botón de borrar en archivar y eliminar definitivamente
+- *(core)* Eliminar código muerto no utilizado
+- *(uninstall)* Confirmación única con lista de componentes a eliminar
+
+### 📚 Documentation
+
+- *(core)* Añadir documentación rustdoc a todos los módulos y funciones públicas
+
+### 🎨 Styling
+
+- *(webui)* Añadir icono de clipboard antes del nombre en detalle de prescription
+- *(output)* Mejorar formato de lang show y tabla dict
+
 ## [0.9.0] - 2026-04-30
 
 ### 🚀 Features
@@ -13,6 +46,10 @@
 ### 🚜 Refactor
 
 - *(mcp)* Renombrar pill_take → pill_store y capsule_take → capsule_store
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.9.0
 
 ## [0.8.0] - 2026-04-28
 
