@@ -100,22 +100,23 @@ serve:
   title: "Serveur web"
   running: "en cours"
   stopped: "arrêté"
-  daemon_started: "Serveur démarré en arrière-plan (PID %{pid}, port %{port})."
   labels:
     url: "URL"
-    pid: "PID"
     estado: "Statut"
-  inline:
-    running: "en cours — http://localhost:%{port}  (PID %{pid})"
-    stopped: "arrêté — http://localhost:%{port}"
-  error:
-    already_running: "Le serveur est déjà en cours d'exécution (PID %{pid})."
-    no_db: "aucun DB Pillbox trouvé"
-    start_failed: "Le serveur n'a pas pu démarrer. Vérifiez le journal : ~/.pillbox/pillbox.log"
+    port: "Port"
+  install:
+    success: "Service installé. Exécutez 'pillbox serve start' pour le démarrer."
+  uninstall:
+    success: "Service désinstallé."
+  start:
+    success: "Service démarré"
   stop:
-    none: "Aucun serveur en cours d'exécution."
-    dead: "Aucun serveur en cours d'exécution (PID %{pid} n'existe pas)."
-    done: "Serveur arrêté (PID %{pid})."
+    success: "Service arrêté"
+  error:
+    no_db: "aucun DB Pillbox trouvé"
+    not_installed: "Le service n'est pas installé. Exécutez d'abord 'pillbox serve install'."
+    hosts_write: "Impossible d'écrire dans le fichier hosts (permission refusée). Accédez via http://localhost à la place."
+    already_installed: "Le service est déjà installé. Exécutez d'abord 'pillbox serve uninstall'."
 
 db:
   not_found: "Aucune Pillbox trouvée. Exécutez le script d'installation."
@@ -256,6 +257,9 @@ skill:
     download: "Erreur lors du téléchargement de la skill depuis %{url}"
 
 uninstall:
+  serve:
+    prompt: "Voulez-vous désinstaller le service système ?"
+    done: "Service désinstallé."
   mcp:
     prompt: "Supprimer le serveur MCP ?"
     done: "MCP supprimé."
@@ -296,9 +300,11 @@ help:
       uninstall: "Désinstalle les composants de Pillbox."
       help: "Affiche cette aide."
     serve:
-      start: "Démarre le serveur HTTP en arrière-plan."
-      stop: "Arrête le serveur daemon."
-      status: "Affiche le statut du serveur."
+      install: "Installe le serveur HTTP en tant que service système."
+      uninstall: "Désinstalle le service système."
+      start: "Démarre le service système."
+      stop: "Arrête le service système."
+      status: "Affiche le statut du service."
     bottle:
       init: "Initialise une bottle dans le répertoire courant (assistant interactif)."
       status: "Statut de la bottle du répertoire courant."

@@ -4,11 +4,30 @@ use anyhow::Result;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
-/// Desinstala interactivamente los componentes de Pillbox: MCP, skill, DB global y binario.
+use crate::cmd::serve::{cmd_serve_uninstall, is_installed};
+
+/// Desinstala interactivamente los componentes de Pillbox: servicio, MCP, skill, DB global y binario.
 ///
 /// Cada componente pide confirmación por separado antes de eliminarlo.
 pub fn run() -> Result<()> {
     use inquire::Confirm;
+
+    // Servicio del sistema PRIMERO — si está instalado, debe desinstalarse antes
+    // de borrar binarios o DB (best-effort: errores aquí no abortan el flujo).
+    if is_installed()
+        && Confirm::new(&t!("uninstall.serve.prompt"))
+            .with_default(false)
+            .prompt()?
+    {
+        match cmd_serve_uninstall() {
+            Ok(_) => {
+                // cmd_serve_uninstall ya imprime su propio mensaje de éxito.
+            }
+            Err(e) => {
+                eprintln!("{} {}", "!".yellow().bold(), e);
+            }
+        }
+    }
 
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
     if mcp_dir.exists() {

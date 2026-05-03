@@ -100,22 +100,23 @@ serve:
   title: "Webserver"
   running: "läuft"
   stopped: "gestoppt"
-  daemon_started: "Server im Hintergrund gestartet (PID %{pid}, Port %{port})."
   labels:
     url: "URL"
-    pid: "PID"
     estado: "Status"
-  inline:
-    running: "läuft — http://localhost:%{port}  (PID %{pid})"
-    stopped: "gestoppt — http://localhost:%{port}"
-  error:
-    already_running: "Server läuft bereits (PID %{pid})."
-    no_db: "keine Pillbox-DB gefunden"
-    start_failed: "Server konnte nicht gestartet werden. Log prüfen: ~/.pillbox/pillbox.log"
+    port: "Port"
+  install:
+    success: "Dienst installiert. Führe 'pillbox serve start' aus, um ihn zu starten."
+  uninstall:
+    success: "Dienst deinstalliert."
+  start:
+    success: "Dienst gestartet"
   stop:
-    none: "Kein Server läuft."
-    dead: "Kein Server läuft (PID %{pid} existiert nicht)."
-    done: "Server gestoppt (PID %{pid})."
+    success: "Dienst gestoppt"
+  error:
+    no_db: "keine Pillbox-DB gefunden"
+    not_installed: "Dienst ist nicht installiert. Führe zuerst 'pillbox serve install' aus."
+    hosts_write: "Hosts-Datei konnte nicht geschrieben werden (Berechtigung verweigert). Greife stattdessen über http://localhost zu."
+    already_installed: "Der Dienst ist bereits installiert. Führe zuerst 'pillbox serve uninstall' aus."
 
 db:
   not_found: "Keine Pillbox gefunden. Führe das Installationsskript aus."
@@ -256,6 +257,9 @@ skill:
     download: "Fehler beim Herunterladen der Skill von %{url}"
 
 uninstall:
+  serve:
+    prompt: "Möchtest du den Systemdienst deinstallieren?"
+    done: "Dienst deinstalliert."
   mcp:
     prompt: "MCP-Server entfernen?"
     done: "MCP entfernt."
@@ -296,9 +300,11 @@ help:
       uninstall: "Deinstalliert Pillbox-Komponenten."
       help: "Zeigt diese Hilfe."
     serve:
-      start: "Startet den HTTP-Server im Hintergrund."
-      stop: "Stoppt den Daemon-Server."
-      status: "Zeigt den Serverstatus an."
+      install: "Installiert den HTTP-Server als Systemdienst."
+      uninstall: "Deinstalliert den Systemdienst."
+      start: "Startet den Systemdienst."
+      stop: "Stoppt den Systemdienst."
+      status: "Zeigt den Dienststatus an."
     bottle:
       init: "Initialisiert eine Bottle im aktuellen Verzeichnis (interaktiver Assistent)."
       status: "Status der Bottle im aktuellen Verzeichnis."

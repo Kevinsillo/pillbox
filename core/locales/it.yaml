@@ -100,22 +100,23 @@ serve:
   title: "Server web"
   running: "in esecuzione"
   stopped: "fermato"
-  daemon_started: "Server avviato in background (PID %{pid}, porta %{port})."
   labels:
     url: "URL"
-    pid: "PID"
     estado: "Stato"
-  inline:
-    running: "in esecuzione — http://localhost:%{port}  (PID %{pid})"
-    stopped: "fermato — http://localhost:%{port}"
-  error:
-    already_running: "Il server è già in esecuzione (PID %{pid})."
-    no_db: "nessun DB Pillbox trovato"
-    start_failed: "Il server non è riuscito ad avviarsi. Controlla il log: ~/.pillbox/pillbox.log"
+    port: "Porta"
+  install:
+    success: "Servizio installato. Esegui 'pillbox serve start' per avviarlo."
+  uninstall:
+    success: "Servizio disinstallato."
+  start:
+    success: "Servizio avviato"
   stop:
-    none: "Nessun server in esecuzione."
-    dead: "Nessun server in esecuzione (PID %{pid} non esiste)."
-    done: "Server fermato (PID %{pid})."
+    success: "Servizio fermato"
+  error:
+    no_db: "nessun DB Pillbox trovato"
+    not_installed: "Il servizio non è installato. Esegui prima 'pillbox serve install'."
+    hosts_write: "Impossibile scrivere nel file hosts (permesso negato). Accedi tramite http://localhost invece."
+    already_installed: "Il servizio è già installato. Esegui prima 'pillbox serve uninstall'."
 
 db:
   not_found: "Nessuna Pillbox trovata. Esegui lo script di installazione."
@@ -256,6 +257,9 @@ skill:
     download: "Errore durante il download della skill da %{url}"
 
 uninstall:
+  serve:
+    prompt: "Vuoi disinstallare il servizio di sistema?"
+    done: "Servizio disinstallato."
   mcp:
     prompt: "Rimuovere il server MCP?"
     done: "MCP rimosso."
@@ -296,9 +300,11 @@ help:
       uninstall: "Disinstalla componenti di Pillbox."
       help: "Mostra questo aiuto."
     serve:
-      start: "Avvia il server HTTP in background."
-      stop: "Ferma il server daemon."
-      status: "Mostra lo stato del server."
+      install: "Installa il server HTTP come servizio di sistema."
+      uninstall: "Disinstalla il servizio di sistema."
+      start: "Avvia il servizio di sistema."
+      stop: "Ferma il servizio di sistema."
+      status: "Mostra lo stato del servizio."
     bottle:
       init: "Inizializza una bottle nella directory corrente (wizard interattivo)."
       status: "Stato della bottle nella directory corrente."

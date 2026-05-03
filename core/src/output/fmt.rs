@@ -302,24 +302,36 @@ pub fn status(
     );
 }
 
-/// Muestra el estado del servidor HTTP embebido: running/stopped, PID y puerto.
-pub fn serve_status(running: bool, pid: Option<u32>, port: u16) {
+/// Confirma en pantalla que el servicio ha arrancado (Pattern A).
+pub fn serve_started(url: &str) {
+    print_a(
+        &t!("serve.start.success"),
+        &[(t!("serve.labels.url").as_ref(), &url.cyan().to_string())],
+    );
+}
+
+/// Confirma en pantalla que el servicio se ha detenido (Pattern B).
+pub fn serve_stopped() {
+    print_b(&t!("serve.stop.success"));
+}
+
+/// Muestra el estado del servicio del sistema: running/stopped y URL canónica (Pattern D).
+///
+/// Cuando el servicio está parado se omite la URL.
+pub fn serve_status(running: bool, url: Option<&str>) {
     let estado = if running {
         format!("{} {}", "●".green(), t!("serve.running"))
     } else {
         format!("{} {}", "●".red(), t!("serve.stopped"))
     };
-    let mut rows = vec![
-        [t!("serve.labels.estado").bold().to_string(), estado],
-        [
+    let mut rows = vec![[t!("serve.labels.estado").bold().to_string(), estado]];
+    if let Some(u) = url {
+        rows.push([
             t!("serve.labels.url").bold().to_string(),
-            format!("http://localhost:{}", port),
-        ],
-    ];
-    if let Some(p) = pid {
-        rows.push([t!("serve.labels.pid").bold().to_string(), p.to_string()]);
+            u.cyan().to_string(),
+        ]);
     }
-    println!("{}\n", table::dict(rows));
+    println!("\n{}\n", table::dict(rows));
 }
 
 /// Muestra un texto de ayuda con una línea de estado insertada tras el about.

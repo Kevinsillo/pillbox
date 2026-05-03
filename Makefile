@@ -80,8 +80,9 @@ db-reset:
 
 ## Compila (webui + core) e instala el binario
 install:
-	@pillbox serve stop 2>/dev/null && echo "✓ pillbox serve detenido" || true
+	@systemctl --user stop pillbox-daemon 2>/dev/null && echo "✓ pillbox serve detenido" || true
 	$(MAKE) build-full
 	mkdir -p $${HOME}/.local/bin
 	cp core/target/release/pillbox $${HOME}/.local/bin/pillbox
 	@echo "✓ pillbox instalado en ~/.local/bin/pillbox"
+	@systemctl --user start pillbox-daemon 2>/dev/null && echo "✓ pillbox serve arrancado" || true

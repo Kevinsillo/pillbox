@@ -81,14 +81,6 @@ pub fn skill_path() -> PathBuf {
         .join("SKILL.md")
 }
 
-/// Ruta del PID del servidor daemon: `~/.pillbox/pillbox.pid`
-pub fn pid_path() -> PathBuf {
-    dirs::home_dir()
-        .expect("failed to resolve home directory")
-        .join(format!(".{}", env!("CARGO_PKG_NAME")))
-        .join("pillbox.pid")
-}
-
 /// Ruta del fichero de configuración de Claude Code: `~/.claude.json`
 pub fn claude_config_path() -> PathBuf {
     dirs::home_dir()
@@ -96,12 +88,12 @@ pub fn claude_config_path() -> PathBuf {
         .join(".claude.json")
 }
 
-/// Ruta del log del servidor daemon: `~/.pillbox/pillbox.log`
-pub fn log_path() -> PathBuf {
+/// Ruta donde el servicio de sistema persiste el puerto activo: `~/.pillbox/serve.port`
+pub fn serve_port_path() -> PathBuf {
     dirs::home_dir()
         .expect("failed to resolve home directory")
         .join(format!(".{}", env!("CARGO_PKG_NAME")))
-        .join("pillbox.log")
+        .join("serve.port")
 }
 
 #[cfg(test)]
@@ -136,22 +128,15 @@ mod tests {
     }
 
     #[test]
-    fn pid_path_ends_with_pillbox_pid() {
-        let path = pid_path();
-        assert!(path.ends_with("pillbox.pid"));
-        assert!(path.to_string_lossy().contains("pillbox"));
-    }
-
-    #[test]
-    fn log_path_ends_with_pillbox_log() {
-        let path = log_path();
-        assert!(path.ends_with("pillbox.log"));
-    }
-
-    #[test]
     fn claude_config_path_ends_with_dot_claude_json() {
         let path = claude_config_path();
         assert!(path.ends_with(".claude.json"));
+    }
+
+    #[test]
+    fn serve_port_path_ends_with_serve_port() {
+        let path = serve_port_path();
+        assert!(path.ends_with(".pillbox/serve.port"));
     }
 
 }

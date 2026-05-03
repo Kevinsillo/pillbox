@@ -105,17 +105,24 @@ enum Command {
 
 #[derive(Subcommand)]
 enum ServeCommand {
-    /// Arranca el servidor HTTP en segundo plano.
-    Start {
-        #[arg(short, long, default_value = "4242")]
+    /// Ejecuta el servidor en primer plano (invocado por el gestor de servicios).
+    #[command(hide = true)]
+    Run {
+        #[arg(short, long, default_value_t = pillbox::config::DEFAULT_PORT)]
         port: u16,
-        /// Ejecuta en primer plano (para desarrollo).
-        #[arg(short, long)]
-        inline: bool,
     },
-    /// Para el servidor daemon.
+    /// Instala el servidor HTTP como servicio del sistema.
+    Install {
+        #[arg(short, long, default_value_t = pillbox::config::DEFAULT_PORT)]
+        port: u16,
+    },
+    /// Desinstala el servicio del sistema.
+    Uninstall,
+    /// Arranca el servicio del sistema.
+    Start,
+    /// Detiene el servicio del sistema.
     Stop,
-    /// Muestra el estado del servidor.
+    /// Muestra el estado del servicio.
     Status,
 }
 
@@ -261,12 +268,13 @@ async fn main() -> Result<()> {
         Some(Command::Status) => cmd::status::run(),
         Some(Command::Exec) => mcp::run(),
         Some(Command::Serve { cmd }) => match cmd {
-            Some(ServeCommand::Start { port, inline }) => {
-                cmd::serve::cmd_serve_start(port, inline).await
-            }
+            Some(ServeCommand::Run { port }) => cmd::serve::cmd_serve_run(port).await,
+            Some(ServeCommand::Install { port }) => cmd::serve::cmd_serve_install(port),
+            Some(ServeCommand::Uninstall) => cmd::serve::cmd_serve_uninstall(),
+            Some(ServeCommand::Start) => cmd::serve::cmd_serve_start(),
             Some(ServeCommand::Stop) => cmd::serve::cmd_serve_stop(),
             Some(ServeCommand::Status) => cmd::serve::cmd_serve_status(),
-            None => cmd_serve_info(),
+            None => cmd::serve::cmd_serve_info(),
         },
         Some(Command::Bottle { cmd }) => match cmd {
             Some(BottleCommand::Init) => cmd::bottle::cmd_bottle_init(),
@@ -420,22 +428,3 @@ fn cmd_skill_status() -> Result<()> {
     Ok(())
 }
 
-/// Muestra el estado del servidor HTTP junto al submenú de ayuda de `serve`.
-fn cmd_serve_info() -> Result<()> {
-    let pid_path = pillbox::config::pid_path();
-    let port = pillbox::config::DEFAULT_PORT;
-    let pid = cmd::serve::read_pid(&pid_path);
-    let running = cmd::serve::server_listening(port);
-    let status = if running {
-        format!(
-            "{} {}",
-            "●".green(),
-            t!("serve.inline.running", port = port, pid = pid.unwrap())
-        )
-    } else {
-        format!("{} {}", "●".red(), t!("serve.inline.stopped", port = port))
-    };
-    let line = format!("{}: {}", t!("serve.labels.estado").bold(), status);
-    output::fmt::help_with_status(&line, &render_help("serve"));
-    Ok(())
-}

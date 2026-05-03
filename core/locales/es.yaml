@@ -100,22 +100,23 @@ serve:
   title: "Servidor Web"
   running: "en ejecución"
   stopped: "detenido"
-  daemon_started: "Servidor iniciado en segundo plano (PID %{pid}, puerto %{port})."
   labels:
     url: "URL"
-    pid: "PID"
     estado: "Estado"
-  inline:
-    running: "en ejecución — http://localhost:%{port}  (PID %{pid})"
-    stopped: "detenido — http://localhost:%{port}"
-  error:
-    already_running: "El servidor ya está en ejecución (PID %{pid})."
-    no_db: "no se encontró ninguna DB de Pillbox"
-    start_failed: "El servidor no pudo arrancar. Revisa el log en ~/.pillbox/pillbox.log"
+    port: "Puerto"
+  install:
+    success: "Servicio instalado. Ejecuta 'pillbox serve start' para arrancarlo."
+  uninstall:
+    success: "Servicio desinstalado."
+  start:
+    success: "Servicio iniciado"
   stop:
-    none: "No hay ningún servidor en ejecución."
-    dead: "No hay ningún servidor en ejecución (PID %{pid} no existe)."
-    done: "Servidor detenido (PID %{pid})."
+    success: "Servicio detenido"
+  error:
+    no_db: "no se encontró ninguna DB de Pillbox"
+    not_installed: "El servicio no está instalado. Ejecuta 'pillbox serve install' primero."
+    hosts_write: "No se pudo escribir en el fichero hosts (permiso denegado). Accede vía http://localhost en su lugar."
+    already_installed: "El servicio ya está instalado. Ejecuta 'pillbox serve uninstall' primero."
 
 db:
   not_found: "No se encontró ninguna Pillbox. Ejecuta el script de instalación."
@@ -256,6 +257,9 @@ skill:
     download: "Error al descargar la skill desde %{url}"
 
 uninstall:
+  serve:
+    prompt: "¿Quieres desinstalar el servicio del sistema?"
+    done: "Servicio desinstalado."
   mcp:
     prompt: "¿Eliminar el servidor MCP?"
     done: "MCP eliminado."
@@ -296,9 +300,11 @@ help:
       uninstall: "Desinstala componentes de Pillbox."
       help: "Muestra esta ayuda."
     serve:
-      start: "Arranca el servidor HTTP en segundo plano."
-      stop: "Para el servidor daemon."
-      status: "Muestra el estado del servidor."
+      install: "Instala el servidor HTTP como servicio del sistema."
+      uninstall: "Desinstala el servicio del sistema."
+      start: "Arranca el servicio del sistema."
+      stop: "Detiene el servicio del sistema."
+      status: "Muestra el estado del servicio."
     bottle:
       init: "Inicializa un bottle en el directorio actual (wizard interactivo)."
       status: "Estado del bottle del directorio actual."

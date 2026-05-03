@@ -100,22 +100,23 @@ serve:
   title: "Web Server"
   running: "running"
   stopped: "stopped"
-  daemon_started: "Server started in background (PID %{pid}, port %{port})."
   labels:
     url: "URL"
-    pid: "PID"
     estado: "Status"
-  inline:
-    running: "running — http://localhost:%{port}  (PID %{pid})"
-    stopped: "stopped — http://localhost:%{port}"
-  error:
-    already_running: "Server is already running (PID %{pid})."
-    no_db: "no Pillbox DB found"
-    start_failed: "Server failed to start. Check the log at ~/.pillbox/pillbox.log"
+    port: "Port"
+  install:
+    success: "Service installed. Run 'pillbox serve start' to start it."
+  uninstall:
+    success: "Service uninstalled."
+  start:
+    success: "Service started"
   stop:
-    none: "No server is running."
-    dead: "No server is running (PID %{pid} does not exist)."
-    done: "Server stopped (PID %{pid})."
+    success: "Service stopped"
+  error:
+    no_db: "no Pillbox DB found"
+    not_installed: "Service is not installed. Run 'pillbox serve install' first."
+    hosts_write: "Could not write to hosts file (permission denied). Access via http://localhost instead."
+    already_installed: "Service is already installed. Run 'pillbox serve uninstall' first."
 
 db:
   not_found: "No Pillbox found. Run the install script."
@@ -256,6 +257,9 @@ skill:
     download: "Error downloading skill from %{url}"
 
 uninstall:
+  serve:
+    prompt: "Do you want to uninstall the system service?"
+    done: "Service uninstalled."
   mcp:
     prompt: "Remove the MCP server?"
     done: "MCP removed."
@@ -296,9 +300,11 @@ help:
       uninstall: "Uninstall Pillbox components."
       help: "Show this help."
     serve:
-      start: "Start the HTTP server in the background."
-      stop: "Stop the daemon server."
-      status: "Show server status."
+      install: "Install the HTTP server as a system service."
+      uninstall: "Uninstall the system service."
+      start: "Start the system service."
+      stop: "Stop the system service."
+      status: "Show service status."
     bottle:
       init: "Initialize a bottle in the current directory (interactive wizard)."
       status: "Status of the current directory's bottle."

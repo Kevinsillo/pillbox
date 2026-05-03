@@ -45,8 +45,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Async runtime (necesario para `pillbox serve`)
 tokio = { version = "1", features = ["full"] }
 
-# mDNS — descubrimiento de red local
-mdns-sd = "0.11"
+# Service manager multiplataforma (systemd / launchd / sc)
+service-manager = "0.7"
 
 # HTTP server
 axum = "0.7"
