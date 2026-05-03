@@ -257,21 +257,16 @@ skill:
     download: "Fehler beim Herunterladen der Skill von %{url}"
 
 uninstall:
-  serve:
-    prompt: "Möchtest du den Systemdienst deinstallieren?"
-    done: "Dienst deinstalliert."
-  mcp:
-    prompt: "MCP-Server entfernen?"
-    done: "MCP entfernt."
-  skill:
-    prompt: "Claude Code Skill entfernen?"
-    done: "Skill entfernt."
-  db:
-    prompt: "Globale DB entfernen? (alle Memories gehen verloren)"
-    done: "Globale DB entfernt."
-  bin:
-    prompt: "Binärdatei entfernen (%{path})?"
-    manual: "Manuell ausführen: rm %{path}"
+  items:
+    serve: "Systemdienst (pillbox-daemon)"
+    mcp: "MCP-Server (~/.pillbox/mcp/)"
+    skill: "Claude Code Skill (~/.claude/skills/pillbox/)"
+    db: "Globale Datenbank (~/.pillbox/pillbox.db)"
+    config: "Konfiguration (~/.pillbox/lang, ~/.pillbox/serve.port)"
+    bin: "Binärdatei (%{path})"
+  prompt: "Alle aufgeführten Komponenten entfernen? Diese Aktion kann nicht rückgängig gemacht werden."
+  done: "Pillbox deinstalliert."
+  bin_error: "Binärdatei konnte nicht automatisch entfernt werden. Manuell entfernen: rm %{path}"
 
 help:
   usage: "Verwendung:"

@@ -257,21 +257,16 @@ skill:
     download: "Erro ao baixar a skill de %{url}"
 
 uninstall:
-  serve:
-    prompt: "Deseja desinstalar o serviço de sistema?"
-    done: "Serviço desinstalado."
-  mcp:
-    prompt: "Remover o servidor MCP?"
-    done: "MCP removido."
-  skill:
-    prompt: "Remover a skill do Claude Code?"
-    done: "Skill removida."
-  db:
-    prompt: "Remover o DB global? (todas as memories serão perdidas)"
-    done: "DB global removido."
-  bin:
-    prompt: "Remover o binário (%{path})?"
-    manual: "Execute manualmente: rm %{path}"
+  items:
+    serve: "Serviço de sistema (pillbox-daemon)"
+    mcp: "Servidor MCP (~/.pillbox/mcp/)"
+    skill: "Skill do Claude Code (~/.claude/skills/pillbox/)"
+    db: "Base de dados global (~/.pillbox/pillbox.db)"
+    config: "Configuração (~/.pillbox/lang, ~/.pillbox/serve.port)"
+    bin: "Binário (%{path})"
+  prompt: "Remover todos os componentes listados? Esta ação não pode ser desfeita."
+  done: "Pillbox desinstalado."
+  bin_error: "Não foi possível remover o binário automaticamente. Remova manualmente: rm %{path}"
 
 help:
   usage: "Uso:"

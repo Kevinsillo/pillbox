@@ -257,21 +257,16 @@ skill:
     download: "Erreur lors du téléchargement de la skill depuis %{url}"
 
 uninstall:
-  serve:
-    prompt: "Voulez-vous désinstaller le service système ?"
-    done: "Service désinstallé."
-  mcp:
-    prompt: "Supprimer le serveur MCP ?"
-    done: "MCP supprimé."
-  skill:
-    prompt: "Supprimer la skill Claude Code ?"
-    done: "Skill supprimée."
-  db:
-    prompt: "Supprimer la DB globale ? (toutes les memories seront perdues)"
-    done: "DB globale supprimée."
-  bin:
-    prompt: "Supprimer le binaire (%{path}) ?"
-    manual: "Exécutez manuellement : rm %{path}"
+  items:
+    serve: "Service système (pillbox-daemon)"
+    mcp: "Serveur MCP (~/.pillbox/mcp/)"
+    skill: "Skill Claude Code (~/.claude/skills/pillbox/)"
+    db: "Base de données globale (~/.pillbox/pillbox.db)"
+    config: "Configuration (~/.pillbox/lang, ~/.pillbox/serve.port)"
+    bin: "Binaire (%{path})"
+  prompt: "Supprimer tous les composants listés ? Cette action est irréversible."
+  done: "Pillbox désinstallé."
+  bin_error: "Impossible de supprimer le binaire automatiquement. Supprimez-le manuellement : rm %{path}"
 
 help:
   usage: "Utilisation :"

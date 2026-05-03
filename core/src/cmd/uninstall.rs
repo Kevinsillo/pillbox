@@ -5,77 +5,91 @@ use owo_colors::OwoColorize;
 use rust_i18n::t;
 
 use crate::cmd::serve::{cmd_serve_uninstall, is_installed};
+use crate::i18n::lang_file_path;
 
-/// Desinstala interactivamente los componentes de Pillbox: servicio, MCP, skill, DB global y binario.
-///
-/// Cada componente pide confirmación por separado antes de eliminarlo.
+/// Desinstala Pillbox: muestra qué se va a eliminar, pide una sola confirmación y borra todo.
 pub fn run() -> Result<()> {
     use inquire::Confirm;
 
-    // Servicio del sistema PRIMERO — si está instalado, debe desinstalarse antes
-    // de borrar binarios o DB (best-effort: errores aquí no abortan el flujo).
-    if is_installed()
-        && Confirm::new(&t!("uninstall.serve.prompt"))
-            .with_default(false)
-            .prompt()?
-    {
-        match cmd_serve_uninstall() {
-            Ok(_) => {
-                // cmd_serve_uninstall ya imprime su propio mensaje de éxito.
-            }
-            Err(e) => {
-                eprintln!("{} {}", "!".yellow().bold(), e);
-            }
-        }
-    }
-
-    let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
-    if mcp_dir.exists() {
-        if Confirm::new(&t!("uninstall.mcp.prompt"))
-            .with_default(false)
-            .prompt()?
-        {
-            std::fs::remove_dir_all(&mcp_dir)?;
-            println!("\n{} {}\n", "✓".green().bold(), t!("uninstall.mcp.done"));
-        }
-    }
-
-    let skill_dir = pillbox::config::skill_path()
-        .parent()
-        .unwrap()
-        .to_path_buf();
-    if skill_dir.exists() {
-        if Confirm::new(&t!("uninstall.skill.prompt"))
-            .with_default(false)
-            .prompt()?
-        {
-            std::fs::remove_dir_all(&skill_dir)?;
-            println!("\n{} {}\n", "✓".green().bold(), t!("uninstall.skill.done"));
-        }
-    }
-
-    let global_db = pillbox::config::global_db_path();
-    if global_db.exists() {
-        if Confirm::new(&t!("uninstall.db.prompt"))
-            .with_default(false)
-            .prompt()?
-        {
-            std::fs::remove_file(&global_db)?;
-            println!("\n{} {}\n", "✓".green().bold(), t!("uninstall.db.done"));
-        }
-    }
-
     let bin_path = std::env::current_exe()?;
-    if Confirm::new(&t!("uninstall.bin.prompt", path = bin_path.display()))
+
+    // Construye la lista de componentes presentes
+    let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
+    let skill_dir = pillbox::config::skill_path().parent().unwrap().to_path_buf();
+    let global_db = pillbox::config::global_db_path();
+    let lang_path = lang_file_path();
+    let port_path = pillbox::config::serve_port_path();
+
+    let has_serve = is_installed();
+    let has_mcp = mcp_dir.exists();
+    let has_skill = skill_dir.exists();
+    let has_db = global_db.exists();
+    let has_config = lang_path.exists() || port_path.exists();
+
+    // Muestra lo que se va a eliminar
+    println!();
+    if has_serve {
+        println!("  {} {}", "·".dimmed(), t!("uninstall.items.serve"));
+    }
+    if has_mcp {
+        println!("  {} {}", "·".dimmed(), t!("uninstall.items.mcp"));
+    }
+    if has_skill {
+        println!("  {} {}", "·".dimmed(), t!("uninstall.items.skill"));
+    }
+    if has_db {
+        println!("  {} {}", "·".dimmed(), t!("uninstall.items.db"));
+    }
+    if has_config {
+        println!("  {} {}", "·".dimmed(), t!("uninstall.items.config"));
+    }
+    println!(
+        "  {} {}",
+        "·".dimmed(),
+        t!("uninstall.items.bin", path = bin_path.display())
+    );
+    println!();
+
+    if !Confirm::new(&t!("uninstall.prompt"))
         .with_default(false)
         .prompt()?
     {
-        println!(
-            "\n{}\n",
-            t!("uninstall.bin.manual", path = bin_path.display())
-        );
+        return Ok(());
     }
 
     println!();
+
+    if has_serve {
+        if let Err(e) = cmd_serve_uninstall() {
+            eprintln!("{} {}", "!".yellow().bold(), e);
+        }
+    }
+
+    if has_mcp {
+        let _ = std::fs::remove_dir_all(&mcp_dir);
+    }
+
+    if has_skill {
+        let _ = std::fs::remove_dir_all(&skill_dir);
+    }
+
+    if has_db {
+        let _ = std::fs::remove_file(&global_db);
+    }
+
+    if has_config {
+        let _ = std::fs::remove_file(&lang_path);
+        let _ = std::fs::remove_file(&port_path);
+    }
+
+    if let Err(_) = std::fs::remove_file(&bin_path) {
+        eprintln!(
+            "{} {}",
+            "!".yellow().bold(),
+            t!("uninstall.bin_error", path = bin_path.display())
+        );
+    }
+
+    println!("{} {}\n", "✓".green().bold(), t!("uninstall.done"));
     Ok(())
 }
