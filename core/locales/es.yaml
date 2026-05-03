@@ -61,6 +61,13 @@ bottle:
     col:
       slug: "slug"
       path: "ruta"
+  vinculate:
+    help: "Vincula una DB local al registro global"
+    done: "DB local vinculada: %{name} (%{path})"
+    already_linked: "Ya estaba vinculada: %{name} (%{path})"
+    error_db_not_found: "DB local no encontrada: %{path}"
+    error_circular: "No se puede vincular: la ruta apunta a la DB global"
+    error_no_bottle: "No hay ningún bottle en la DB local: %{path}"
   error:
     not_found: "No hay ningún bottle para este directorio.\nEjecuta 'pillbox bottle init' para crear uno."
     not_found_short: "No hay ningún bottle para este directorio."
@@ -275,6 +282,7 @@ help:
     skill: "Gestiona la skill de Claude Code."
     lang: "Cambia o muestra el idioma del CLI."
     uninstall: "Desinstala componentes de Pillbox."
+    "bottle migrate": "Migra el bottle entre DB local y global."
   sub:
     pillbox:
       status: "Estado global: DBs, bottle activo, servidor, MCP y skill."
@@ -296,6 +304,7 @@ help:
       status: "Estado del bottle del directorio actual."
       list: "Lista los bottles registrados en la DB global."
       migrate: "Migra el bottle entre DB local y global."
+      vinculate: "Vincula una DB local al registro global."
     migrate:
       global: "Mueve el bottle de este directorio → global."
       local: "Elige un bottle global y muévelo aquí."

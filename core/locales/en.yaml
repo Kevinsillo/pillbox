@@ -64,6 +64,13 @@ bottle:
     col:
       slug: "slug"
       path: "path"
+  vinculate:
+    help: "Link a local database to the global registry"
+    done: "Local database linked: %{name} (%{path})"
+    already_linked: "Already linked: %{name} (%{path})"
+    error_db_not_found: "Local database not found: %{path}"
+    error_circular: "Cannot link: path resolves to the global database"
+    error_no_bottle: "No bottle found in local database: %{path}"
 
 status:
   bin_unknown: "(unknown)"
@@ -275,6 +282,7 @@ help:
     skill: "Manage the Claude Code skill."
     lang: "Change or show the CLI language."
     uninstall: "Uninstall Pillbox components."
+    "bottle migrate": "Migrate bottle between local and global DB."
   sub:
     pillbox:
       status: "Global status: DBs, active bottle, server, MCP and skill."
@@ -296,6 +304,7 @@ help:
       status: "Status of the current directory's bottle."
       list: "List bottles registered in the global DB."
       migrate: "Migrate bottle between local and global DB."
+      vinculate: "Link a local database to the global registry."
     migrate:
       global: "Move this directory's bottle → global."
       local: "Choose a global bottle and move it here."

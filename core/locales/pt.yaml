@@ -64,6 +64,13 @@ bottle:
     col:
       slug: "slug"
       path: "caminho"
+  vinculate:
+    help: "Vincula um DB local ao registro global"
+    done: "DB local vinculado: %{name} (%{path})"
+    already_linked: "Já estava vinculado: %{name} (%{path})"
+    error_db_not_found: "DB local não encontrado: %{path}"
+    error_circular: "Não é possível vincular: o caminho aponta para o DB global"
+    error_no_bottle: "Nenhuma bottle encontrada no DB local: %{path}"
 
 status:
   bin_unknown: "(desconhecido)"
@@ -275,6 +282,7 @@ help:
     skill: "Gerencia a skill do Claude Code."
     lang: "Altera ou mostra o idioma do CLI."
     uninstall: "Desinstala componentes do Pillbox."
+    "bottle migrate": "Migra a bottle entre DB local e global."
   sub:
     pillbox:
       status: "Status global: DBs, bottle ativa, servidor, MCP e skill."
@@ -296,6 +304,7 @@ help:
       status: "Status da bottle do diretório atual."
       list: "Lista as bottles registradas no DB global."
       migrate: "Migra a bottle entre DB local e global."
+      vinculate: "Vincula um DB local ao registro global."
     migrate:
       global: "Move a bottle deste diretório → global."
       local: "Escolhe uma bottle global e a move para cá."

@@ -64,6 +64,13 @@ bottle:
     col:
       slug: "Slug"
       path: "Pfad"
+  vinculate:
+    help: "Verknüpft eine lokale DB mit dem globalen Register"
+    done: "Lokale DB verknüpft: %{name} (%{path})"
+    already_linked: "Bereits verknüpft: %{name} (%{path})"
+    error_db_not_found: "Lokale DB nicht gefunden: %{path}"
+    error_circular: "Verknüpfung nicht möglich: Pfad zeigt auf die globale DB"
+    error_no_bottle: "Keine Bottle in der lokalen DB gefunden: %{path}"
 
 status:
   bin_unknown: "(unbekannt)"
@@ -275,6 +282,7 @@ help:
     skill: "Verwaltet die Claude Code Skill."
     lang: "Ändert oder zeigt die CLI-Sprache."
     uninstall: "Deinstalliert Pillbox-Komponenten."
+    "bottle migrate": "Migriert die Bottle zwischen lokaler und globaler DB."
   sub:
     pillbox:
       status: "Globaler Status: DBs, aktive Bottle, Server, MCP und Skill."
@@ -296,6 +304,7 @@ help:
       status: "Status der Bottle im aktuellen Verzeichnis."
       list: "Listet in der globalen DB registrierte Bottles auf."
       migrate: "Migriert die Bottle zwischen lokaler und globaler DB."
+      vinculate: "Verknüpft eine lokale DB mit dem globalen Register."
     migrate:
       global: "Verschiebt die Bottle dieses Verzeichnisses → global."
       local: "Wählt eine globale Bottle und verschiebt sie hierher."

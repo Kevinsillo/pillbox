@@ -145,6 +145,11 @@ enum BottleCommand {
         /// Slug del bottle a reparar.
         slug: String,
     },
+    /// Vincula una DB local al registro global del usuario actual.
+    Vinculate {
+        #[arg(value_name = "DIRECTORY")]
+        directory: Option<std::path::PathBuf>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -268,12 +273,15 @@ async fn main() -> Result<()> {
             Some(BottleCommand::Status) => cmd::bottle::cmd_bottle_status(),
             Some(BottleCommand::List { limit }) => cmd::bottle::cmd_bottle_list(limit),
             Some(BottleCommand::Migrate { subcommand }) => match subcommand {
-                None => cmd::bottle::cmd_migrate_help(),
+                None => cmd::bottle::cmd_migrate_help(&render_nested_help("bottle", "migrate")),
                 Some(MigrateCommand::Global) => cmd::bottle::cmd_migrate_global(),
                 Some(MigrateCommand::Local) => cmd::bottle::cmd_migrate_local(),
             },
             Some(BottleCommand::Delete { slug }) => cmd::bottle::cmd_bottle_delete(&slug),
             Some(BottleCommand::Repair { slug }) => cmd::bottle::cmd_bottle_repair(&slug),
+            Some(BottleCommand::Vinculate { directory }) => {
+                cmd::bottle::cmd_bottle_vinculate(directory)
+            }
             None => cmd_sub_help("bottle"),
         },
         Some(Command::Pill { cmd }) => match cmd {
@@ -328,9 +336,11 @@ fn t_help(key: &str, fallback: Option<String>) -> String {
 }
 
 /// Renderiza la ayuda de un subcomando `clap` con traducciones i18n y colores ANSI.
-fn render_help_cmd(cmd: &mut clap::Command, name: &str) -> String {
+/// - `display_name`: aparece en la línea "Uso: {display_name} [COMMAND]"
+/// - `sub_prefix`: prefijo para el lookup de subcomandos en i18n (`help.sub.{sub_prefix}.{sub}`)
+fn render_help_cmd(cmd: &mut clap::Command, display_name: &str, sub_prefix: &str) -> String {
     let mut out = String::new();
-    let about_key = format!("help.about.{}", name);
+    let about_key = format!("help.about.{}", display_name);
     let about = t_help(&about_key, cmd.get_about().map(|a| a.to_string()));
     if !about.is_empty() {
         out.push_str(&format!("{}\n\n", about.bold()));
@@ -338,7 +348,7 @@ fn render_help_cmd(cmd: &mut clap::Command, name: &str) -> String {
     out.push_str(&format!(
         "{} {} {}\n",
         t!("help.usage").bold(),
-        name,
+        display_name,
         "[COMMAND]".dimmed()
     ));
     let subcmds: Vec<_> = cmd.get_subcommands().filter(|s| !s.is_hide_set()).collect();
@@ -350,7 +360,7 @@ fn render_help_cmd(cmd: &mut clap::Command, name: &str) -> String {
             .max()
             .unwrap_or(0);
         for s in &subcmds {
-            let sub_key = format!("help.sub.{}.{}", name, s.get_name());
+            let sub_key = format!("help.sub.{}.{}", sub_prefix, s.get_name());
             let about = t_help(&sub_key, s.get_about().map(|a| a.to_string()));
             out.push_str(&format!(
                 "  {:<width$}  {}\n",
@@ -367,27 +377,34 @@ fn render_help_cmd(cmd: &mut clap::Command, name: &str) -> String {
 fn render_help(subcmd: &str) -> String {
     let mut cmd = Cli::command();
     let sub = cmd.find_subcommand_mut(subcmd).unwrap();
-    render_help_cmd(sub, subcmd)
+    render_help_cmd(sub, subcmd, subcmd)
+}
+
+/// Renderiza la ayuda de un subcomando anidado (ej. "bottle" → "migrate").
+/// display_name usa la ruta completa; sub_prefix usa solo el nombre del hijo para el lookup i18n.
+fn render_nested_help(parent: &str, child: &str) -> String {
+    let mut cmd = Cli::command();
+    let sub = cmd.find_subcommand_mut(parent).unwrap();
+    let nested = sub.find_subcommand_mut(child).unwrap();
+    render_help_cmd(nested, &format!("{} {}", parent, child), child)
 }
 
 /// Renderiza la ayuda raíz del binario `pillbox`.
 fn render_root_help() -> String {
     let mut cmd = Cli::command();
-    render_help_cmd(&mut cmd, "pillbox")
+    render_help_cmd(&mut cmd, "pillbox", "pillbox")
 }
 
 /// Imprime el logo y la ayuda raíz en la salida estándar.
 fn cmd_root_help() -> Result<()> {
     output::fmt::print_logo(env!("CARGO_PKG_VERSION"));
-    let rows = vec![["".to_string(), render_root_help()]];
-    println!("\n{}\n", output::table::dict(rows));
+    println!("\n{}\n", render_root_help());
     Ok(())
 }
 
-/// Imprime la ayuda de un subcomando en una tabla `dict`.
+/// Imprime la ayuda de un subcomando directamente en stdout.
 fn cmd_sub_help(subcmd: &str) -> Result<()> {
-    let rows = vec![["".to_string(), render_help(subcmd)]];
-    println!("\n{}\n", output::table::dict(rows));
+    println!("\n{}\n", render_help(subcmd));
     Ok(())
 }
 
@@ -418,10 +435,7 @@ fn cmd_serve_info() -> Result<()> {
     } else {
         format!("{} {}", "●".red(), t!("serve.inline.stopped", port = port))
     };
-    let rows = vec![
-        [t!("serve.title").bold().to_string(), status],
-        ["".to_string(), render_help("serve")],
-    ];
-    println!("\n{}\n", output::table::dict(rows));
+    let line = format!("{}: {}", t!("serve.labels.estado").bold(), status);
+    output::fmt::help_with_status(&line, &render_help("serve"));
     Ok(())
 }

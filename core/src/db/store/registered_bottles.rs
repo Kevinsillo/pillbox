@@ -21,20 +21,24 @@ pub struct RegisteredBottle {
 /// Registra una DB local en la tabla `registered_bottles` de la DB global.
 ///
 /// Idempotente: INSERT OR IGNORE por UNIQUE constraint en db_path.
+///
+/// Devuelve `Ok(true)` si se insertó una fila nueva, `Ok(false)` si ya existía
+/// (UNIQUE constraint ignorada).
 pub fn register(
     conn: &Connection,
     bottle_id: &str,
     name: &str,
     display_name: &str,
     db_path: &str,
-) -> Result<()> {
-    conn.execute(
-        "INSERT OR IGNORE INTO registered_bottles (bottle_id, name, display_name, db_path)
+) -> Result<bool> {
+    let changes = conn
+        .execute(
+            "INSERT OR IGNORE INTO registered_bottles (bottle_id, name, display_name, db_path)
          VALUES (?1, ?2, ?3, ?4)",
-        params![bottle_id, name, display_name, db_path],
-    )
-    .context("failed to register bottle in global registry")?;
-    Ok(())
+            params![bottle_id, name, display_name, db_path],
+        )
+        .context("failed to register bottle in global registry")?;
+    Ok(changes > 0)
 }
 
 /// Actualiza la ruta de DB de un registro existente.

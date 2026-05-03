@@ -30,6 +30,7 @@ pub fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
         "prescription_discard" => handlers::prescriptions::discard(conn, input),
         "bottle_create" => handlers::bottles::create(conn, input),
         "bottle_list" => handlers::bottles::list(conn, input),
+        "bottle_vinculate" => handlers::bottles::vinculate(conn, input),
         other => Response::err(
             "unknown_tool",
             format!("herramienta desconocida: '{}'", other),

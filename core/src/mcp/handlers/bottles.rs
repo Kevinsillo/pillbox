@@ -4,7 +4,7 @@ use pillbox::{
     config, db, db::store, db::store::registered_bottles,
     domain::bottle::{BottleScope, NewBottle},
 };
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::mcp::response::{anyhow_to_response, from_value, validate_input, Conn, Response};
 
@@ -114,6 +114,113 @@ pub fn list(_conn: &mut Conn, _input: Value) -> Response {
 
     bottles.sort_by(|a, b| a.name.cmp(&b.name));
     Response::ok(bottles)
+}
+
+/// Input para el handler `bottle_vinculate`.
+#[derive(serde::Deserialize)]
+struct VinculateInput {
+    /// Ruta absoluta al directorio que contiene `.pillbox/pillbox.db`.
+    /// Si es `None`, se usa el cwd del proceso pillbox.
+    directory: Option<String>,
+}
+
+/// Vincula una DB local al registro `registered_bottles` de la DB global del
+/// usuario actual.
+///
+/// Idempotente: devuelve `status: "already_linked"` si ya estaba registrada.
+pub fn vinculate(_conn: &mut Conn, input: Value) -> Response {
+    let req: VinculateInput = match from_value(input) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+
+    let dir = match req.directory {
+        Some(d) => std::path::PathBuf::from(d),
+        None => match std::env::current_dir() {
+            Ok(d) => d,
+            Err(e) => return Response::err("cwd_unavailable", e.to_string()),
+        },
+    };
+
+    let db_path = dir.join(".pillbox").join("pillbox.db");
+    if !db_path.exists() {
+        return Response::err(
+            "db_not_found",
+            format!("local database not found: {}", db_path.display()),
+        );
+    }
+
+    let db_path_canon = match std::fs::canonicalize(&db_path) {
+        Ok(p) => p,
+        Err(e) => return Response::err("canonicalize_failed", e.to_string()),
+    };
+
+    let global_path = config::global_db_path();
+    if global_path.exists() {
+        match std::fs::canonicalize(&global_path) {
+            Ok(global_canon) if db_path_canon == global_canon => {
+                return Response::err(
+                    "circular_link",
+                    "cannot link: path resolves to the global database".to_string(),
+                );
+            }
+            Ok(_) => {}
+            Err(e) => return Response::err("canonicalize_failed", e.to_string()),
+        }
+    }
+
+    let local_conn = match db::connection::open(&db_path_canon) {
+        Ok(c) => c,
+        Err(e) => return anyhow_to_response(e),
+    };
+
+    let bottle = match store::bottles::list(&local_conn) {
+        Ok(list) => match list.into_iter().next() {
+            Some(b) => b,
+            None => {
+                return Response::err(
+                    "no_bottle",
+                    format!("no bottle found in local database: {}", db_path_canon.display()),
+                );
+            }
+        },
+        Err(e) => return anyhow_to_response(e),
+    };
+
+    let global_conn = match db::connection::open(&global_path) {
+        Ok(c) => c,
+        Err(e) => return anyhow_to_response(e),
+    };
+
+    let db_path_str = match db_path_canon.to_str() {
+        Some(s) => s,
+        None => {
+            return Response::err(
+                "invalid_path",
+                "local DB path contains non-UTF-8 characters".to_string(),
+            );
+        }
+    };
+
+    let inserted = match registered_bottles::register(
+        &global_conn,
+        &bottle.id,
+        &bottle.name,
+        &bottle.display_name,
+        db_path_str,
+    ) {
+        Ok(r) => r,
+        Err(e) => return anyhow_to_response(e),
+    };
+
+    let status = if inserted { "linked" } else { "already_linked" };
+    Response::ok(json!({
+        "status": status,
+        "bottle_id": bottle.id,
+        "name": bottle.display_name,
+        "slug": bottle.name,
+        "db_path": db_path_str,
+    }))
 }
 
 #[cfg(test)]

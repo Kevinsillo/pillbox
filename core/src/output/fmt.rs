@@ -162,26 +162,33 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
         ),
         None => t!("bottle.status.rx_none").dimmed().to_string(),
     };
-    let rows = vec![
-        [
-            t!("bottle.status.labels.bottle").bold().to_string(),
-            format!("{} — \"{}\"", bottle.name, bottle.display_name),
-        ],
-        [
-            t!("bottle.status.labels.scope").bold().to_string(),
-            bottle.scope.to_string(),
-        ],
-        [
-            t!("bottle.status.labels.dir").bold().to_string(),
-            bottle.directory.clone(),
-        ],
-        [
-            t!("bottle.status.labels.pills").bold().to_string(),
-            pill_count.to_string(),
-        ],
-        [t!("bottle.status.labels.rx").bold().to_string(), rx_val],
-    ];
-    println!("\n{}\n", table::dict(rows));
+    println!(
+        "\n{}",
+        table::dict(vec![
+            [
+                t!("bottle.status.labels.bottle").bold().to_string(),
+                format!("{} — \"{}\"", bottle.name, bottle.display_name),
+            ],
+            [
+                t!("bottle.status.labels.scope").bold().to_string(),
+                bottle.scope.to_string(),
+            ],
+            [
+                t!("bottle.status.labels.dir").bold().to_string(),
+                bottle.directory.clone(),
+            ],
+        ])
+    );
+    println!(
+        "\n{}\n",
+        table::dict(vec![
+            [
+                t!("bottle.status.labels.pills").bold().to_string(),
+                pill_count.to_string(),
+            ],
+            [t!("bottle.status.labels.rx").bold().to_string(), rx_val],
+        ])
+    );
 }
 
 // ─── Status ───────────────────────────────────────────────────────────────────
@@ -265,24 +272,34 @@ pub fn status(
         format!("{} {}", "●".red(), t!("status.component.missing"))
     };
 
-    let rows = vec![
-        [
+    println!(
+        "\n{}",
+        table::dict(vec![[
             t!("status.labels.bin").bold().to_string(),
             bin_path.to_string(),
-        ],
-        [
-            t!("status.labels.global").bold().to_string(),
-            db_val(global, None, false),
-        ],
-        [
-            t!("status.labels.local").bold().to_string(),
-            db_val(local, bottle, true),
-        ],
-        [t!("status.labels.web").bold().to_string(), server_val],
-        [t!("status.labels.mcp").bold().to_string(), mcp_val],
-        [t!("status.labels.skill").bold().to_string(), skill_val],
-    ];
-    println!("{}\n", table::dict(rows));
+        ]])
+    );
+    println!(
+        "\n{}",
+        table::dict(vec![
+            [
+                t!("status.labels.global").bold().to_string(),
+                db_val(global, None, false),
+            ],
+            [
+                t!("status.labels.local").bold().to_string(),
+                db_val(local, bottle, true),
+            ],
+        ])
+    );
+    println!(
+        "\n{}\n",
+        table::dict(vec![
+            [t!("status.labels.web").bold().to_string(), server_val],
+            [t!("status.labels.mcp").bold().to_string(), mcp_val],
+            [t!("status.labels.skill").bold().to_string(), skill_val],
+        ])
+    );
 }
 
 /// Muestra el estado del servidor HTTP embebido: running/stopped, PID y puerto.
@@ -305,6 +322,14 @@ pub fn serve_status(running: bool, pid: Option<u32>, port: u16) {
     println!("{}\n", table::dict(rows));
 }
 
+/// Muestra un texto de ayuda con una línea de estado insertada tras el about.
+/// `status_line` debe incluir label y valor ya formateados (ej. "Estado: ● path").
+pub fn help_with_status(status_line: &str, help: &str) {
+    let split = help.find("\n\n").unwrap_or(help.len());
+    let (title, rest) = help.split_at(split);
+    println!("\n{}\n\n{}{}\n", title, status_line, rest);
+}
+
 /// Muestra el estado de un componente (MCP o skill) junto con su texto de ayuda.
 pub fn component_status_with_help(path: &std::path::Path, help: &str) {
     let status = if path.exists() {
@@ -312,17 +337,8 @@ pub fn component_status_with_help(path: &std::path::Path, help: &str) {
     } else {
         format!("{} {}", "●".red(), t!("status.component.missing"))
     };
-    let split = help.find("\n\n").unwrap_or(help.len());
-    let (title, rest) = help.split_at(split);
-    let content = format!(
-        "{}\n\n{}: {}{}",
-        title,
-        t!("status.component.estado").bold(),
-        status,
-        rest
-    );
-    let rows = vec![["".to_string(), content]];
-    println!("\n{}\n", table::dict(rows));
+    let line = format!("{}: {}", t!("status.component.estado").bold(), status);
+    help_with_status(&line, help);
 }
 
 /// Imprime en stderr el mensaje de error cuando no se encuentra la DB local.
@@ -492,6 +508,22 @@ pub fn bottle_init_done() {
     println!("   {}  {}\n", "→".dimmed(), t!("bottle.init.done").dimmed());
 }
 
+// ─── Bottle vinculate ─────────────────────────────────────────────────────────
+
+/// Confirma que la DB local fue vinculada al registro global.
+pub fn bottle_vinculate_done(name: &str, path: &str) {
+    print_b(&t!("bottle.vinculate.done", name = name, path = path));
+}
+
+/// Informa que la DB local ya estaba vinculada al registro global.
+pub fn bottle_vinculate_already(name: &str, path: &str) {
+    println!(
+        "\n{} {}\n",
+        "→".dimmed(),
+        t!("bottle.vinculate.already_linked", name = name, path = path).dimmed()
+    );
+}
+
 // ─── MCP / Skill install ──────────────────────────────────────────────────────
 
 /// Confirma la instalación del componente MCP mostrando ruta, config y versión.
@@ -540,7 +572,7 @@ pub fn skill_not_installed() {
 // ─── Migrate ──────────────────────────────────────────────────────────────────
 
 /// Muestra las instrucciones de ayuda para el comando `migrate` con las rutas de DB disponibles.
-pub fn migrate_help(bottle_name: Option<&str>, local_path: &str, global_path: &str) {
+pub fn migrate_help(bottle_name: Option<&str>, local_path: &str, global_path: &str, help: &str) {
     let bottle_val = bottle_name
         .map(|n| n.to_string())
         .unwrap_or_else(|| t!("migrate.help.no_bottle").to_string());
@@ -554,17 +586,8 @@ pub fn migrate_help(bottle_name: Option<&str>, local_path: &str, global_path: &s
             t!("migrate.help.global").bold().to_string(),
             global_path.to_string(),
         ],
-        ["".to_string(), "".to_string()],
-        [
-            "migrate global".green().to_string(),
-            t!("migrate.help.cmd_global").to_string(),
-        ],
-        [
-            "migrate local".green().to_string(),
-            t!("migrate.help.cmd_local").to_string(),
-        ],
     ];
-    println!("{}\n", table::dict(rows));
+    println!("\n{}\n\n{}\n", table::dict(rows), help);
 }
 
 /// Muestra el resumen de confirmación antes de migrar datos de local a global.

@@ -365,6 +365,80 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
     Ok(())
 }
 
+/// Vincula una DB local existente al registro `registered_bottles` del usuario actual.
+///
+/// Caso de uso: dos usuarios distintos en la misma máquina comparten un proyecto
+/// con su DB local. Cada uno tiene su propio `~/.pillbox/pillbox.db` global y
+/// debe registrar la DB local manualmente para que `bottle list` y los handlers
+/// MCP la encuentren.
+///
+/// Es idempotente: si ya estaba vinculada, lo informa pero no falla.
+pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()> {
+    use owo_colors::OwoColorize;
+    use pillbox::db::{connection, store::{bottles, registered_bottles}};
+
+    let dir = directory.unwrap_or_else(|| std::env::current_dir().expect("cwd unavailable"));
+    let db_path = dir.join(".pillbox").join("pillbox.db");
+
+    if !db_path.exists() {
+        eprintln!(
+            "\n{}  {}\n",
+            "✗".red().bold(),
+            t!("bottle.vinculate.error_db_not_found", path = db_path.display())
+        );
+        std::process::exit(1);
+    }
+
+    let db_path_canon = std::fs::canonicalize(&db_path)
+        .with_context(|| format!("failed to canonicalize {}", db_path.display()))?;
+
+    let global_path = pillbox::config::global_db_path();
+    if global_path.exists() {
+        let global_canon = std::fs::canonicalize(&global_path)
+            .with_context(|| format!("failed to canonicalize {}", global_path.display()))?;
+        if db_path_canon == global_canon {
+            eprintln!(
+                "\n{}  {}\n",
+                "✗".red().bold(),
+                t!("bottle.vinculate.error_circular")
+            );
+            std::process::exit(1);
+        }
+    }
+
+    let local_conn = connection::open(&db_path_canon)?;
+    let bottle = match bottles::list(&local_conn)?.into_iter().next() {
+        Some(b) => b,
+        None => {
+            eprintln!(
+                "\n{}  {}\n",
+                "✗".red().bold(),
+                t!("bottle.vinculate.error_no_bottle", path = db_path_canon.display())
+            );
+            std::process::exit(1);
+        }
+    };
+
+    let global_conn = connection::open(&global_path)?;
+    let db_path_str = db_path_canon
+        .to_str()
+        .context("local DB path contains non-UTF-8 characters")?;
+    let inserted = registered_bottles::register(
+        &global_conn,
+        &bottle.id,
+        &bottle.name,
+        &bottle.display_name,
+        db_path_str,
+    )?;
+
+    if inserted {
+        crate::output::fmt::bottle_vinculate_done(&bottle.display_name, db_path_str);
+    } else {
+        crate::output::fmt::bottle_vinculate_already(&bottle.display_name, db_path_str);
+    }
+    Ok(())
+}
+
 /// Añade `.pillbox/` al `.gitignore` del directorio, evitando duplicados.
 fn add_to_gitignore(dir: &std::path::Path) -> Result<()> {
     use std::io::Write;
@@ -410,29 +484,27 @@ fn register_in_global(
 }
 
 /// Muestra la información de migración disponible para el bottle actual.
-pub fn cmd_migrate_help() -> Result<()> {
+pub fn cmd_migrate_help(help: &str) -> Result<()> {
     use pillbox::db::{connection, store::bottles};
 
     let global_path = pillbox::config::global_db_path();
     let local_path = pillbox::config::local_db_path();
 
-    let bottle_name: Option<String> = if global_path.exists() {
-        let conn = connection::open(&global_path).ok();
-        conn.and_then(|c| {
+    let bottle_name: Option<String> = pillbox::config::resolve_db_path()
+        .and_then(|db_path| connection::open(&db_path).ok())
+        .and_then(|c| {
             let dir = std::env::current_dir().ok()?.to_string_lossy().to_string();
             bottles::find_by_directory(&c, &dir)
                 .ok()
                 .flatten()
                 .map(|b| b.name)
-        })
-    } else {
-        None
-    };
+        });
 
     output::fmt::migrate_help(
         bottle_name.as_deref(),
         &local_path.display().to_string(),
         &global_path.display().to_string(),
+        help,
     );
     Ok(())
 }
