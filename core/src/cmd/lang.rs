@@ -9,6 +9,22 @@ use crate::{i18n, output};
 /// Muestra el idioma actual y la lista de idiomas soportados.
 pub fn cmd_lang_show(render_help: &str) -> Result<()> {
     let current = rust_i18n::locale().to_string();
+
+    let current_name = i18n::SUPPORTED
+        .iter()
+        .find(|(c, _)| *c == current.as_str())
+        .map(|(_, n)| *n)
+        .unwrap_or(&current);
+
+    let line = format!(
+        "{}: {} {} ({})",
+        t!("lang.current").bold(),
+        "●".green(),
+        current_name,
+        current
+    );
+    output::fmt::help_with_status(&line, render_help);
+
     let rows: Vec<[String; 2]> = i18n::SUPPORTED
         .iter()
         .map(|(code, name)| {
@@ -20,21 +36,7 @@ pub fn cmd_lang_show(render_help: &str) -> Result<()> {
             [code_col, name.to_string()]
         })
         .collect();
-
-    let current_name = i18n::SUPPORTED
-        .iter()
-        .find(|(c, _)| *c == current.as_str())
-        .map(|(_, n)| *n)
-        .unwrap_or(&current);
-
-    println!(
-        "\n{}: {} ({})\n",
-        t!("lang.current").bold(),
-        current_name,
-        current
-    );
     println!("{}\n", output::table::dict(rows));
-    println!("{}", render_help);
     Ok(())
 }
 

@@ -1,7 +1,10 @@
 //! Constructores de tablas para la salida en terminal usando `tabled`.
 
 use owo_colors::OwoColorize;
-use tabled::{builder::Builder, settings::Style};
+use tabled::{
+    builder::Builder,
+    settings::{Padding, Style},
+};
 
 /// Pattern C — borderless list table with dim header and separator line.
 pub fn plain_list(headers: &[&str], rows: Vec<Vec<String>>) -> String {
@@ -30,13 +33,16 @@ pub fn plain_list(headers: &[&str], rows: Vec<Vec<String>>) -> String {
     result
 }
 
-/// Pattern D — key/value dict table with modern_rounded style.
+/// Pattern D — key/value dict table, borderless with right-column padding.
 pub fn dict(rows: Vec<[String; 2]>) -> String {
     let mut b = Builder::default();
     for row in rows {
         b.push_record(row);
     }
-    b.build().with(Style::modern_rounded()).to_string()
+    b.build()
+        .with(Style::blank())
+        .with(Padding::new(0, 4, 0, 0))
+        .to_string()
 }
 
 /// Calcula la longitud visible de una cadena ignorando las secuencias de escape ANSI.
