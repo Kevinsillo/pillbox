@@ -75,36 +75,6 @@ INSERT INTO capsule_compounds VALUES
  'No mockear la DB en tests — una migración rota llegó a producción porque los mocks no la detectaron', 1),
 ('manual',       'Entrada manual sin compound específico', '', NULL, 1);
 
-CREATE TABLE action_types (
-    id          TEXT PRIMARY KEY,
-    description TEXT NOT NULL
-);
-
-INSERT INTO action_types VALUES
-('pill_store',          'Pill creada o actualizada'),
-('pill_revise',         'Pill revisada'),
-('pill_discard',        'Pill eliminada (soft delete)'),
-('pill_find',           'Búsqueda de pills'),
-('capsule_store',       'Capsule creada o actualizada'),
-('capsule_revise',      'Capsule revisada'),
-('capsule_discard',     'Capsule eliminada'),
-('capsule_find',        'Búsqueda de capsules'),
-('prescription_open',    'Prescription abierta'),
-('prescription_close',   'Prescription cerrada'),
-('prescription_discard', 'Prescription eliminada (soft delete)');
-
-CREATE TABLE link_types (
-    id          TEXT PRIMARY KEY,
-    description TEXT NOT NULL
-);
-
-INSERT INTO link_types VALUES
-('caused',     'Esta pill causó o motivó la otra'),
-('fixes',      'Esta pill corrige un problema descrito en la otra'),
-('supersedes', 'Esta pill reemplaza o invalida la otra'),
-('related',    'Relación temática sin jerarquía'),
-('implements', 'Esta pill implementa una decisión descrita en la otra');
-
 -- ─── ENTIDADES PRINCIPALES ───────────────────────────────────────────────────
 
 CREATE TABLE bottles (
@@ -188,28 +158,6 @@ CREATE TABLE capsules (
 CREATE INDEX idx_cap_compound ON capsules(compound)  WHERE deleted_at IS NULL;
 CREATE INDEX idx_cap_created  ON capsules(created_at DESC);
 CREATE UNIQUE INDEX idx_cap_sync ON capsules(sync_id);
-
-CREATE TABLE pill_links (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    from_id    INTEGER NOT NULL,
-    to_id      INTEGER NOT NULL,
-    rel_type   TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (from_id)  REFERENCES pills(id),
-    FOREIGN KEY (to_id)    REFERENCES pills(id),
-    FOREIGN KEY (rel_type) REFERENCES link_types(id),
-    UNIQUE (from_id, to_id, rel_type)
-);
-
-CREATE TABLE dispense_log (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    prescription_id TEXT,
-    action          TEXT NOT NULL,
-    pill_id         INTEGER,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (prescription_id) REFERENCES prescriptions(id),
-    FOREIGN KEY (action)          REFERENCES action_types(id)
-);
 
 -- ─── FTS5 ────────────────────────────────────────────────────────────────────
 

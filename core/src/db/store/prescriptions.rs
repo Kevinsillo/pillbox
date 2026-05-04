@@ -79,11 +79,6 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
     )
     .context("failed to insert prescription")?;
 
-    tx.execute(
-        "INSERT INTO dispense_log (prescription_id, action) VALUES (?1, 'prescription_open')",
-        params![id],
-    )?;
-
     let prescription = tx
         .query_row(
             "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
@@ -112,11 +107,6 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
     if affected == 0 {
         return Err(PillboxError::PrescriptionNotFoundOrClosed { id: id.to_string() }.into());
     }
-
-    tx.execute(
-        "INSERT INTO dispense_log (prescription_id, action) VALUES (?1, 'prescription_close')",
-        params![id],
-    )?;
 
     let prescription = tx
         .query_row(
@@ -159,12 +149,6 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
         params![id],
     )?;
 
-    tx.execute(
-        "INSERT INTO dispense_log (prescription_id, action)
-         VALUES (?1, 'prescription_discard')",
-        params![id],
-    )?;
-
     tx.commit()?;
     Ok(())
 }
@@ -172,7 +156,7 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
 /// Hard delete de una prescription y todos sus datos relacionados (irreversible).
 ///
 /// Elimina en orden dentro de una tx IMMEDIATE:
-/// dispense_log → pill_links → pills → prescriptions.
+/// pills → prescriptions.
 ///
 /// Falla con `PillboxError::PrescriptionNotFound` si la prescription no existe.
 pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<()> {
@@ -189,30 +173,14 @@ pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<()> {
         return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
     }
 
-    // 1. Eliminar dispense_log de la prescription
-    tx.execute(
-        "DELETE FROM dispense_log WHERE prescription_id = ?1",
-        params![id],
-    )
-    .context("failed to delete dispense_log for prescription")?;
-
-    // 2. Eliminar pill_links de las pills de esta prescription
-    tx.execute(
-        "DELETE FROM pill_links
-         WHERE from_id IN (SELECT id FROM pills WHERE prescription_id = ?1)
-            OR to_id   IN (SELECT id FROM pills WHERE prescription_id = ?1)",
-        params![id],
-    )
-    .context("failed to delete pill_links for prescription")?;
-
-    // 3. Eliminar pills de la prescription
+    // 1. Eliminar pills de la prescription
     tx.execute(
         "DELETE FROM pills WHERE prescription_id = ?1",
         params![id],
     )
     .context("failed to delete pills for prescription")?;
 
-    // 4. Eliminar la prescription
+    // 2. Eliminar la prescription
     tx.execute("DELETE FROM prescriptions WHERE id = ?1", params![id])
         .context("failed to delete prescription")?;
 
@@ -543,22 +511,6 @@ mod tests {
         )
         .unwrap();
 
-        let pill_id: i64 = conn
-            .query_row(
-                "SELECT id FROM pills WHERE prescription_id = ?1",
-                params![rx.id],
-                |r| r.get(0),
-            )
-            .unwrap();
-
-        // Insertar un pill_link
-        conn.execute(
-            "INSERT INTO pill_links (from_id, to_id, rel_type) VALUES (?1, ?1, 'related')",
-            params![pill_id],
-        )
-        .unwrap();
-
-        // dispense_log ya tiene entradas de prescription_open
         hard_delete(&mut conn, &rx.id).unwrap();
 
         let rx_count: i64 = conn
@@ -567,17 +519,9 @@ mod tests {
         let pill_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM pills WHERE prescription_id = ?1", params![rx.id], |r| r.get(0))
             .unwrap();
-        let link_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM pill_links WHERE from_id = ?1", params![pill_id], |r| r.get(0))
-            .unwrap();
-        let log_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM dispense_log WHERE prescription_id = ?1", params![rx.id], |r| r.get(0))
-            .unwrap();
 
         assert_eq!(rx_count, 0);
         assert_eq!(pill_count, 0);
-        assert_eq!(link_count, 0);
-        assert_eq!(log_count, 0);
     }
 
     #[test]

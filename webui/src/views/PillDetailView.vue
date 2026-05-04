@@ -5,7 +5,8 @@ import { formatAuthor } from "@/core/domain/author"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { useConfirm } from "@/composables/useConfirm"
 import { marked } from "marked"
-import { computed, onMounted, ref } from "vue"
+import { usePoll } from "@/composables/usePoll"
+import { computed, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
@@ -18,7 +19,6 @@ const props = defineProps<{ bottle_id: string; rx_id: string; pill_id: string }>
 const router = useRouter()
 
 const pill = ref<Pill | null>(null)
-const loading = ref(false)
 
 const isArchived = computed(() => !!pill.value?.deleted_at)
 const authorDisplay = computed(() =>
@@ -26,15 +26,10 @@ const authorDisplay = computed(() =>
 )
 
 async function load() {
-    loading.value = true
-    try {
-        pill.value = await pillsApi.get(Number(props.pill_id), props.bottle_id, props.rx_id)
-    } finally {
-        loading.value = false
-    }
+    pill.value = await pillsApi.get(Number(props.pill_id), props.bottle_id, props.rx_id)
 }
 
-onMounted(load)
+const poll = usePoll(load, 5000)
 
 async function archivePill() {
     if (!pill.value) return
@@ -45,7 +40,7 @@ async function archivePill() {
             { confirmText: t("common.archive"), cancelText: t("common.cancel") }
         )
         await pillsApi.delete(Number(props.pill_id), props.bottle_id, props.rx_id)
-        await load()
+        poll.restart()
     } catch {
         /* cancelled */
     }
@@ -75,7 +70,7 @@ const renderedContent = computed(() => (pill.value ? (marked.parse(pill.value.co
             <IArrowLeft class="w-3 h-3" /> {{ $t("common.back") }}
         </button>
 
-        <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t("common.loading") }}…</div>
+        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t("common.loading") }}…</div>
 
         <template v-else-if="pill">
             <div class="space-y-3">

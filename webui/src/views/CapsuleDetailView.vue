@@ -5,7 +5,8 @@ import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesReposito
 import { useConfirm } from "@/composables/useConfirm"
 import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
 import { marked } from "marked"
-import { computed, onMounted, ref } from "vue"
+import { usePoll } from "@/composables/usePoll"
+import { computed, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
@@ -18,7 +19,6 @@ const props = defineProps<{ id: string }>()
 const router = useRouter()
 
 const capsule = ref<Capsule | null>(null)
-const loading = ref(false)
 const editing = ref(false)
 const saving = ref(false)
 const formError = ref<string | null>(null)
@@ -30,20 +30,16 @@ const form = ref({ title: "", content: "", compound: "convention" as CapsuleComp
 const isArchived = computed(() => !!capsule.value?.deleted_at)
 
 async function load() {
-    loading.value = true
-    try {
-        capsule.value = await capsulesApi.get(Number(props.id))
-    } finally {
-        loading.value = false
-    }
+    capsule.value = await capsulesApi.get(Number(props.id))
 }
 
-onMounted(load)
+const poll = usePoll(load, 5000)
 
 function startEdit() {
     if (!capsule.value) return
     form.value = { title: capsule.value.title, content: capsule.value.content, compound: capsule.value.compound }
     editing.value = true
+    poll.stop()
 }
 
 async function save() {
@@ -52,6 +48,7 @@ async function save() {
     try {
         capsule.value = await capsulesApi.update(Number(props.id), form.value)
         editing.value = false
+        poll.restart()
     } catch (e: unknown) {
         formError.value = e instanceof Error ? e.message : "Error"
     } finally {
@@ -96,7 +93,7 @@ const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.va
             ><IArrowLeft class="w-3 h-3" /> {{ $t("capsule_detail.back") }}</button
         >
 
-        <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t("common.loading") }}…</div>
+        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t("common.loading") }}…</div>
 
         <template v-else-if="capsule">
             <!-- View mode -->
@@ -188,7 +185,7 @@ const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.va
                         </button>
                         <button
                             type="button"
-                            @click="editing = false"
+                            @click="editing = false; poll.restart()"
                             class="text-sm text-zinc-400 hover:text-(--text-h) px-3 py-2 transition-colors"
                         >
                             {{ $t("common.cancel") }}

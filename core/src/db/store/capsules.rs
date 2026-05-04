@@ -43,11 +43,6 @@ pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleStoreRes
 
     let id = tx.last_insert_rowid();
 
-    tx.execute(
-        "INSERT INTO dispense_log (action, pill_id) VALUES ('capsule_store', ?1)",
-        params![id],
-    )?;
-
     tx.commit()?;
     Ok(CapsuleStoreResult {
         id,
@@ -113,11 +108,6 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Op
         return Ok(None);
     }
 
-    tx.execute(
-        "INSERT INTO dispense_log (action, pill_id) VALUES ('capsule_revise', ?1)",
-        params![id],
-    )?;
-
     let capsule = tx
         .query_row(
             "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
@@ -154,11 +144,6 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<CapsuleDiscardRe
         |row| row.get(0),
     )?;
 
-    tx.execute(
-        "INSERT INTO dispense_log (action, pill_id) VALUES ('capsule_discard', ?1)",
-        params![id],
-    )?;
-
     tx.commit()?;
     Ok(Some(CapsuleDiscardResult { id, deleted_at }))
 }
@@ -191,7 +176,7 @@ pub fn list(conn: &Connection, limit: Option<u32>, compound: Option<&str>) -> Re
 
 /// Hard delete de una capsule (irreversible).
 ///
-/// Elimina en orden: dispense_log WHERE pill_id=? → capsules WHERE id=?.
+/// Elimina la fila de `capsules` permanentemente.
 /// Devuelve `Ok(true)` si existía y fue eliminada, `Ok(false)` si no existía.
 pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<bool> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -206,14 +191,6 @@ pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<bool> {
         return Ok(false);
     }
 
-    // 1. Eliminar entradas de dispense_log referenciando esta capsule
-    tx.execute(
-        "DELETE FROM dispense_log WHERE pill_id = ?1",
-        params![id],
-    )
-    .context("failed to delete dispense_log for capsule")?;
-
-    // 2. Eliminar la capsule
     tx.execute("DELETE FROM capsules WHERE id = ?1", params![id])
         .context("failed to delete capsule")?;
 
@@ -438,22 +415,6 @@ mod tests {
         let deleted = hard_delete(&mut conn, cap.id).unwrap();
         assert!(deleted);
         assert!(read_any(&conn, cap.id).unwrap().is_none());
-    }
-
-    #[test]
-    fn hard_delete_cleans_dispense_log() {
-        let mut conn = open_in_memory().unwrap();
-        let cap = take(&mut conn, &sample_capsule()).unwrap();
-        hard_delete(&mut conn, cap.id).unwrap();
-
-        let log_count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM dispense_log WHERE pill_id = ?1",
-                rusqlite::params![cap.id],
-                |r| r.get(0),
-            )
-            .unwrap();
-        assert_eq!(log_count, 0);
     }
 
     #[test]

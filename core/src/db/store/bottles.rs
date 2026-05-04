@@ -94,25 +94,12 @@ pub fn find_by_directory(conn: &Connection, directory: &str) -> Result<Option<Bo
 
 /// Elimina un bottle y en cascada sus prescriptions y pills.
 ///
-/// El orden de borrado respeta las FK: `dispense_log` y `pill_links` antes
-/// que `pills`, `pills` antes que `prescriptions`, y `prescriptions` antes
-/// que `bottles`.
+/// El orden de borrado respeta las FK: `pills` antes que `prescriptions`,
+/// y `prescriptions` antes que `bottles`.
 ///
 /// Devuelve `Ok(true)` si el bottle existía y fue eliminado, `Ok(false)` si no existía.
 pub fn delete(conn: &mut Connection, id: &str) -> Result<bool> {
     let tx = conn.transaction()?;
-
-    tx.execute(
-        "DELETE FROM dispense_log WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)",
-        params![id],
-    )
-    .context("failed to delete bottle dispense_log")?;
-
-    tx.execute(
-        "DELETE FROM pill_links WHERE from_id IN (SELECT id FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)) OR to_id IN (SELECT id FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1))",
-        params![id],
-    )
-    .context("failed to delete bottle pill_links")?;
 
     tx.execute(
         "DELETE FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)",

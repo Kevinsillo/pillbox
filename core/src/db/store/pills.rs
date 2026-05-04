@@ -75,12 +75,6 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
 
     let id = tx.last_insert_rowid();
 
-    tx.execute(
-        "INSERT INTO dispense_log (prescription_id, action, pill_id)
-         VALUES (?1, 'pill_store', ?2)",
-        params![input.prescription_id, id],
-    )?;
-
     tx.commit()?;
     Ok(PillStoreResult {
         id,
@@ -148,22 +142,6 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
         return Ok(None);
     }
 
-    let rx_id: Option<String> = tx
-        .query_row(
-            "SELECT prescription_id FROM pills WHERE id = ?1",
-            params![id],
-            |row| row.get(0),
-        )
-        .ok();
-
-    if let Some(rx_id) = rx_id {
-        tx.execute(
-            "INSERT INTO dispense_log (prescription_id, action, pill_id)
-             VALUES (?1, 'pill_revise', ?2)",
-            params![rx_id, id],
-        )?;
-    }
-
     let pill = tx
         .query_row(
             "SELECT id, sync_id, compound, title, content, prescription_id,
@@ -201,29 +179,13 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<PillDiscardResul
         |row| row.get(0),
     )?;
 
-    let rx_id: Option<String> = tx
-        .query_row(
-            "SELECT prescription_id FROM pills WHERE id = ?1",
-            params![id],
-            |row| row.get(0),
-        )
-        .ok();
-
-    if let Some(rx_id) = rx_id {
-        tx.execute(
-            "INSERT INTO dispense_log (prescription_id, action, pill_id)
-             VALUES (?1, 'pill_discard', ?2)",
-            params![rx_id, id],
-        )?;
-    }
-
     tx.commit()?;
     Ok(Some(PillDiscardResult { id, deleted_at }))
 }
 
 /// Hard delete de una pill (irreversible).
 ///
-/// Elimina en orden: dispense_log WHERE pill_id=? → pill_links WHERE from_id=? OR to_id=? → pills WHERE id=?.
+/// Elimina la fila de `pills` permanentemente.
 /// Devuelve `Some(id)` si se eliminó, `None` si la pill no existía.
 pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<Option<i64>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -239,21 +201,6 @@ pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<Option<i64>> {
         return Ok(None);
     }
 
-    // 1. Eliminar entradas de dispense_log referenciando esta pill
-    tx.execute(
-        "DELETE FROM dispense_log WHERE pill_id = ?1",
-        params![id],
-    )
-    .context("failed to delete dispense_log for pill")?;
-
-    // 2. Eliminar pill_links donde esta pill participa
-    tx.execute(
-        "DELETE FROM pill_links WHERE from_id = ?1 OR to_id = ?1",
-        params![id],
-    )
-    .context("failed to delete pill_links for pill")?;
-
-    // 3. Eliminar la pill
     tx.execute("DELETE FROM pills WHERE id = ?1", params![id])
         .context("failed to delete pill")?;
 
@@ -549,13 +496,6 @@ mod tests {
         let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         let pill_id = result.id;
 
-        // Insertar un pill_link self-referenciado para probar que se elimina
-        conn.execute(
-            "INSERT INTO pill_links (from_id, to_id, rel_type) VALUES (?1, ?1, 'related')",
-            params![pill_id],
-        )
-        .unwrap();
-
         let deleted = hard_delete(&mut conn, pill_id).unwrap();
         assert_eq!(deleted, Some(pill_id));
 
@@ -564,18 +504,6 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM pills WHERE id = ?1", params![pill_id], |r| r.get(0))
             .unwrap();
         assert_eq!(pill_count, 0);
-
-        // pill_links eliminados
-        let link_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM pill_links WHERE from_id = ?1", params![pill_id], |r| r.get(0))
-            .unwrap();
-        assert_eq!(link_count, 0);
-
-        // dispense_log de pill eliminado
-        let log_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM dispense_log WHERE pill_id = ?1", params![pill_id], |r| r.get(0))
-            .unwrap();
-        assert_eq!(log_count, 0);
     }
 
     #[test]
