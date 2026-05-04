@@ -3,7 +3,7 @@
 use pillbox::{
     db::store,
     domain::{
-        pill::{NewPill, PillPatch},
+        pill::{NewPill, PillCompound, PillPatch},
         search::SearchParams,
     },
 };
@@ -63,16 +63,19 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
         id: i64,
-        patch: PillPatch,
+        title: Option<String>,
+        content: Option<String>,
+        compound: Option<PillCompound>,
     }
     let req: In = match from_value(input) {
         Ok(v) => v,
         Err(r) => return r,
     };
-    if let Err(r) = validate_input(&req.patch) {
+    let patch = PillPatch { title: req.title, content: req.content, compound: req.compound };
+    if let Err(r) = validate_input(&patch) {
         return r;
     }
-    match store::pills::revise(conn, req.id, &req.patch) {
+    match store::pills::revise(conn, req.id, &patch) {
         Ok(Some(p)) => Response::ok(p),
         Ok(None) => not_found("pill", req.id),
         Err(e) => anyhow_to_response(e),

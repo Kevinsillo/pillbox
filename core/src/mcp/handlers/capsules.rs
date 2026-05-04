@@ -2,7 +2,7 @@
 
 use pillbox::{
     db::store,
-    domain::capsule::{CapsulePatch, NewCapsule},
+    domain::capsule::{CapsuleCompound, CapsulePatch, NewCapsule},
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -48,16 +48,19 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
         id: i64,
-        patch: CapsulePatch,
+        title: Option<String>,
+        content: Option<String>,
+        compound: Option<CapsuleCompound>,
     }
     let req: In = match from_value(input) {
         Ok(v) => v,
         Err(r) => return r,
     };
-    if let Err(r) = validate_input(&req.patch) {
+    let patch = CapsulePatch { title: req.title, content: req.content, compound: req.compound };
+    if let Err(r) = validate_input(&patch) {
         return r;
     }
-    match store::capsules::revise(conn, req.id, &req.patch) {
+    match store::capsules::revise(conn, req.id, &patch) {
         Ok(Some(c)) => Response::ok(c),
         Ok(None) => not_found("capsule", req.id),
         Err(e) => anyhow_to_response(e),
