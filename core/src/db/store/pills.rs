@@ -224,6 +224,36 @@ pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<
     Ok(pills)
 }
 
+/// Cuenta el total de pills activas en un bottle (todas sus prescriptions).
+pub fn count_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
+    conn.query_row(
+        "SELECT COUNT(p.id) FROM pills p
+         JOIN prescriptions rx ON rx.id = p.prescription_id
+         WHERE rx.bottle_id = ?1 AND rx.deleted_at IS NULL AND p.deleted_at IS NULL",
+        params![bottle_id],
+        |r| r.get(0),
+    )
+    .context("failed to count pills by bottle")
+}
+
+/// Pills más recientes de un bottle, ordenadas de más nueva a más antigua.
+pub fn list_recent(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Pill>> {
+    let mut stmt = conn.prepare(
+        "SELECT p.id, p.sync_id, p.compound, p.title, p.content, p.prescription_id,
+                p.author_name, p.author_email, p.created_at, p.updated_at, p.deleted_at
+         FROM pills p
+         JOIN prescriptions rx ON rx.id = p.prescription_id
+         WHERE rx.bottle_id = ?1 AND rx.deleted_at IS NULL AND p.deleted_at IS NULL
+         ORDER BY p.created_at DESC, p.id DESC
+         LIMIT ?2",
+    )?;
+    let pills = stmt
+        .query_map(params![bottle_id, limit], row_to_pill)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("failed to list recent pills for bottle")?;
+    Ok(pills)
+}
+
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
 /// Conteo de pills creadas en un día concreto.

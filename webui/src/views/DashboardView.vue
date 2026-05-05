@@ -39,7 +39,7 @@ async function load() {
     error.value = null
     try {
         const [c, b, rx, s] = await Promise.all([
-            contextApi.get(id, { prescription_limit: 5, pill_limit: 8 }),
+            contextApi.get(id, { pill_limit: 8 }),
             bottlesApi.get(id),
             bottlesApi.prescriptions(id, 5),
             bottlesApi.stats(id, periodDays.value),

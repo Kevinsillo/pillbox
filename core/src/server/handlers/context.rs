@@ -1,20 +1,21 @@
-//! Handler HTTP para generar el bloque de contexto de un bottle.
+//! Handler HTTP para el contexto del dashboard de un bottle.
 
 use axum::extract::{Path, Query, State};
 use pillbox::db::store;
 use serde::Deserialize;
-use serde_json::json;
 
-use super::{conn_for_bottle, default_30, err_500, ok, ApiResponse, AppState};
+use super::{conn_for_bottle, err_500, ok, ApiResponse, AppState};
 
-/// Parámetros de query para ajustar el límite del contexto generado.
+fn default_8() -> u32 { 8 }
+
+/// Parámetros de query para ajustar el número de pills recientes devueltas.
 #[derive(Deserialize)]
 pub struct ContextParams {
-    #[serde(default = "default_30")]
-    pub limit: u32,
+    #[serde(default = "default_8")]
+    pub pill_limit: u32,
 }
 
-/// Handler `GET /api/bottles/:id/context` — devuelve el índice de prescriptions del bottle.
+/// Handler `GET /api/bottles/:id/context` — devuelve contadores y pills recientes para el dashboard.
 pub async fn context_get(
     State(s): State<AppState>,
     Path(bottle_id): Path<String>,
@@ -24,12 +25,21 @@ pub async fn context_get(
         Ok(c) => c,
         Err(r) => return r,
     };
-    let ctx = match store::search::bottle_context(&conn, &bottle_id, params.limit) {
-        Ok(c) => c,
+    let pill_count = match store::pills::count_by_bottle(&conn, &bottle_id) {
+        Ok(n) => n,
         Err(e) => return err_500(e),
     };
-    ok(json!({
-        "context":            ctx.context,
-        "prescription_count": ctx.prescription_count,
+    let prescription_count = match store::prescriptions::count_by_bottle(&conn, &bottle_id) {
+        Ok(n) => n,
+        Err(e) => return err_500(e),
+    };
+    let recent_pills = match store::pills::list_recent(&conn, &bottle_id, params.pill_limit) {
+        Ok(v) => v,
+        Err(e) => return err_500(e),
+    };
+    ok(serde_json::json!({
+        "context":            recent_pills,
+        "pill_count":         pill_count,
+        "prescription_count": prescription_count,
     }))
 }
