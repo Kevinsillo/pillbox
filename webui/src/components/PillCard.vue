@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import type { Pill } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
 import CompoundBadge from './CompoundBadge.vue'
+import TruncatedTitle from './TruncatedTitle.vue'
 import IFileText from '~icons/lucide/file-text'
 import ITrash2 from '~icons/lucide/trash-2'
 import { RouterLink } from 'vue-router'
@@ -29,9 +30,9 @@ defineEmits<{ delete: [] }>()
                 <IFileText class="w-4 h-4 text-zinc-400" />
             </div>
             <div class="space-y-1 min-w-0">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 min-w-0">
                     <CompoundBadge :compound="pill.compound" />
-                    <p class="text-(--text-h) font-medium text-sm">{{ pill.title }}</p>
+                    <TruncatedTitle tag="p" :title="pill.title" class="text-(--text-h) font-medium text-sm" />
                 </div>
                 <p class="text-xs text-zinc-600">{{ new Date(pill.updated_at).toLocaleString() }}<template v-if="formatAuthor(pill.author_name, pill.author_email)"> · {{ formatAuthor(pill.author_name, pill.author_email) }}</template></p>
             </div>

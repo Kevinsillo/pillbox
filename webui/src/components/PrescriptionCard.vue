@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import type { Prescription } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
 import PrescriptionStatusBadge from './PrescriptionStatusBadge.vue'
+import TruncatedTitle from './TruncatedTitle.vue'
 import IClipboard from '~icons/lucide/clipboard'
 
 useI18n()
@@ -30,9 +31,9 @@ const isOpen = computed(() =>
                 <IClipboard class="w-4 h-4 text-zinc-400" />
             </div>
             <div class="space-y-1 min-w-0">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 min-w-0">
                     <PrescriptionStatusBadge :open="isOpen" />
-                    <span class="text-(--text-h) text-sm font-medium truncate">{{ prescription.title }}</span>
+                    <TruncatedTitle :title="prescription.title" class="text-(--text-h) text-sm font-medium" />
                 </div>
                 <p class="text-xs text-zinc-600">
                     {{ new Date(prescription.started_at).toLocaleString() }}<template v-if="formatAuthor(prescription.author_name, prescription.author_email)"> · {{ formatAuthor(prescription.author_name, prescription.author_email) }}</template>

@@ -7,6 +7,7 @@ import { ElInput, ElOption, ElSelect } from 'element-plus'
 import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesRepository'
 import type { CapsuleSummary, CapsuleCompound } from '@/core/domain/types'
 import CompoundBadge from '@/components/CompoundBadge.vue'
+import TruncatedTitle from '@/components/TruncatedTitle.vue'
 import { RouterLink } from 'vue-router'
 import IPill from '~icons/lucide/pill'
 import ITrash2 from '~icons/lucide/trash-2'
@@ -132,9 +133,9 @@ async function purgeCapsule(c: CapsuleSummary) {
                                 <IPill class="w-4 h-4 text-zinc-400" />
                             </div>
                             <div class="space-y-1 min-w-0">
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 min-w-0">
                                     <CompoundBadge :compound="c.compound" />
-                                    <span class="text-sm text-(--text-h) font-medium truncate">{{ c.title }}</span>
+                                    <TruncatedTitle :title="c.title" class="text-sm text-(--text-h) font-medium" />
                                 </div>
                                 <p class="text-xs text-zinc-600">{{ new Date(c.updated_at).toLocaleString() }}</p>
                             </div>
@@ -185,10 +186,10 @@ async function purgeCapsule(c: CapsuleSummary) {
                                     <IPill class="w-4 h-4 text-zinc-400" />
                                 </div>
                                 <div class="space-y-1 min-w-0">
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-2 min-w-0">
                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('capsules.archived_badge') }}</span>
                                         <CompoundBadge :compound="c.compound" />
-                                        <span class="text-sm text-(--text-h) font-medium truncate">{{ c.title }}</span>
+                                        <TruncatedTitle :title="c.title" class="text-sm text-(--text-h) font-medium" />
                                     </div>
                                     <p class="text-xs text-zinc-600">{{ new Date(c.updated_at).toLocaleString() }}</p>
                                 </div>

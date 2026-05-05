@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CompoundBadge from "@/components/CompoundBadge.vue"
+import TruncatedTitle from "@/components/TruncatedTitle.vue"
 import { useActiveBottle } from "@/composables/useActiveBottle"
 import type { CapsuleSearchResult, PillSearchResult } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
@@ -87,9 +88,9 @@ function onInput() {
                             <IPill class="w-4 h-4 text-zinc-400" />
                         </div>
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
+                            <div class="flex items-center gap-2 mb-1 min-w-0">
                                 <CompoundBadge :compound="c.compound" />
-                                <span class="text-sm text-(--text-h) font-medium truncate">{{ c.title }}</span>
+                                <TruncatedTitle :title="c.title" class="text-sm text-(--text-h) font-medium" />
                             </div>
                             <p class="text-xs text-zinc-500 line-clamp-2" v-html="c.snippet" />
                             <p class="text-xs text-zinc-600 mt-1">{{ new Date(c.updated_at).toLocaleDateString() }}</p>
@@ -115,9 +116,9 @@ function onInput() {
                             <IFileText class="w-4 h-4 text-zinc-400" />
                         </div>
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
+                            <div class="flex items-center gap-2 mb-1 min-w-0">
                                 <CompoundBadge :compound="p.compound" />
-                                <span class="text-sm text-(--text-h) font-medium truncate">{{ p.title }}</span>
+                                <TruncatedTitle :title="p.title" class="text-sm text-(--text-h) font-medium" />
                             </div>
                             <p class="text-xs text-zinc-500 line-clamp-2" v-html="p.snippet" />
                             <p class="text-xs text-zinc-600 mt-1">{{ new Date(p.updated_at).toLocaleDateString() }}</p>
