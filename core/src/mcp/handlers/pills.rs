@@ -119,26 +119,17 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
-/// Genera un bloque de contexto con pills y prescripciones recientes de un bottle.
-///
-/// Retorna un JSON con `context` (texto ensamblado), `prescription_count` y `pill_count`.
-/// Los límites `prescription_limit` (defecto 5) y `pill_limit` (defecto 30) permiten
-/// ajustar cuántos registros se incluyen en el contexto generado.
+/// Índice navegable de prescriptions de un bottle.
 ///
 /// # Errors
 ///
 /// Retorna error si la consulta a la base de datos falla.
-pub fn context(conn: &mut Conn, input: Value) -> Response {
+pub fn bottle_context(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
         bottle_id: String,
-        #[serde(default = "default_5")]
-        prescription_limit: u32,
         #[serde(default = "default_30")]
-        pill_limit: u32,
-    }
-    fn default_5() -> u32 {
-        5
+        limit: u32,
     }
     fn default_30() -> u32 {
         30
@@ -148,8 +139,37 @@ pub fn context(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::search::pill_context(conn, &req.bottle_id, req.prescription_limit, req.pill_limit)
-    {
+    match store::search::bottle_context(conn, &req.bottle_id, req.limit) {
+        Ok(ctx) => Response::ok(json!({
+            "context":            ctx.context,
+            "prescription_count": ctx.prescription_count,
+            "pill_count":         ctx.pill_count,
+        })),
+        Err(e) => anyhow_to_response(e),
+    }
+}
+
+/// Pills de una prescription concreta con snippets navegables.
+///
+/// # Errors
+///
+/// Retorna error si la consulta a la base de datos falla.
+pub fn prescription_context(conn: &mut Conn, input: Value) -> Response {
+    #[derive(Deserialize)]
+    struct In {
+        prescription_id: String,
+        #[serde(default = "default_30")]
+        limit: u32,
+    }
+    fn default_30() -> u32 {
+        30
+    }
+
+    let req: In = match from_value(input) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    match store::search::prescription_context(conn, &req.prescription_id, req.limit) {
         Ok(ctx) => Response::ok(json!({
             "context":            ctx.context,
             "prescription_count": ctx.prescription_count,

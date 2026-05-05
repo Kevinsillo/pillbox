@@ -5,18 +5,16 @@ use pillbox::db::store;
 use serde::Deserialize;
 use serde_json::json;
 
-use super::{conn_for_bottle, default_30, default_5, err_500, ok, ApiResponse, AppState};
+use super::{conn_for_bottle, default_30, err_500, ok, ApiResponse, AppState};
 
-/// Parámetros de query para ajustar los límites del contexto generado.
+/// Parámetros de query para ajustar el límite del contexto generado.
 #[derive(Deserialize)]
 pub struct ContextParams {
-    #[serde(default = "default_5")]
-    pub prescription_limit: u32,
     #[serde(default = "default_30")]
-    pub pill_limit: u32,
+    pub limit: u32,
 }
 
-/// Handler `GET /api/bottles/:id/context` — devuelve pills recientes y contadores del bottle.
+/// Handler `GET /api/bottles/:id/context` — devuelve el índice de prescriptions del bottle.
 pub async fn context_get(
     State(s): State<AppState>,
     Path(bottle_id): Path<String>,
@@ -26,22 +24,12 @@ pub async fn context_get(
         Ok(c) => c,
         Err(r) => return r,
     };
-    let ctx = match store::search::pill_context(
-        &conn,
-        &bottle_id,
-        params.prescription_limit,
-        params.pill_limit,
-    ) {
+    let ctx = match store::search::bottle_context(&conn, &bottle_id, params.limit) {
         Ok(c) => c,
         Err(e) => return err_500(e),
     };
-    let pills = match store::search::recent_pills(&conn, &bottle_id, params.pill_limit) {
-        Ok(p) => p,
-        Err(e) => return err_500(e),
-    };
     ok(json!({
-        "context":            pills,
+        "context":            ctx.context,
         "prescription_count": ctx.prescription_count,
-        "pill_count":         ctx.pill_count,
     }))
 }

@@ -238,24 +238,24 @@ pub fn capsule_find(
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-/// Resultado del contexto Markdown generado para un bottle.
+/// Resultado de contexto: texto formateado + contadores.
 pub struct ContextResult {
     pub context: String,
     pub prescription_count: usize,
     pub pill_count: usize,
 }
 
-/// Genera un resumen Markdown del contexto de un bottle.
+/// Índice navegable de prescriptions de un bottle.
 ///
-/// Incluye las `prescription_limit` prescriptions más recientes y las
-/// `pill_limit` pills más recientes, truncando contenidos largos a 400 caracteres.
-pub fn pill_context(
+/// Devuelve las `limit` prescriptions más recientes con id, título, estado,
+/// fechas y pill_count. Sin contenido de pills — usar `prescription_context`
+/// para profundizar en una prescription concreta.
+pub fn bottle_context(
     conn: &Connection,
     bottle_id: &str,
-    prescription_limit: u32,
-    pill_limit: u32,
+    limit: u32,
 ) -> Result<ContextResult> {
-    let mut rx_stmt = conn.prepare(
+    let mut stmt = conn.prepare(
         "SELECT rx.id, rx.title, rx.started_at, rx.ended_at,
                 COUNT(p.id) AS pill_count
          FROM prescriptions rx
@@ -267,15 +267,17 @@ pub fn pill_context(
     )?;
 
     struct RxEntry {
+        id: String,
         title: String,
         started_at: String,
         ended_at: Option<String>,
         pill_count: i64,
     }
 
-    let prescriptions: Vec<RxEntry> = rx_stmt
-        .query_map(params![bottle_id, prescription_limit], |row| {
+    let prescriptions: Vec<RxEntry> = stmt
+        .query_map(params![bottle_id, limit], |row| {
             Ok(RxEntry {
+                id: row.get(0)?,
                 title: row.get(1)?,
                 started_at: row.get(2)?,
                 ended_at: row.get(3)?,
@@ -283,76 +285,122 @@ pub fn pill_context(
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .context("failed to load prescriptions for context")?;
-
-    struct PillEntry {
-        compound: String,
-        title: String,
-        content: String,
-    }
-
-    let mut pill_stmt = conn.prepare(
-        "SELECT p.compound, p.title, p.content
-         FROM pills p
-         JOIN prescriptions rx ON p.prescription_id = rx.id
-         WHERE rx.bottle_id = ?1 AND p.deleted_at IS NULL
-         ORDER BY p.created_at DESC
-         LIMIT ?2",
-    )?;
-
-    let pills: Vec<PillEntry> = pill_stmt
-        .query_map(params![bottle_id, pill_limit], |row| {
-            Ok(PillEntry {
-                compound: row.get(0)?,
-                title: row.get(1)?,
-                content: row.get(2)?,
-            })
-        })?
-        .collect::<rusqlite::Result<Vec<_>>>()
-        .context("failed to load pills for context")?;
+        .context("failed to load prescriptions for bottle_context")?;
 
     let prescription_count = prescriptions.len();
-    let pill_count = pills.len();
     let mut md = String::new();
 
-    if !prescriptions.is_empty() {
-        md.push_str("## Recent Prescriptions\n\n");
-        for rx in &prescriptions {
-            let status = if rx.ended_at.is_some() {
-                "closed"
-            } else {
-                "open"
-            };
-            let date = rx.started_at.get(..10).unwrap_or(&rx.started_at);
-            md.push_str(&format!(
-                "- **{}** ({}, {}) [{} pills]\n",
-                rx.title, date, status, rx.pill_count
-            ));
-        }
-        md.push('\n');
-    }
-
-    if !pills.is_empty() {
-        md.push_str("## Recent Pills\n\n");
-        for pill in &pills {
-            let snippet = {
-                let chars: Vec<char> = pill.content.chars().collect();
-                if chars.len() > 400 {
-                    format!("{}…", chars[..399].iter().collect::<String>())
-                } else {
-                    pill.content.clone()
-                }
-            };
-            md.push_str(&format!(
-                "- [{}] **{}**: {}\n",
-                pill.compound, pill.title, snippet
-            ));
-        }
+    for rx in &prescriptions {
+        let status = if rx.ended_at.is_some() { "closed" } else { "open" };
+        let started = rx.started_at.get(..10).unwrap_or(&rx.started_at);
+        let date_range = if let Some(ref ended) = rx.ended_at {
+            format!("{started} → {}", ended.get(..10).unwrap_or(ended))
+        } else {
+            started.to_string()
+        };
+        md.push_str(&format!(
+            "[{status}] {date_range}  {} pills  {}\nid: {}\n\n",
+            rx.pill_count, rx.title, rx.id,
+        ));
     }
 
     Ok(ContextResult {
         context: md,
         prescription_count,
+        pill_count: 0,
+    })
+}
+
+/// Pills de una prescription concreta, ordenadas de más reciente a más antigua.
+///
+/// Devuelve hasta `limit` pills con id, compound, título y snippet de 300 chars.
+/// Para el contenido completo de una pill individual usar `pill_read`.
+pub fn prescription_context(
+    conn: &Connection,
+    prescription_id: &str,
+    limit: u32,
+) -> Result<ContextResult> {
+    let row = conn.query_row(
+        "SELECT id, title, started_at, ended_at
+         FROM prescriptions
+         WHERE (id = ?1 OR id LIKE ?2) AND deleted_at IS NULL
+         ORDER BY started_at DESC LIMIT 1",
+        params![prescription_id, format!("{}%", prescription_id)],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ))
+        },
+    );
+
+    let (rx_id, rx_title, rx_started, rx_ended) = match row {
+        Ok(r) => r,
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            return Ok(ContextResult { context: String::new(), prescription_count: 0, pill_count: 0 });
+        }
+        Err(e) => return Err(e).context("failed to read prescription"),
+    };
+
+    let mut pill_stmt = conn.prepare(
+        "SELECT id, compound, title, content
+         FROM pills
+         WHERE prescription_id = ?1 AND deleted_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT ?2",
+    )?;
+
+    struct PillEntry {
+        id: i64,
+        compound: String,
+        title: String,
+        content: String,
+    }
+
+    let pills: Vec<PillEntry> = pill_stmt
+        .query_map(params![rx_id, limit], |row| {
+            Ok(PillEntry {
+                id: row.get(0)?,
+                compound: row.get(1)?,
+                title: row.get(2)?,
+                content: row.get(3)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("failed to load pills for prescription_context")?;
+
+    let pill_count = pills.len();
+    let status = if rx_ended.is_some() { "closed" } else { "open" };
+    let started = rx_started.get(..10).unwrap_or(&rx_started);
+    let date_range = if let Some(ref ended) = rx_ended {
+        format!("{started} → {}", ended.get(..10).unwrap_or(ended))
+    } else {
+        started.to_string()
+    };
+
+    let mut md = format!("[{status}] {rx_title}\nid: {rx_id}  started: {date_range}\n");
+
+    for pill in &pills {
+        let snippet = {
+            let flat: String = pill.content.replace("\r\n", "\\n").replace('\n', "\\n").replace('\r', "\\n");
+            let chars: Vec<char> = flat.chars().collect();
+            if chars.len() > 300 {
+                format!("{}…", chars[..299].iter().collect::<String>())
+            } else {
+                flat
+            }
+        };
+        md.push_str(&format!(
+            "\n  #{} [{}] {}\n  {}\n",
+            pill.id, pill.compound, pill.title, snippet
+        ));
+    }
+
+    Ok(ContextResult {
+        context: md,
+        prescription_count: 1,
         pill_count,
     })
 }
@@ -608,20 +656,59 @@ mod tests {
     }
 
     #[test]
-    fn pill_context_formats_markdown() {
+    fn bottle_context_lists_prescriptions() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
-        let ctx = pill_context(&conn, &bottle_id, 5, 30).unwrap();
+        let ctx = bottle_context(&conn, &bottle_id, 30).unwrap();
         assert!(ctx.prescription_count > 0);
-        assert!(ctx.pill_count > 0);
-        assert!(ctx.context.contains("## Recent Prescriptions"));
-        assert!(ctx.context.contains("## Recent Pills"));
-        assert!(ctx.context.contains("[decision]") || ctx.context.contains("[bugfix]"));
+        assert!(ctx.context.contains("id:"));
+        assert!(ctx.context.contains("[open]") || ctx.context.contains("[closed]"));
+        assert!(ctx.context.contains("pills"));
     }
 
     #[test]
-    fn pill_context_truncates_multibyte_content_safely() {
+    fn bottle_context_empty_bottle_returns_empty() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle = bottles::create(
+            &mut conn,
+            &NewBottle {
+                name: "vacio".into(),
+                display_name: "Vacío".into(),
+                directory: "/tmp/vacio".into(),
+                scope: BottleScope::Local,
+            },
+        )
+        .unwrap();
+
+        let ctx = bottle_context(&conn, &bottle.id, 30).unwrap();
+        assert_eq!(ctx.prescription_count, 0);
+        assert!(ctx.context.is_empty());
+    }
+
+    #[test]
+    fn prescription_context_returns_pills() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = setup_with_pills(&mut conn);
+
+        // Obtener el ID de la prescription creada en setup
+        let rx_id: String = conn
+            .query_row(
+                "SELECT id FROM prescriptions WHERE bottle_id = ?1 LIMIT 1",
+                params![bottle_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+
+        let ctx = prescription_context(&conn, &rx_id, 30).unwrap();
+        assert_eq!(ctx.prescription_count, 1);
+        assert!(ctx.pill_count > 0);
+        assert!(ctx.context.contains("id:"));
+        assert!(ctx.context.contains("[decision]") || ctx.context.contains("[bugfix]") || ctx.context.contains("[discovery]"));
+    }
+
+    #[test]
+    fn prescription_context_truncates_multibyte_safely() {
         let mut conn = open_in_memory().unwrap();
         let bottle = bottles::create(
             &mut conn,
@@ -643,8 +730,7 @@ mod tests {
             },
         )
         .unwrap();
-        // 396 ASCII chars + emoji de 4 bytes → byte 400 cae en mitad del emoji
-        let long_content = format!("{}{}", "a".repeat(396), "🦀".repeat(10));
+        let long_content = format!("{}{}", "a".repeat(296), "🦀".repeat(10));
         pills::take(
             &mut conn,
             &NewPill {
@@ -658,11 +744,18 @@ mod tests {
         )
         .unwrap();
 
-        // No debe hacer panic por byte boundary
-        let result = pill_context(&conn, &bottle.id, 5, 30);
+        let result = prescription_context(&conn, &rx.id, 30);
         assert!(result.is_ok());
         let ctx = result.unwrap();
         assert!(ctx.context.contains("🦀") || ctx.context.contains("…"));
+    }
+
+    #[test]
+    fn prescription_context_unknown_id_returns_empty() {
+        let conn = open_in_memory().unwrap();
+        let ctx = prescription_context(&conn, "00000000-0000-0000-0000-000000000000", 30).unwrap();
+        assert_eq!(ctx.prescription_count, 0);
+        assert!(ctx.context.is_empty());
     }
 
     #[test]
@@ -853,25 +946,6 @@ mod tests {
         assert!(results.is_empty());
     }
 
-    #[test]
-    fn pill_context_empty_bottle_returns_empty_context() {
-        let mut conn = open_in_memory().unwrap();
-        let bottle = bottles::create(
-            &mut conn,
-            &NewBottle {
-                name: "vacio".into(),
-                display_name: "Vacío".into(),
-                directory: "/tmp/vacio".into(),
-                scope: BottleScope::Local,
-            },
-        )
-        .unwrap();
-
-        let ctx = pill_context(&conn, &bottle.id, 5, 30).unwrap();
-        assert_eq!(ctx.prescription_count, 0);
-        assert_eq!(ctx.pill_count, 0);
-        assert!(ctx.context.is_empty());
-    }
 
     #[test]
     fn recent_pills_returns_pills_for_bottle() {

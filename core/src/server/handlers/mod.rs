@@ -163,10 +163,6 @@ pub(super) fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection,
     db::connection::open(&state.global_db_path).map_err(err_500)
 }
 
-/// Valor por defecto 5 para límites de paginación.
-pub(super) fn default_5() -> u32 {
-    5
-}
 /// Valor por defecto 30 para límites de paginación.
 pub(super) fn default_30() -> u32 {
     30
