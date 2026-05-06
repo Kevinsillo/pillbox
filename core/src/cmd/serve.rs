@@ -250,7 +250,7 @@ pub fn cmd_serve_install(port: u16) -> Result<()> {
         username: None,
         working_directory: None,
         environment: None,
-        autostart: false,
+        autostart: true,
     };
 
     manager
