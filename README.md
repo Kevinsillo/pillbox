@@ -100,6 +100,10 @@ Pillbox is split across four repositories that work together as a single system:
 The MCP server communicates with the binary via `pillbox exec` — a JSON stdin/stdout dispatcher. All persistence lives in the Rust core; the MCP layer has no direct database dependency.
 
 The web interface is built with Vite and embedded into the binary at compile time via `rust-embed`. Served at `http://localhost:4242` with no external dependencies.
+## Roadmap
+
+![Roadmap](resources/roadmap.png)
+
 ## License
 
 PolyForm Noncommercial 1.0.0
