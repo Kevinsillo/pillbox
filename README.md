@@ -106,4 +106,4 @@ The web interface is built with Vite and embedded into the binary at compile tim
 
 ## License
 
-PolyForm Noncommercial 1.0.0
+[PolyForm Noncommercial 1.0.0](LICENSE) — free for non-commercial use.
