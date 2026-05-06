@@ -19,15 +19,15 @@ const COMPOUNDS: PillCompound[] = [
     "decision",
     "architecture",
     "bugfix",
-    "pattern",
+    "specification",
     "discovery",
     "learning",
     "feedback",
     "prescription_summary",
-    "manual",
+    "task",
 ]
 
-const form = ref({ title: "", content: "", compound: "manual" as PillCompound })
+const form = ref({ title: "", content: "", compound: "task" as PillCompound })
 
 async function load() {
     loading.value = true

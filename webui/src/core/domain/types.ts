@@ -2,12 +2,12 @@ export type PillCompound =
     | 'decision'
     | 'architecture'
     | 'bugfix'
-    | 'pattern'
+    | 'specification'
     | 'discovery'
     | 'learning'
     | 'feedback'
     | 'prescription_summary'
-    | 'manual'
+    | 'task'
 
 export type CapsuleCompound =
     | 'convention'
