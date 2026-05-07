@@ -1,13 +1,14 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="resources/pillbox-logo-light.png">
-  <img src="resources/pillbox-logo-dark.png" alt="Pillbox" width="280">
-</picture>
+<img src="resources/pillbox-logo-adaptive.svg" alt="Pillbox" width="280">
 
 # Pillbox
 
 ***The persistent memory layer for AI agents — structured, searchable, and built in Rust.***
+
+<a href="https://github.com/Kevinsillo/pillbox/stargazers">
+  <img src="resources/star-banner.svg" alt="Star Pillbox on GitHub" width="780">
+</a>
 
 </div>
 
