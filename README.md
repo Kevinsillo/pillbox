@@ -7,7 +7,7 @@
 ***The persistent memory layer for AI agents — structured, searchable, and built in Rust.***
 
 <a href="https://github.com/Kevinsillo/pillbox/stargazers">
-  <img src="resources/star-banner.svg" alt="Star Pillbox on GitHub" width="780">
+  <img src="resources/star-banner.svg" alt="Star Pillbox on GitHub" width="720">
 </a>
 
 </div>
@@ -101,9 +101,10 @@ Pillbox is split across four repositories that work together as a single system:
 The MCP server communicates with the binary via `pillbox exec` — a JSON stdin/stdout dispatcher. All persistence lives in the Rust core; the MCP layer has no direct database dependency.
 
 The web interface is built with Vite and embedded into the binary at compile time via `rust-embed`. Served at `http://localhost:4242` with no external dependencies.
+
 ## Roadmap
 
-![Roadmap](resources/roadmap.png)
+<img src="resources/roadmap.svg" alt="Roadmap">
 
 ## License
 
