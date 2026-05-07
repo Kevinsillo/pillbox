@@ -4,9 +4,9 @@ import type { Pill } from "@/core/domain/types"
 import { formatAuthor } from "@/core/domain/author"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { useConfirm } from "@/composables/useConfirm"
-import { marked } from "marked"
+import { useMarkdown } from "@/composables/useMarkdown"
 import { usePoll } from "@/composables/usePoll"
-import { computed, ref } from "vue"
+import { computed, ref, watchEffect } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
@@ -61,7 +61,11 @@ async function purgePill() {
     }
 }
 
-const renderedContent = computed(() => (pill.value ? (marked.parse(pill.value.content) as string) : ""))
+const { parse } = useMarkdown()
+const renderedContent = ref("")
+watchEffect(async () => {
+    renderedContent.value = pill.value ? await parse(pill.value.content) : ""
+})
 </script>
 
 <template>

@@ -4,9 +4,9 @@ import type { Capsule, CapsuleCompound } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
 import { useConfirm } from "@/composables/useConfirm"
 import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
-import { marked } from "marked"
+import { useMarkdown } from "@/composables/useMarkdown"
 import { usePoll } from "@/composables/usePoll"
-import { computed, ref } from "vue"
+import { computed, ref, watchEffect } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
@@ -84,7 +84,11 @@ async function purgeCapsule() {
     }
 }
 
-const renderedContent = computed(() => (capsule.value ? (marked.parse(capsule.value.content) as string) : ""))
+const { parse } = useMarkdown()
+const renderedContent = ref("")
+watchEffect(async () => {
+    renderedContent.value = capsule.value ? await parse(capsule.value.content) : ""
+})
 </script>
 
 <template>

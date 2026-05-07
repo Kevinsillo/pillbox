@@ -10,6 +10,7 @@
   --code-bg: #f4f4f5;
   --text: #71717a;
   --text-h: #18181b;
+  --accent: #E8412A;
 
   /* Badge compound colors */
   --badge-blue-bg: #dbeafe;
@@ -46,6 +47,21 @@
   --chip-error-border: #fca5a5;
   --icon-error-bg: #fee2e2;
   --text-error: #ef4444;
+
+  /* Syntax highlighting tokens (light — github) */
+  --hljs-base: #24292f;
+  --hljs-keyword: #cf222e;
+  --hljs-string: #0a3069;
+  --hljs-comment: #6e7781;
+  --hljs-title: #8250df;
+  --hljs-number: #0550ae;
+  --hljs-built_in: #953800;
+  --hljs-attr: #0550ae;
+  --hljs-tag: #116329;
+  --hljs-deletion-bg: #ffebe9;
+  --hljs-deletion-fg: #82071e;
+  --hljs-addition-bg: #dafbe1;
+  --hljs-addition-fg: #116329;
 }
 
 /* Dark mode */
@@ -57,6 +73,7 @@
   --code-bg: #1c1c1f;
   --text: #a1a1aa;
   --text-h: #e4e4e7;
+  --accent: #f05a3e;
 
   /* Badge compound colors */
   --badge-blue-bg: rgba(30, 58, 138, 0.5);
@@ -93,6 +110,21 @@
   --chip-error-border: rgba(127, 29, 29, 0.4);
   --icon-error-bg: rgba(127, 29, 29, 0.4);
   --text-error: #7f1d1d;
+
+  /* Syntax highlighting tokens (dark — github-dark-dimmed) */
+  --hljs-base: #adbac7;
+  --hljs-keyword: #f47067;
+  --hljs-string: #96d0ff;
+  --hljs-comment: #768390;
+  --hljs-title: #dcbdfb;
+  --hljs-number: #6cb6ff;
+  --hljs-built_in: #f69d50;
+  --hljs-attr: #6cb6ff;
+  --hljs-tag: #8ddb8c;
+  --hljs-deletion-bg: #78191b;
+  --hljs-deletion-fg: #ffd8d3;
+  --hljs-addition-bg: #1b4721;
+  --hljs-addition-fg: #b4f1b4;
 }
 
 *,
@@ -120,9 +152,17 @@ button {
   color: var(--text);
   line-height: 1.6;
 
-  h1 { font-size: 1.5em; }
-  h2 { font-size: 1.25em; }
-  h3 { font-size: 1.1em; }
+  h1 {
+    font-size: 1.5em;
+  }
+
+  h2 {
+    font-size: 1.25em;
+  }
+
+  h3 {
+    font-size: 1.1em;
+  }
 
   h1,
   h2,
@@ -132,7 +172,7 @@ button {
   h6 {
     color: var(--text-h);
     font-weight: 600;
-    margin-top: 1.25em;
+    margin-top: 0.5em;
     margin-bottom: 0.5em;
   }
 
@@ -152,20 +192,27 @@ button {
     margin-bottom: 0.75em;
   }
 
-  ul ul { list-style-type: circle; }
-  ul ul ul { list-style-type: square; }
+  ul ul {
+    list-style-type: circle;
+  }
+
+  ul ul ul {
+    list-style-type: square;
+  }
 
   li {
     margin-bottom: 0.25em;
   }
 
   strong {
-    color: var(--text-h);
+    color: var(--accent);
+    font-weight: 600;
   }
 
   a {
-    color: var(--text-h);
+    color: var(--accent);
     text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   hr {
@@ -174,33 +221,162 @@ button {
   }
 
   blockquote {
-    border-left: 3px solid var(--border);
-    padding-left: 1em;
+    border-left: 3px solid var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 10%, transparent);
+    padding: 0.6em 1em;
+    border-radius: 0 4px 4px 0;
     color: var(--text);
     margin: 0.75em 0;
   }
 
-  code {
-    background: var(--border);
+  ul>li::marker {
+    color: var(--accent);
+  }
+
+  ol>li::marker {
+    color: var(--accent);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.75em;
+    font-size: 0.875em;
+  }
+
+  th {
+    text-align: left;
+    padding: 0.5em 0.75em;
+    border-bottom: 2px solid var(--accent);
+    color: var(--text-h);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.5em 0.75em;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  :not(pre)>code {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     color: var(--text-h);
     padding: 0.1em 0.35em;
     border-radius: 3px;
     font-size: 0.875em;
   }
 
+  .code-block {
+    position: relative;
+    margin-bottom: 0.75em;
+  }
+
+  .code-lang {
+    position: absolute;
+    top: 0.6em;
+    right: 1em;
+    font-size: 0.7em;
+    font-family: ui-monospace, monospace;
+    color: var(--hljs-comment);
+    pointer-events: none;
+    user-select: none;
+    z-index: 1;
+  }
+
   pre {
-    background: var(--bg);
-    color: var(--text-h);
-    padding: 1em;
+    background: var(--code-bg);
     border-radius: 6px;
     overflow-x: auto;
-    margin-bottom: 0.75em;
+    margin-bottom: 0;
 
-    code {
-      background: none;
-      padding: 0;
+    code.hljs {
+      display: block;
+      background: transparent;
+      padding: 1em;
+      padding-right: 4em;
     }
   }
+}
+
+/* Syntax highlighting — custom theme using CSS variables */
+.hljs {
+  color: var(--hljs-base);
+}
+
+.hljs-keyword,
+.hljs-template-tag,
+.hljs-type,
+.hljs-variable.language_ {
+  color: var(--hljs-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-meta .hljs-string {
+  color: var(--hljs-string);
+}
+
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.function_ {
+  color: var(--hljs-title);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-operator,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: var(--hljs-number);
+}
+
+.hljs-built_in,
+.hljs-symbol {
+  color: var(--hljs-built_in);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-meta,
+.hljs-variable {
+  color: var(--hljs-attr);
+}
+
+.hljs-name,
+.hljs-selector-tag,
+.hljs-tag {
+  color: var(--hljs-tag);
+}
+
+.hljs-deletion {
+  color: var(--hljs-deletion-fg);
+  background: var(--hljs-deletion-bg);
+}
+
+.hljs-addition {
+  color: var(--hljs-addition-fg);
+  background: var(--hljs-addition-bg);
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-emphasis {
+  font-style: italic;
 }
 
 /* Scrollbar */

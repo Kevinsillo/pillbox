@@ -4,6 +4,7 @@ import { BarElement, CategoryScale, Chart as ChartJS, LinearScale, Tooltip } fro
 import { computed } from "vue"
 import { Bar } from "vue-chartjs"
 import { useI18n } from "vue-i18n"
+import { useTheme } from "@/composables/useTheme"
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip)
 
@@ -25,6 +26,10 @@ const props = withDefaults(
 
 const emit = defineEmits<{ 'period-change': [days: number, key: Period] }>()
 
+const { theme } = useTheme()
+const accentColor = computed(() => theme.value === 'dark' ? '#f05a3e' : '#E8412A')
+const accentHover = computed(() => theme.value === 'dark' ? '#f5785a' : '#c43322')
+
 const labels = computed<string[]>(() => props.stats?.pills_per_day.map(d => d.date) ?? [])
 const counts = computed<number[]>(() => props.stats?.pills_per_day.map(d => d.count) ?? [])
 
@@ -39,8 +44,8 @@ const chartData = computed(() => ({
     datasets: [
         {
             data: counts.value,
-            backgroundColor: "rgba(161,161,170,1)",
-            hoverBackgroundColor: "rgba(212,212,216,1)",
+            backgroundColor: accentColor.value,
+            hoverBackgroundColor: accentHover.value,
             borderRadius: 3,
             borderSkipped: false,
         },

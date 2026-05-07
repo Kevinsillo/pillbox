@@ -126,11 +126,11 @@ const displayRxCount = computed(() => Math.round(rxCountTween.value))
                     <!-- Stats + chart -->
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center">
-                            <p class="text-2xl font-bold text-(--text-h) tabular-nums">{{ displayPillCount }}</p>
+                            <p class="text-2xl font-bold text-(--accent) tabular-nums">{{ displayPillCount }}</p>
                             <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_pills') }}</p>
                         </div>
                         <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center">
-                            <p class="text-2xl font-bold text-(--text-h) tabular-nums">{{ displayRxCount }}</p>
+                            <p class="text-2xl font-bold text-(--accent) tabular-nums">{{ displayRxCount }}</p>
                             <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_prescriptions') }}</p>
                         </div>
                         <div class="sm:col-span-2">
