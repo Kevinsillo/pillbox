@@ -23,7 +23,7 @@ const COMPOUNDS: PillCompound[] = [
     "discovery",
     "learning",
     "feedback",
-    "prescription_summary",
+    "summary",
     "task",
 ]
 

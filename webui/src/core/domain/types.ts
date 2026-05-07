@@ -6,7 +6,7 @@ export type PillCompound =
     | 'discovery'
     | 'learning'
     | 'feedback'
-    | 'prescription_summary'
+    | 'summary'
     | 'task'
 
 export type CapsuleCompound =

@@ -29,7 +29,7 @@ impl PillCompound {
             Self::Discovery => "discovery",
             Self::Learning => "learning",
             Self::Feedback => "feedback",
-            Self::PrescriptionSummary => "prescription_summary",
+            Self::PrescriptionSummary => "summary",
             Self::Manual => "manual",
         }
     }
@@ -98,7 +98,7 @@ mod tests {
         assert_eq!(PillCompound::Feedback.as_str(), "feedback");
         assert_eq!(
             PillCompound::PrescriptionSummary.as_str(),
-            "prescription_summary"
+            "summary"
         );
     }
 
@@ -126,7 +126,7 @@ mod tests {
         assert_eq!(PillCompound::Feedback.as_str(), "feedback");
         assert_eq!(
             PillCompound::PrescriptionSummary.as_str(),
-            "prescription_summary"
+            "summary"
         );
         assert_eq!(PillCompound::Manual.as_str(), "manual");
     }

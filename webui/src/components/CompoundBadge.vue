@@ -11,7 +11,7 @@ const colors: Record<string, string> = {
     discovery:            'bg-(--badge-teal-bg) text-(--badge-teal-text)',
     learning:             'bg-(--badge-cyan-bg) text-(--badge-cyan-text)',
     feedback:             'bg-(--badge-orange-bg) text-(--badge-orange-text)',
-    prescription_summary: 'bg-(--badge-zinc-bg) text-(--badge-zinc-text)',
+    summary: 'bg-(--badge-zinc-bg) text-(--badge-zinc-text)',
     task:                 'bg-(--badge-zinc-bg) text-(--badge-zinc-alt-text)',
     convention:           'bg-(--badge-indigo-bg) text-(--badge-indigo-text)',
     workflow:             'bg-(--badge-pink-bg) text-(--badge-pink-text)',

@@ -41,7 +41,7 @@ INSERT INTO pill_compounds VALUES
 ('feedback',             'Corrección o lección aprendida en este proyecto',
  'Incluye: qué no hacer (o qué sí hacer), por qué, y el contexto que motivó la corrección',
  'No usar connection pool aquí — causó corrupción en WAL mode con múltiples writers', 1),
-('prescription_summary', 'Resumen de prescription de trabajo',
+('summary', 'Resumen de prescription de trabajo',
  'Incluye: objetivo, logrado, descubrimientos, próximos pasos, archivos relevantes',
  NULL, 1),
 ('manual',               'Entrada manual sin compound específico', '', NULL, 1);
@@ -99,7 +99,7 @@ CREATE TABLE prescriptions (
     -- Título de la tarea/funcionalidad/bug. Obligatorio: el agente DEBE llamar
     -- a prescription_open con título ANTES de insertar cualquier pill.
     -- Flujo: prescription_open → pill_store (N veces) → prescription_close.
-    -- El resumen de la sesión se guarda como pill con compound=prescription_summary,
+    -- El resumen de la sesión se guarda como pill con compound=summary,
     -- no como campo aquí — así es searchable vía FTS5 y vive en el timeline.
     title      TEXT NOT NULL,
     -- Autoría de la prescription: nombre y email del usuario humano detrás del agente.
