@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CompoundBadge from "@/components/CompoundBadge.vue"
-import type { Capsule, CapsuleCompound } from "@/core/domain/types"
+import type { Capsule } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
 import { useConfirm } from "@/composables/useConfirm"
 import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
@@ -23,9 +23,9 @@ const editing = ref(false)
 const saving = ref(false)
 const formError = ref<string | null>(null)
 
-const CAPSULE_COMPOUNDS: CapsuleCompound[] = ["convention", "workflow", "environment", "context", "goal", "feedback", "manual"]
+const CAPSULE_COMPOUNDS: string[] = ["convention", "workflow", "environment", "context", "goal", "feedback", "manual"]
 
-const form = ref({ title: "", content: "", compound: "convention" as CapsuleCompound })
+const form = ref({ title: "", content: "", compound: "convention" })
 
 const isArchived = computed(() => !!capsule.value?.deleted_at)
 

@@ -73,7 +73,7 @@ mod tests {
     fn open_in_memory_applies_migrations() {
         let conn = open_in_memory().unwrap();
         let count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM pill_compounds", [], |r| r.get(0))
+            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
         assert!(count > 0);
     }

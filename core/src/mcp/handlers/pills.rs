@@ -3,7 +3,7 @@
 use pillbox::{
     db::store,
     domain::{
-        pill::{NewPill, PillCompound, PillPatch},
+        pill::{NewPill, PillPatch},
         search::SearchParams,
     },
 };
@@ -65,7 +65,7 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
         id: i64,
         title: Option<String>,
         content: Option<String>,
-        compound: Option<PillCompound>,
+        compound: Option<String>,
     }
     let req: In = match from_value(input) {
         Ok(v) => v,

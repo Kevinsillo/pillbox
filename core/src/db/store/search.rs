@@ -475,8 +475,8 @@ mod tests {
     use crate::db::connection::open_in_memory;
     use crate::db::store::{bottles, capsules, pills, prescriptions};
     use crate::domain::bottle::{BottleScope, NewBottle};
-    use crate::domain::capsule::{CapsuleCompound, NewCapsule};
-    use crate::domain::pill::{NewPill, PillCompound};
+    use crate::domain::capsule::NewCapsule;
+    use crate::domain::pill::NewPill;
     use crate::domain::prescription::NewPrescription;
     use crate::domain::search::SearchParams;
 
@@ -507,17 +507,17 @@ mod tests {
             (
                 "JWT tokens con refresh",
                 "Implementamos stateless JWT con refresh tokens almacenados en SQLite.",
-                PillCompound::Decision,
+                "decision",
             ),
             (
                 "Race condition en dedup",
                 "BEGIN IMMEDIATE previene race conditions en escrituras concurrentes.",
-                PillCompound::Bugfix,
+                "bugfix",
             ),
             (
                 "FTS5 tokenizer unicode61",
                 "El tokenizer unicode61 normaliza acentos automáticamente.",
-                PillCompound::Discovery,
+                "discovery",
             ),
         ] {
             pills::take(
@@ -525,7 +525,7 @@ mod tests {
                 &NewPill {
                     title: title.into(),
                     content: content.into(),
-                    compound,
+                    compound: compound.into(),
                     prescription_id: rx.id.clone(),
                     author_name: None,
                     author_email: None,
@@ -645,7 +645,7 @@ mod tests {
             &NewCapsule {
                 title: "Snake_case en todos los proyectos".into(),
                 content: "Prefiero snake_case incluso en TypeScript.".into(),
-                compound: CapsuleCompound::Convention,
+                compound: "convention".into(),
             },
         )
         .unwrap();
@@ -736,7 +736,7 @@ mod tests {
             &NewPill {
                 title: "pill con emoji".into(),
                 content: long_content,
-                compound: PillCompound::Discovery,
+                compound: "discovery".into(),
                 prescription_id: rx.id.clone(),
                 author_name: None,
                 author_email: None,
@@ -867,7 +867,7 @@ mod tests {
             &NewPill {
                 title: "JWT en bottle B".into(),
                 content: "Otro contexto JWT completamente diferente.".into(),
-                compound: PillCompound::Decision,
+                compound: "decision".into(),
                 prescription_id: rx_b.id.clone(),
                 author_name: None,
                 author_email: None,
@@ -919,7 +919,7 @@ mod tests {
             &NewCapsule {
                 title: "Convención de nombres".into(),
                 content: "Usar snake_case en Rust.".into(),
-                compound: CapsuleCompound::Convention,
+                compound: "convention".into(),
             },
         )
         .unwrap();
@@ -929,7 +929,7 @@ mod tests {
             &NewCapsule {
                 title: "Flujo de despliegue snake_case".into(),
                 content: "Pipeline automatizado para snake_case deployments.".into(),
-                compound: CapsuleCompound::Workflow,
+                compound: "workflow".into(),
             },
         )
         .unwrap();

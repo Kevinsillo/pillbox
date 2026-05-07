@@ -216,13 +216,13 @@ fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
 mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
-    use crate::domain::capsule::{CapsuleCompound, CapsulePatch, NewCapsule};
+    use crate::domain::capsule::{CapsulePatch, NewCapsule};
 
     fn sample_capsule() -> NewCapsule {
         NewCapsule {
             title: "Snake_case siempre".into(),
             content: "Prefiero snake_case en todos los proyectos, incluso en TypeScript.".into(),
-            compound: CapsuleCompound::Convention,
+            compound: "convention".into(),
         }
     }
 
@@ -329,7 +329,7 @@ mod tests {
             &NewCapsule {
                 title: "Otra convención".into(),
                 content: "Usar PascalCase para tipos.".into(),
-                compound: CapsuleCompound::Convention,
+                compound: "convention".into(),
             },
         )
         .unwrap();
@@ -347,7 +347,7 @@ mod tests {
             &NewCapsule {
                 title: "Workflow de deploy".into(),
                 content: "push a main = deploy automático.".into(),
-                compound: CapsuleCompound::Workflow,
+                compound: "workflow".into(),
             },
         )
         .unwrap();
@@ -366,7 +366,7 @@ mod tests {
                 &NewCapsule {
                     title: format!("Cap {i}"),
                     content: "contenido".into(),
-                    compound: CapsuleCompound::Manual,
+                    compound: "manual".into(),
                 },
             )
             .unwrap();

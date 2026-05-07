@@ -2,7 +2,7 @@
 
 use pillbox::{
     db::store,
-    domain::capsule::{CapsuleCompound, CapsulePatch, NewCapsule},
+    domain::capsule::{CapsulePatch, NewCapsule},
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -50,7 +50,7 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
         id: i64,
         title: Option<String>,
         content: Option<String>,
-        compound: Option<CapsuleCompound>,
+        compound: Option<String>,
     }
     let req: In = match from_value(input) {
         Ok(v) => v,

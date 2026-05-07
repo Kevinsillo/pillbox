@@ -3,40 +3,6 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-/// Tipos de capsule. Los valores deben coincidir con los IDs en `capsule_compounds`.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CapsuleCompound {
-    Convention,
-    Workflow,
-    Environment,
-    Context,
-    Goal,
-    Feedback,
-    Manual,
-}
-
-impl CapsuleCompound {
-    /// Representación canónica en string para almacenar en DB.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Convention => "convention",
-            Self::Workflow => "workflow",
-            Self::Environment => "environment",
-            Self::Context => "context",
-            Self::Goal => "goal",
-            Self::Feedback => "feedback",
-            Self::Manual => "manual",
-        }
-    }
-}
-
-impl std::fmt::Display for CapsuleCompound {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
 /// Input para crear una capsule.
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct NewCapsule {
@@ -46,7 +12,8 @@ pub struct NewCapsule {
     #[validate(length(min = 1, max = 5000))]
     pub content: String,
 
-    pub compound: CapsuleCompound,
+    #[validate(length(min = 1, max = 64))]
+    pub compound: String,
 }
 
 /// Capsule completa.
@@ -71,7 +38,8 @@ pub struct CapsulePatch {
     #[validate(length(min = 1, max = 5000))]
     pub content: Option<String>,
 
-    pub compound: Option<CapsuleCompound>,
+    #[validate(length(min = 1, max = 64))]
+    pub compound: Option<String>,
 }
 
 #[cfg(test)]
@@ -79,36 +47,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn compound_as_str_roundtrip() {
-        assert_eq!(CapsuleCompound::Convention.as_str(), "convention");
-        assert_eq!(CapsuleCompound::Environment.as_str(), "environment");
-        assert_eq!(CapsuleCompound::Feedback.as_str(), "feedback");
-    }
-
-    #[test]
-    fn all_compounds_as_str() {
-        assert_eq!(CapsuleCompound::Convention.as_str(), "convention");
-        assert_eq!(CapsuleCompound::Workflow.as_str(), "workflow");
-        assert_eq!(CapsuleCompound::Environment.as_str(), "environment");
-        assert_eq!(CapsuleCompound::Context.as_str(), "context");
-        assert_eq!(CapsuleCompound::Goal.as_str(), "goal");
-        assert_eq!(CapsuleCompound::Feedback.as_str(), "feedback");
-        assert_eq!(CapsuleCompound::Manual.as_str(), "manual");
-    }
-
-    #[test]
-    fn compound_display_matches_as_str() {
-        for c in [
-            CapsuleCompound::Convention,
-            CapsuleCompound::Workflow,
-            CapsuleCompound::Environment,
-            CapsuleCompound::Context,
-            CapsuleCompound::Goal,
-            CapsuleCompound::Feedback,
-            CapsuleCompound::Manual,
-        ] {
-            assert_eq!(format!("{c}"), c.as_str());
-        }
+    fn new_capsule_valid() {
+        let cap = NewCapsule {
+            title: "Test capsule".into(),
+            content: "Contenido válido".into(),
+            compound: "convention".into(),
+        };
+        assert!(cap.validate().is_ok());
     }
 
     #[test]
@@ -116,7 +61,7 @@ mod tests {
         let cap = NewCapsule {
             title: "".into(),
             content: "Contenido válido".into(),
-            compound: CapsuleCompound::Convention,
+            compound: "convention".into(),
         };
         assert!(cap.validate().is_err());
     }
@@ -126,7 +71,17 @@ mod tests {
         let cap = NewCapsule {
             title: "Título".into(),
             content: "x".repeat(5001),
-            compound: CapsuleCompound::Goal,
+            compound: "goal".into(),
+        };
+        assert!(cap.validate().is_err());
+    }
+
+    #[test]
+    fn new_capsule_compound_too_long_fails_validation() {
+        let cap = NewCapsule {
+            title: "Título".into(),
+            content: "Contenido".into(),
+            compound: "x".repeat(65),
         };
         assert!(cap.validate().is_err());
     }

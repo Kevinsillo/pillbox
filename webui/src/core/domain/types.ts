@@ -1,22 +1,5 @@
-export type PillCompound =
-    | 'decision'
-    | 'architecture'
-    | 'bugfix'
-    | 'specification'
-    | 'discovery'
-    | 'learning'
-    | 'feedback'
-    | 'summary'
-    | 'task'
-
-export type CapsuleCompound =
-    | 'convention'
-    | 'workflow'
-    | 'environment'
-    | 'context'
-    | 'goal'
-    | 'feedback'
-    | 'manual'
+export type PillCompound = string
+export type CapsuleCompound = string
 
 export interface Bottle {
     id: string

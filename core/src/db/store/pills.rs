@@ -329,7 +329,7 @@ mod tests {
     use crate::db::connection::open_in_memory;
     use crate::db::store::{bottles, prescriptions};
     use crate::domain::bottle::{BottleScope, NewBottle};
-    use crate::domain::pill::{PillCompound, PillPatch};
+    use crate::domain::pill::PillPatch;
     use crate::domain::prescription::NewPrescription;
 
     fn setup(conn: &mut Connection) -> (String, String) {
@@ -362,7 +362,7 @@ mod tests {
         NewPill {
             title: "Decisión de diseño".into(),
             content: "Usamos UUID v7 para sync_id porque preserva el orden temporal.".into(),
-            compound: PillCompound::Decision,
+            compound: "decision".into(),
             prescription_id: rx_id.to_string(),
             author_name: Some("Kevin".into()),
             author_email: None,
@@ -497,7 +497,7 @@ mod tests {
             &NewPill {
                 title: "Segunda pill".into(),
                 content: "Contenido de la segunda.".into(),
-                compound: PillCompound::Discovery,
+                compound: "discovery".into(),
                 prescription_id: rx_id.clone(),
                 author_name: None,
                 author_email: None,
@@ -581,7 +581,7 @@ mod tests {
             &NewPill {
                 title: "Segunda pill".into(),
                 content: "Contenido.".into(),
-                compound: PillCompound::Discovery,
+                compound: "discovery".into(),
                 prescription_id: rx_id.clone(),
                 author_name: None,
                 author_email: None,

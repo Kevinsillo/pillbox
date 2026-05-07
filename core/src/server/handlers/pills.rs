@@ -7,7 +7,7 @@ use axum::{
 use pillbox::{
     db::{self, store, store::registered_bottles},
     domain::{
-        pill::{NewPill, PillCompound, PillPatch},
+        pill::{NewPill, PillPatch},
         search::SearchParams,
     },
 };
@@ -27,7 +27,8 @@ pub struct NewPillBody {
     pub title: String,
     #[validate(length(min = 1, max = 5000))]
     pub content: String,
-    pub compound: PillCompound,
+    #[validate(length(min = 1, max = 64))]
+    pub compound: String,
     pub author_name: Option<String>,
     pub author_email: Option<String>,
 }
