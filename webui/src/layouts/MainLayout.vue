@@ -9,7 +9,7 @@ import { metaApi } from "@/core/infrastructure/repositories/MetaRepository"
 import { ElDropdown, ElDropdownItem, ElDropdownMenu, ElOption, ElSelect } from "element-plus"
 import { computed, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
-import { RouterLink, RouterView, useRoute } from "vue-router"
+import { RouterLink, RouterView, useRoute, useRouter } from "vue-router"
 import IBox from "~icons/lucide/box"
 import ILayoutDashboard from "~icons/lucide/layout-dashboard"
 import IMoon from "~icons/lucide/moon"
@@ -22,7 +22,12 @@ const { availableLocales, currentLocale, setLocale } = useLocale()
 const { theme, toggleTheme } = useTheme()
 
 const route = useRoute()
+const router = useRouter()
 const { activeBottleId } = useActiveBottle()
+
+const onBottleChange = () => {
+    router.push("/")
+}
 
 const bottles = ref<Bottle[]>([])
 const appVersion = ref<string>("")
@@ -141,6 +146,7 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                         :disabled="linkedBottles.length === 0"
                         class="w-full"
                         size="small"
+                        @change="onBottleChange"
                     >
                         <el-option v-for="b in linkedBottles" :key="b.id" :value="b.id" :label="b.display_name" />
                     </el-select>

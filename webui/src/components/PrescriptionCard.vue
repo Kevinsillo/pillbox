@@ -42,7 +42,7 @@ const isOpen = computed(() =>
         </RouterLink>
         <span
             v-if="archived"
-            class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text) pointer-events-none"
+            class="absolute bottom-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text) pointer-events-none"
         >{{ $t('prescription_detail.archived_badge') }}</span>
     </div>
 </template>

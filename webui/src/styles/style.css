@@ -204,6 +204,10 @@ button {
     margin-bottom: 0.25em;
   }
 
+  input[type=checkbox] {
+    accent-color: var(--accent);
+  }
+
   strong {
     color: var(--accent);
     font-weight: 600;
@@ -299,6 +303,7 @@ button {
       background: transparent;
       padding: 1em;
       padding-right: 4em;
+      font-size: 0.875em;
     }
   }
 }
