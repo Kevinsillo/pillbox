@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection, TransactionBehavior};
 use uuid::Uuid;
 
+use crate::db::store::ListFilter;
 use crate::domain::prescription::{NewPrescription, Prescription};
 use crate::error::PillboxError;
 
@@ -232,14 +233,30 @@ pub fn count_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
     Ok(n)
 }
 
-pub fn list_by_bottle(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Prescription>> {
-    let mut stmt = conn.prepare(
+/// Lista prescriptions del bottle aplicando el filtro de estado indicado.
+///
+/// El orden es siempre `started_at DESC` para que las más recientes aparezcan
+/// primero. El parámetro `filter` controla la inclusión de archivadas.
+pub fn list_by_bottle(
+    conn: &Connection,
+    bottle_id: &str,
+    limit: u32,
+    filter: ListFilter,
+) -> Result<Vec<Prescription>> {
+    let filter_clause = match filter {
+        ListFilter::Active => "AND deleted_at IS NULL",
+        ListFilter::Archived => "AND deleted_at IS NOT NULL",
+        ListFilter::All => "",
+    };
+    let sql = format!(
         "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions
-         WHERE bottle_id = ?1
+         WHERE bottle_id = ?1 {}
          ORDER BY started_at DESC
          LIMIT ?2",
-    )?;
+        filter_clause,
+    );
+    let mut stmt = conn.prepare(&sql)?;
 
     let rows = stmt
         .query_map(params![bottle_id, limit], row_to_prescription)?
@@ -247,6 +264,34 @@ pub fn list_by_bottle(conn: &Connection, bottle_id: &str, limit: u32) -> Result<
         .context("failed to list prescriptions")?;
 
     Ok(rows)
+}
+
+/// Cuenta las pills archivadas de una prescription.
+///
+/// Usado por el comando `prescription show` para mostrar el trailer
+/// exacto cuando hay más archivadas que el límite del usuario.
+pub fn count_archived_pills(conn: &Connection, prescription_id: &str) -> Result<u32> {
+    let n: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM pills
+         WHERE prescription_id = ?1 AND deleted_at IS NOT NULL",
+        params![prescription_id],
+        |r| r.get(0),
+    )?;
+    Ok(n)
+}
+
+/// Cuenta las prescriptions archivadas de un bottle.
+///
+/// Necesario para que el trailer `... N más archivados` muestre el número
+/// exacto de elementos ocultos, en vez de un genérico.
+pub fn count_archived_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
+    let n: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM prescriptions
+         WHERE bottle_id = ?1 AND deleted_at IS NOT NULL",
+        params![bottle_id],
+        |r| r.get(0),
+    )?;
+    Ok(n)
 }
 
 /// Mapea una fila de SQLite al tipo [`Prescription`].
@@ -279,6 +324,20 @@ mod tests {
                 display_name: name.into(),
                 directory: format!("/tmp/{}", name),
                 scope: BottleScope::Local,
+            },
+        )
+        .unwrap()
+        .id
+    }
+
+    fn make_rx(conn: &mut Connection, bottle_id: &str, title: &str) -> String {
+        open(
+            conn,
+            &NewPrescription {
+                bottle_id: bottle_id.into(),
+                title: title.into(),
+                author_name: None,
+                author_email: None,
             },
         )
         .unwrap()
@@ -438,7 +497,7 @@ mod tests {
         )
         .unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, 10).unwrap();
+        let all = list_by_bottle(&conn, &bottle_id, 10, ListFilter::All).unwrap();
         assert_eq!(all.len(), 2);
         let titles: Vec<&str> = all.iter().map(|r| r.title.as_str()).collect();
         assert!(titles.contains(&"Sesión 1"));
@@ -464,7 +523,7 @@ mod tests {
             close(&mut conn, &rx.id).unwrap();
         }
 
-        let limited = list_by_bottle(&conn, &bottle_id, 3).unwrap();
+        let limited = list_by_bottle(&conn, &bottle_id, 3, ListFilter::All).unwrap();
         assert_eq!(limited.len(), 3);
     }
 
@@ -584,7 +643,7 @@ mod tests {
         .unwrap();
         discard(&mut conn, &rx.id).unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, 10).unwrap();
+        let all = list_by_bottle(&conn, &bottle_id, 10, ListFilter::All).unwrap();
         assert_eq!(all.len(), 1);
         assert!(all[0].deleted_at.is_some());
     }
@@ -620,7 +679,7 @@ mod tests {
         .unwrap();
         discard(&mut conn, &rx_to_archive.id).unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, 10).unwrap();
+        let all = list_by_bottle(&conn, &bottle_id, 10, ListFilter::All).unwrap();
         assert_eq!(all.len(), 2);
 
         let active_count = all.iter().filter(|rx| rx.deleted_at.is_none()).count();
@@ -693,8 +752,117 @@ mod tests {
         assert_eq!(found.author_name.as_deref(), Some("Kevin Illanas"));
         assert_eq!(found.author_email.as_deref(), Some("kevin@example.com"));
 
-        let listed = list_by_bottle(&conn, &rx.bottle_id, 10).unwrap();
+        let listed = list_by_bottle(&conn, &rx.bottle_id, 10, ListFilter::All).unwrap();
         assert_eq!(listed[0].author_name.as_deref(), Some("Kevin Illanas"));
         assert_eq!(listed[0].author_email.as_deref(), Some("kevin@example.com"));
+    }
+
+    #[test]
+    fn list_active_filter_excludes_archived() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "active-filter");
+        for i in 0..3 {
+            let id = make_rx(&mut conn, &bottle_id, &format!("Active {i}"));
+            close(&mut conn, &id).unwrap();
+        }
+        for i in 0..5 {
+            let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
+            discard(&mut conn, &id).unwrap();
+        }
+        let active = list_by_bottle(&conn, &bottle_id, 100, ListFilter::Active).unwrap();
+        assert_eq!(active.len(), 3);
+        assert!(active.iter().all(|rx| rx.deleted_at.is_none()));
+    }
+
+    #[test]
+    fn list_archived_filter_excludes_active() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "archived-filter");
+        for i in 0..3 {
+            let id = make_rx(&mut conn, &bottle_id, &format!("Active {i}"));
+            close(&mut conn, &id).unwrap();
+        }
+        for i in 0..5 {
+            let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
+            discard(&mut conn, &id).unwrap();
+        }
+        let archived = list_by_bottle(&conn, &bottle_id, 100, ListFilter::Archived).unwrap();
+        assert_eq!(archived.len(), 5);
+        assert!(archived.iter().all(|rx| rx.deleted_at.is_some()));
+    }
+
+    #[test]
+    fn count_archived_by_bottle_returns_only_archived() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "count-archived");
+        for i in 0..4 {
+            let id = make_rx(&mut conn, &bottle_id, &format!("Active {i}"));
+            close(&mut conn, &id).unwrap();
+        }
+        for i in 0..8 {
+            let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
+            discard(&mut conn, &id).unwrap();
+        }
+        let count = count_archived_by_bottle(&conn, &bottle_id).unwrap();
+        assert_eq!(count, 8);
+    }
+
+    #[test]
+    fn archived_limit_clamps_returned_rows() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "limit-clamp");
+        for i in 0..8 {
+            let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
+            discard(&mut conn, &id).unwrap();
+        }
+        let archived = list_by_bottle(&conn, &bottle_id, 5, ListFilter::Archived).unwrap();
+        assert_eq!(archived.len(), 5);
+        let total = count_archived_by_bottle(&conn, &bottle_id).unwrap();
+        assert_eq!(total, 8);
+    }
+
+    #[test]
+    fn count_archived_pills_returns_exact_total() {
+        use crate::db::store::pills;
+        use crate::domain::pill::NewPill;
+
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "pills-count");
+        let rx_id = make_rx(&mut conn, &bottle_id, "rx con pills");
+        for i in 0..2 {
+            pills::take(
+                &mut conn,
+                &NewPill {
+                    title: format!("active {i}"),
+                    content: "contenido".into(),
+                    compound: "decision".into(),
+                    prescription_id: rx_id.clone(),
+                    author_name: None,
+                    author_email: None,
+                },
+            )
+            .unwrap();
+        }
+        let mut archived_ids = Vec::new();
+        for i in 0..7 {
+            let p = pills::take(
+                &mut conn,
+                &NewPill {
+                    title: format!("archived {i}"),
+                    content: "contenido".into(),
+                    compound: "decision".into(),
+                    prescription_id: rx_id.clone(),
+                    author_name: None,
+                    author_email: None,
+                },
+            )
+            .unwrap();
+            archived_ids.push(p.id);
+        }
+        for id in &archived_ids {
+            pills::discard(&mut conn, id).unwrap();
+        }
+        let count = count_archived_pills(&conn, &rx_id).unwrap();
+        assert_eq!(count, 7);
     }
 }

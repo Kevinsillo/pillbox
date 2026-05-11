@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use pillbox::{
-    db::{self, store, store::registered_bottles},
+    db::{self, store, store::registered_bottles, store::ListFilter},
     domain::bottle::{Bottle, NewBottle},
 };
 use serde::{Deserialize, Serialize};
@@ -246,7 +246,7 @@ pub async fn bottle_prescriptions(
         Err(e) => return err_500(e),
         Ok(Some(_)) => {}
     }
-    match store::prescriptions::list_by_bottle(&conn, &id, params.limit) {
+    match store::prescriptions::list_by_bottle(&conn, &id, params.limit, ListFilter::All) {
         Ok(rxs) => ok(rxs),
         Err(e) => err_500(e),
     }

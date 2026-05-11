@@ -28,9 +28,13 @@ pub fn cmd_capsule_show(id: &str) -> Result<()> {
     Ok(())
 }
 
-/// Lista las capsules globales (activas y archivadas) hasta el límite indicado.
-pub fn cmd_capsule_list(limit: u32) -> Result<()> {
-    use pillbox::db::{connection, store::capsules};
+/// Lista las capsules globales (activas y archivadas) hasta los límites indicados.
+///
+/// Hace dos consultas separadas: activas (cap por `limit`) y archivadas
+/// (cap por `archived_limit`). Una tercera consulta `COUNT(*)` sobre archivadas
+/// permite mostrar el trailer `... N más archivados` con el número exacto.
+pub fn cmd_capsule_list(limit: u32, archived_limit: u32) -> Result<()> {
+    use pillbox::db::{connection, store::capsules, store::ListFilter};
 
     let global_path = pillbox::config::global_db_path();
     if !global_path.exists() {
@@ -40,7 +44,14 @@ pub fn cmd_capsule_list(limit: u32) -> Result<()> {
 
     let conn = connection::open(&global_path)?;
     let total = capsules::count(&conn)?;
-    let list = capsules::list(&conn, Some(limit), None)?;
-    output::fmt::capsules_list(&list, total);
+    let active = capsules::list(&conn, Some(limit), None, ListFilter::Active)?;
+    let (archived, archived_total) = if archived_limit == 0 {
+        (Vec::new(), 0)
+    } else {
+        let rows = capsules::list(&conn, Some(archived_limit), None, ListFilter::Archived)?;
+        let total_archived = capsules::count_archived(&conn)?;
+        (rows, total_archived)
+    };
+    output::fmt::capsules_list(&active, &archived, archived_limit, archived_total, total);
     Ok(())
 }

@@ -53,20 +53,44 @@ pub fn cmd_prescription_open(title: String) -> Result<()> {
 }
 
 /// Lista las prescriptions del bottle actual (más recientes primero).
-pub fn cmd_prescription_list(limit: u32) -> Result<()> {
-    use pillbox::db::store::prescriptions;
+///
+/// Hace dos consultas separadas: activas (cap por `limit`) y archivadas
+/// (cap por `archived_limit`). Una tercera consulta `COUNT(*)` sobre archivadas
+/// permite mostrar el trailer `... N más archivados` con el número exacto.
+pub fn cmd_prescription_list(limit: u32, archived_limit: u32) -> Result<()> {
+    use pillbox::db::store::{prescriptions, ListFilter};
 
     let (conn, db_path) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
     let total = prescriptions::count_by_bottle(&conn, &bottle.id)?;
-    let rxs = prescriptions::list_by_bottle(&conn, &bottle.id, limit)?;
+    let active = prescriptions::list_by_bottle(&conn, &bottle.id, limit, ListFilter::Active)?;
+    let (archived, archived_total) = if archived_limit == 0 {
+        (Vec::new(), 0)
+    } else {
+        let rows = prescriptions::list_by_bottle(
+            &conn,
+            &bottle.id,
+            archived_limit,
+            ListFilter::Archived,
+        )?;
+        let total_archived = prescriptions::count_archived_by_bottle(&conn, &bottle.id)?;
+        (rows, total_archived)
+    };
 
-    output::fmt::prescriptions_list(&bottle.name, &db_path.display().to_string(), &rxs, total);
+    output::fmt::prescriptions_list(
+        &bottle.name,
+        &db_path.display().to_string(),
+        &active,
+        &archived,
+        archived_limit,
+        archived_total,
+        total,
+    );
     Ok(())
 }
 
 /// Muestra el detalle de una prescription (incluyendo descartadas) y sus pills.
-pub fn cmd_prescription_show(id: String, limit: u32) -> Result<()> {
+pub fn cmd_prescription_show(id: String, limit: u32, archived_limit: u32) -> Result<()> {
     use pillbox::db::store::{pills, prescriptions};
 
     let (conn, _) = open_resolved_db()?;
@@ -84,7 +108,8 @@ pub fn cmd_prescription_show(id: String, limit: u32) -> Result<()> {
     };
 
     let pill_list = pills::list_by_prescription(&conn, &rx.id)?;
-    output::fmt::prescription_show(&rx, &pill_list, limit);
+    let archived_total = prescriptions::count_archived_pills(&conn, &rx.id)?;
+    output::fmt::prescription_show(&rx, &pill_list, limit, archived_limit, archived_total);
     Ok(())
 }
 

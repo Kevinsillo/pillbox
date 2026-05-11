@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use pillbox::{
-    db::store,
+    db::{store, store::ListFilter},
     domain::capsule::{CapsulePatch, NewCapsule},
 };
 use serde::Deserialize;
@@ -137,7 +137,7 @@ pub async fn capsule_list(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::capsules::list(&conn, params.limit, params.compound.as_deref()) {
+    match store::capsules::list(&conn, params.limit, params.compound.as_deref(), ListFilter::All) {
         Ok(capsules) => ok(capsules),
         Err(e) => err_500(e),
     }

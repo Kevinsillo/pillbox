@@ -178,6 +178,9 @@ enum PrescriptionCommand {
     List {
         #[arg(short, long, default_value = "10")]
         limit: u32,
+        /// Límite de prescriptions archivadas mostradas (0 oculta la sección).
+        #[arg(long, default_value_t = pillbox::config::ARCHIVED_LIMIT_DEFAULT)]
+        archived_limit: u32,
     },
     /// Muestra el detalle de una prescription y sus pills.
     Show {
@@ -185,6 +188,9 @@ enum PrescriptionCommand {
         id: String,
         #[arg(short, long, default_value = "20")]
         limit: u32,
+        /// Límite de pills archivadas mostradas (0 oculta la sección).
+        #[arg(long, default_value_t = pillbox::config::ARCHIVED_LIMIT_DEFAULT)]
+        archived_limit: u32,
     },
     /// Cierra la prescripción abierta del bottle actual.
     Close,
@@ -205,6 +211,9 @@ enum CapsuleCommand {
     List {
         #[arg(short, long, default_value = "50")]
         limit: u32,
+        /// Límite de capsules archivadas mostradas (0 oculta la sección).
+        #[arg(long, default_value_t = pillbox::config::ARCHIVED_LIMIT_DEFAULT)]
+        archived_limit: u32,
     },
     /// Muestra el detalle de una capsule por UUID.
     Show {
@@ -297,7 +306,9 @@ async fn main() -> Result<()> {
             None => cmd_sub_help("pill"),
         },
         Some(Command::Capsule { cmd }) => match cmd {
-            Some(CapsuleCommand::List { limit }) => cmd::capsule::cmd_capsule_list(limit),
+            Some(CapsuleCommand::List { limit, archived_limit }) => {
+                cmd::capsule::cmd_capsule_list(limit, archived_limit)
+            }
             Some(CapsuleCommand::Show { id }) => cmd::capsule::cmd_capsule_show(&id),
             None => cmd_sub_help("capsule"),
         },
@@ -305,10 +316,12 @@ async fn main() -> Result<()> {
             Some(PrescriptionCommand::Open { title }) => {
                 cmd::prescription::cmd_prescription_open(title)
             }
-            Some(PrescriptionCommand::List { limit }) => {
-                cmd::prescription::cmd_prescription_list(limit)
+            Some(PrescriptionCommand::List { limit, archived_limit }) => {
+                cmd::prescription::cmd_prescription_list(limit, archived_limit)
             }
-            Some(PrescriptionCommand::Show { id, limit }) => cmd::prescription::cmd_prescription_show(id, limit),
+            Some(PrescriptionCommand::Show { id, limit, archived_limit }) => {
+                cmd::prescription::cmd_prescription_show(id, limit, archived_limit)
+            }
             Some(PrescriptionCommand::Close) => cmd::prescription::cmd_prescription_close(),
             None => cmd_sub_help("prescription"),
         },

@@ -391,7 +391,7 @@ pub fn prescription_context(
             }
         };
         md.push_str(&format!(
-            "\n  #{} [{}] {}\n  {}\n",
+            "\n  id: {} [{}] {}\n  {}\n",
             pill.id, pill.compound, pill.title, snippet
         ));
     }

@@ -162,6 +162,7 @@ capsules:
       title: "Titolo"
       archived_at: "Archiviata il"
     archived_section: "Archiviate (%{count})"
+    more_archived: "… %{count} altre archiviate"
 
 prescriptions:
   none: "(nessuna)"
@@ -177,6 +178,7 @@ prescriptions:
       author: "Autore"
       archived_at: "Archiviata il"
     archived_section: "Archiviate (%{count})"
+    more_archived: "… %{count} altre archiviate"
   msg:
     opened: "Prescription aperta"
     closed: "Prescription chiusa"
@@ -194,6 +196,7 @@ prescription:
     author: "Autore"
   pills:
     archived_section: "Archiviate (%{count})"
+    more_archived: "… %{count} altre archiviate"
 
 migrate:
   help:
