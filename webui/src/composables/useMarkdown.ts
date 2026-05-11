@@ -73,7 +73,8 @@ export function useMarkdown() {
   async function parse(content: string): Promise<string> {
     const langs = extractLangs(content)
     await Promise.all(langs.map(loadLanguage))
-    return marked.parse(content) as string
+    const html = marked.parse(content) as string
+    return html.replace(/<input([^>]*?) disabled=""([^>]*?)type="checkbox"/g, '<input$1$2type="checkbox"')
   }
 
   return { parse }
