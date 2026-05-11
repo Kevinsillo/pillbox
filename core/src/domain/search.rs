@@ -20,8 +20,7 @@ pub struct SearchParams {
 /// Resultado individual de una búsqueda.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchResult {
-    pub id: i64,
-    pub sync_id: String,
+    pub id: String,
     pub compound: String,
     pub title: String,
     /// Snippet del contenido con el match resaltado.

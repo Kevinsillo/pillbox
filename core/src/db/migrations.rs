@@ -97,12 +97,12 @@ mod tests {
     }
 
     #[test]
-    fn pill_compounds_seeded() {
+    fn schema_migrations_seeded() {
         let conn = Connection::open_in_memory().unwrap();
         run(&conn).unwrap();
 
         let count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM pill_compounds", [], |r| r.get(0))
+            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
 
         assert!(count > 0);

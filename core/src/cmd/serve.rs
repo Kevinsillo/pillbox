@@ -12,6 +12,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use indoc::formatdoc;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 use service_manager::{
@@ -237,6 +238,26 @@ pub fn cmd_serve_install(port: u16) -> Result<()> {
     let exe = std::env::current_exe()?;
     let label = service_label();
 
+    #[cfg(target_os = "linux")]
+    let service_contents = Some(formatdoc!(
+        "
+        [Unit]
+        Description=pillbox-daemon
+        After=network.target
+
+        [Service]
+        ExecStart={} serve run --port {}
+        Restart=on-failure
+
+        [Install]
+        WantedBy=default.target
+        ",
+        exe.display(),
+        port
+    ));
+    #[cfg(not(target_os = "linux"))]
+    let service_contents = None;
+
     let ctx = ServiceInstallCtx {
         label: label.clone(),
         program: exe,
@@ -246,7 +267,7 @@ pub fn cmd_serve_install(port: u16) -> Result<()> {
             OsString::from("--port"),
             OsString::from(port.to_string()),
         ],
-        contents: None,
+        contents: service_contents,
         username: None,
         working_directory: None,
         environment: None,

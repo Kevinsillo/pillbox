@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
-import type { PillCompound } from "@/core/domain/types"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
@@ -15,7 +14,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 
-const COMPOUNDS: PillCompound[] = [
+const COMPOUNDS: string[] = [
     "decision",
     "architecture",
     "bugfix",
@@ -27,13 +26,13 @@ const COMPOUNDS: PillCompound[] = [
     "task",
 ]
 
-const form = ref({ title: "", content: "", compound: "task" as PillCompound })
+const form = ref({ title: "", content: "", compound: "task" })
 
 async function load() {
     loading.value = true
     try {
-        const pill = await pillsApi.get(Number(props.pill_id), props.bottle_id, props.rx_id)
-        form.value = { title: pill.title, content: pill.content, compound: pill.compound as PillCompound }
+        const pill = await pillsApi.get(props.pill_id, props.bottle_id, props.rx_id)
+        form.value = { title: pill.title, content: pill.content, compound: pill.compound }
     } finally {
         loading.value = false
     }
@@ -45,7 +44,7 @@ async function save() {
     saving.value = true
     error.value = null
     try {
-        await pillsApi.update(Number(props.pill_id), form.value, props.bottle_id, props.rx_id)
+        await pillsApi.update(props.pill_id, form.value, props.bottle_id, props.rx_id)
         router.back()
     } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : t("common.error")

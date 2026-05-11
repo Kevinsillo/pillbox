@@ -26,7 +26,7 @@ const authorDisplay = computed(() =>
 )
 
 async function load() {
-    pill.value = await pillsApi.get(Number(props.pill_id), props.bottle_id, props.rx_id)
+    pill.value = await pillsApi.get(props.pill_id, props.bottle_id, props.rx_id)
 }
 
 const poll = usePoll(load, 5000)
@@ -39,7 +39,7 @@ async function archivePill() {
             t("confirm.delete_pill_title"),
             { confirmText: t("common.archive"), cancelText: t("common.cancel") }
         )
-        await pillsApi.delete(Number(props.pill_id), props.bottle_id, props.rx_id)
+        await pillsApi.delete(props.pill_id, props.bottle_id, props.rx_id)
         poll.restart()
     } catch {
         /* cancelled */
@@ -54,7 +54,7 @@ async function purgePill() {
             t("confirm.purge_pill_title"),
             { confirmText: t("common.delete_permanent"), cancelText: t("common.cancel"), waitSeconds: 3 }
         )
-        await pillsApi.purge(Number(props.pill_id), props.bottle_id, props.rx_id)
+        await pillsApi.purge(props.pill_id, props.bottle_id, props.rx_id)
         router.back()
     } catch {
         /* cancelled */

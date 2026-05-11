@@ -3,7 +3,7 @@
 //! Usado por `pillbox bottle migrate` para mover el conocimiento de un
 //! bottle entre la DB local (`.pillbox/pillbox.db`) y la global (`~/.pillbox/pillbox.db`).
 //!
-//! La estrategia es upsert por `sync_id`:
+//! La estrategia es upsert por `id` (UUID v7):
 //!   - Si el registro ya existe en destino, se actualiza solo si `updated_at` es más reciente.
 //!   - Si no existe, se inserta.
 //!   - Los registros descartados (`deleted_at IS NOT NULL`) se migran tal cual.
@@ -107,7 +107,7 @@ pub fn migrate_bottle(
 
     for rx_id in &rx_ids {
         let mut pill_stmt = src.prepare(
-            "SELECT sync_id, compound, title, content, prescription_id,
+            "SELECT id, compound, title, content, prescription_id,
                     author_name, author_email,
                     created_at, updated_at, deleted_at
              FROM pills WHERE prescription_id = ?1",
@@ -116,7 +116,7 @@ pub fn migrate_bottle(
         let pills: Vec<_> = pill_stmt
             .query_map(params![rx_id], |r| {
                 Ok((
-                    r.get::<_, String>(0)?,          // sync_id
+                    r.get::<_, String>(0)?,          // id
                     r.get::<_, String>(1)?,          // compound
                     r.get::<_, String>(2)?,          // title
                     r.get::<_, String>(3)?,          // content
@@ -135,10 +135,10 @@ pub fn migrate_bottle(
         for p in pills {
             tx.execute(
                 "INSERT INTO pills
-                     (sync_id, compound, title, content, prescription_id,
+                     (id, compound, title, content, prescription_id,
                       author_name, author_email, created_at, updated_at, deleted_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-                 ON CONFLICT(sync_id) DO UPDATE SET
+                 ON CONFLICT(id) DO UPDATE SET
                      title      = excluded.title,
                      content    = excluded.content,
                      compound   = excluded.compound,

@@ -14,6 +14,9 @@ pub const CONTENT_MAX_LEN: usize = 5_000;
 /// Límite máximo de caracteres para el título.
 pub const TITLE_MAX_LEN: usize = 255;
 
+/// Límite por defecto de registros archivados mostrados en listados del CLI.
+pub const ARCHIVED_LIMIT_DEFAULT: u32 = 5;
+
 /// Nombre del directorio local de la pillbox dentro de un proyecto.
 pub const LOCAL_DIR: &str = ".pillbox";
 

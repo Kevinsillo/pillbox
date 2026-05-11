@@ -1,28 +1,33 @@
 <script setup lang="ts">
-import type { PillCompound, CapsuleCompound } from '@/core/domain/types'
+defineProps<{ compound: string }>()
 
-defineProps<{ compound: PillCompound | CapsuleCompound }>()
+const PALETTE = [
+    'bg-(--badge-blue-bg) text-(--badge-blue-text)',
+    'bg-(--badge-purple-bg) text-(--badge-purple-text)',
+    'bg-(--badge-red-bg) text-(--badge-red-text)',
+    'bg-(--badge-yellow-bg) text-(--badge-yellow-text)',
+    'bg-(--badge-teal-bg) text-(--badge-teal-text)',
+    'bg-(--badge-cyan-bg) text-(--badge-cyan-text)',
+    'bg-(--badge-orange-bg) text-(--badge-orange-text)',
+    'bg-(--badge-indigo-bg) text-(--badge-indigo-text)',
+    'bg-(--badge-pink-bg) text-(--badge-pink-text)',
+    'bg-(--badge-green-bg) text-(--badge-green-text)',
+    'bg-(--badge-sky-bg) text-(--badge-sky-text)',
+    'bg-(--badge-amber-bg) text-(--badge-amber-text)',
+    'bg-(--badge-zinc-bg) text-(--badge-zinc-text)',
+]
 
-const colors: Record<string, string> = {
-    decision:             'bg-(--badge-blue-bg) text-(--badge-blue-text)',
-    architecture:         'bg-(--badge-purple-bg) text-(--badge-purple-text)',
-    bugfix:               'bg-(--badge-red-bg) text-(--badge-red-text)',
-    specification:        'bg-(--badge-yellow-bg) text-(--badge-yellow-text)',
-    discovery:            'bg-(--badge-teal-bg) text-(--badge-teal-text)',
-    learning:             'bg-(--badge-cyan-bg) text-(--badge-cyan-text)',
-    feedback:             'bg-(--badge-orange-bg) text-(--badge-orange-text)',
-    summary: 'bg-(--badge-zinc-bg) text-(--badge-zinc-text)',
-    task:                 'bg-(--badge-zinc-bg) text-(--badge-zinc-alt-text)',
-    convention:           'bg-(--badge-indigo-bg) text-(--badge-indigo-text)',
-    workflow:             'bg-(--badge-pink-bg) text-(--badge-pink-text)',
-    environment:          'bg-(--badge-green-bg) text-(--badge-green-text)',
-    context:              'bg-(--badge-sky-bg) text-(--badge-sky-text)',
-    goal:                 'bg-(--badge-amber-bg) text-(--badge-amber-text)',
+function compoundColor(value: string): string {
+    let hash = 0
+    for (let i = 0; i < value.length; i++) {
+        hash = value.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    return PALETTE[Math.abs(hash) % PALETTE.length]
 }
 </script>
 
 <template>
-    <span :class="['inline-block text-xs font-medium px-1.5 py-0.5 rounded', colors[compound] ?? 'bg-(--badge-zinc-bg) text-(--badge-zinc-alt-text)']">
+    <span :class="['inline-block text-xs font-medium px-1.5 py-0.5 rounded', compoundColor(compound)]">
         {{ compound }}
     </span>
 </template>

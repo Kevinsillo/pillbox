@@ -2,7 +2,7 @@
 
 use pillbox::{
     db::store,
-    domain::capsule::{CapsuleCompound, CapsulePatch, NewCapsule},
+    domain::capsule::{CapsulePatch, NewCapsule},
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -30,13 +30,13 @@ pub fn take(conn: &mut Conn, input: Value) -> Response {
 pub fn read(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
-        id: i64,
+        id: String,
     }
     let req: In = match from_value(input) {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::capsules::read(conn, req.id) {
+    match store::capsules::read(conn, &req.id) {
         Ok(Some(c)) => Response::ok(c),
         Ok(None) => not_found("capsule", req.id),
         Err(e) => anyhow_to_response(e),
@@ -47,10 +47,10 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
 pub fn revise(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
-        id: i64,
+        id: String,
         title: Option<String>,
         content: Option<String>,
-        compound: Option<CapsuleCompound>,
+        compound: Option<String>,
     }
     let req: In = match from_value(input) {
         Ok(v) => v,
@@ -60,7 +60,7 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
     if let Err(r) = validate_input(&patch) {
         return r;
     }
-    match store::capsules::revise(conn, req.id, &patch) {
+    match store::capsules::revise(conn, &req.id, &patch) {
         Ok(Some(c)) => Response::ok(c),
         Ok(None) => not_found("capsule", req.id),
         Err(e) => anyhow_to_response(e),
@@ -71,13 +71,13 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
 pub fn discard(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
-        id: i64,
+        id: String,
     }
     let req: In = match from_value(input) {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::capsules::discard(conn, req.id) {
+    match store::capsules::discard(conn, &req.id) {
         Ok(Some(r)) => Response::ok(r),
         Ok(None) => not_found("capsule", req.id),
         Err(e) => anyhow_to_response(e),

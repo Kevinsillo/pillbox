@@ -47,12 +47,23 @@ function extractLangs(markdown: string): string[] {
   return [...new Set(langs)]
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
 const renderer = {
   code({ text, lang }: { text: string; lang?: string }) {
-    const language = lang && hljs.getLanguage(lang) ? lang : "plaintext"
-    const highlighted = hljs.highlight(text, { language }).value
+    const knownLang = lang && hljs.getLanguage(lang) ? lang : null
+    const highlighted = knownLang
+      ? hljs.highlight(text, { language: knownLang }).value
+      : escapeHtml(text)
+    const cssClass = knownLang ? `hljs language-${knownLang}` : "hljs"
     const label = lang ? `<span class="code-lang">${lang}</span>` : ""
-    return `<div class="code-block">${label}<pre><code class="hljs language-${language}">${highlighted}</code></pre></div>`
+    return `<div class="code-block">${label}<pre><code class="${cssClass}">${highlighted}</code></pre></div>`
   },
 }
 
@@ -62,7 +73,8 @@ export function useMarkdown() {
   async function parse(content: string): Promise<string> {
     const langs = extractLangs(content)
     await Promise.all(langs.map(loadLanguage))
-    return marked.parse(content) as string
+    const html = marked.parse(content) as string
+    return html.replace(/<input([^>]*?) disabled=""([^>]*?)type="checkbox"/g, '<input$1$2type="checkbox"')
   }
 
   return { parse }

@@ -360,11 +360,22 @@ pub fn db_not_found() {
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────
 
-/// Muestra la lista de prescripciones de un bottle, separando activas de archivadas.
-pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription], total: u32) {
-    let (active, archived): (Vec<&Prescription>, Vec<&Prescription>) =
-        rxs.iter().partition(|rx| rx.deleted_at.is_none());
-
+/// Muestra la lista de prescripciones de un bottle.
+///
+/// Caller pre-divide los registros entre `active` y `archived`. La función
+/// aplica el cap visible (`archived_limit`) sobre los archivados y muestra
+/// el trailer `... N más archivados` con `N = archived_total - archived_limit`
+/// cuando el total exceda el cap. Si `archived_limit == 0`, oculta toda la
+/// sección de archivadas (sin header, sin filas, sin trailer).
+pub fn prescriptions_list(
+    bottle_name: &str,
+    db_path: &str,
+    active: &[Prescription],
+    archived: &[Prescription],
+    archived_limit: u32,
+    archived_total: u32,
+    total: u32,
+) {
     let count = active.len();
     println!(
         "\nPrescriptions  {}  {}    {}",
@@ -374,7 +385,14 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
     );
     println!("  {}", db_path.dimmed());
 
-    if active.is_empty() && archived.is_empty() {
+    let archived_cap = archived_limit as usize;
+    let archived_shown: Vec<&Prescription> = if archived_cap == 0 {
+        Vec::new()
+    } else {
+        archived.iter().take(archived_cap).collect()
+    };
+
+    if active.is_empty() && archived_shown.is_empty() {
         println!("\n  {}\n", t!("prescriptions.none").dimmed());
         return;
     }
@@ -409,7 +427,8 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
                 rows
             )
         );
-        let hidden = total.saturating_sub(rxs.len() as u32);
+        let active_count = active.len() as u32;
+        let hidden = total.saturating_sub(active_count + archived_total);
         if hidden > 0 {
             println!("   … {} más", hidden);
         } else {
@@ -417,15 +436,15 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
         }
     }
 
-    if !archived.is_empty() {
-        let n = archived.len();
+    if !archived_shown.is_empty() {
+        let n = archived_shown.len();
         println!(
             "\n  {}\n",
             t!("prescriptions.list.archived_section", count = n)
                 .dimmed()
                 .to_string()
         );
-        let rows = archived
+        let rows = archived_shown
             .iter()
             .map(|rx| {
                 let short_id = &rx.id[..rx.id.len().min(8)];
@@ -454,8 +473,8 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
                 ]
             })
             .collect();
-        println!(
-            "{}\n",
+        print!(
+            "{}",
             table::plain_list(
                 &[
                     t!("prescriptions.list.col.id").as_ref(),
@@ -467,6 +486,15 @@ pub fn prescriptions_list(bottle_name: &str, db_path: &str, rxs: &[Prescription]
                 rows
             )
         );
+        let archived_hidden = archived_total.saturating_sub(archived_cap as u32);
+        if archived_hidden > 0 {
+            println!(
+                "   {}",
+                t!("prescriptions.list.more_archived", count = archived_hidden)
+                    .dimmed()
+            );
+        }
+        println!();
     } else {
         println!();
     }
@@ -700,7 +728,18 @@ pub fn migrate_result_local(prescriptions: usize, pills: usize) {
 // ─── Prescription show ────────────────────────────────────────────────────────
 
 /// Muestra el detalle completo de una prescripción con sus pills activas y archivadas.
-pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill], limit: u32) {
+///
+/// Las pills activas se limitan a `limit`. Las archivadas se limitan a
+/// `archived_limit`; cuando `archived_total > archived_limit` se imprime
+/// el trailer `... N más archivados` con `N = archived_total - archived_limit`.
+/// Si `archived_limit == 0`, oculta la sección de archivadas entera.
+pub fn prescription_show(
+    rx: &Prescription,
+    pills: &[pillbox::domain::pill::Pill],
+    limit: u32,
+    archived_limit: u32,
+    archived_total: u32,
+) {
     let estado = if rx.ended_at.is_some() {
         t!("prescriptions.state.closed").dimmed().to_string()
     } else {
@@ -738,6 +777,13 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
     let shown_active: Vec<&pillbox::domain::pill::Pill> = active_pills.iter().copied().take(limit as usize).collect();
     let hidden = total_active.saturating_sub(shown_active.len());
 
+    let archived_cap = archived_limit as usize;
+    let archived_shown: Vec<&pillbox::domain::pill::Pill> = if archived_cap == 0 {
+        Vec::new()
+    } else {
+        archived_pills.iter().copied().take(archived_cap).collect()
+    };
+
     println!(
         "\nPills  {}  {}    {}",
         "·".dimmed(),
@@ -745,7 +791,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
         total_active.to_string().bold()
     );
 
-    if active_pills.is_empty() && archived_pills.is_empty() {
+    if active_pills.is_empty() && archived_shown.is_empty() {
         println!("\n  {}\n", t!("pills.none").dimmed());
         return;
     }
@@ -782,15 +828,15 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
         }
     }
 
-    if !archived_pills.is_empty() {
-        let n = archived_pills.len();
+    if !archived_shown.is_empty() {
+        let n = archived_shown.len();
         println!(
             "\n  {}\n",
             t!("prescription.pills.archived_section", count = n)
                 .dimmed()
                 .to_string()
         );
-        let table_rows = archived_pills
+        let table_rows = archived_shown
             .iter()
             .map(|p| {
                 vec![
@@ -801,8 +847,8 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
                 ]
             })
             .collect();
-        println!(
-            "{}\n",
+        print!(
+            "{}",
             table::plain_list(
                 &[
                     t!("pills.list.col.num").as_ref(),
@@ -813,6 +859,14 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
                 table_rows,
             )
         );
+        let archived_hidden = archived_total.saturating_sub(archived_cap as u32);
+        if archived_hidden > 0 {
+            println!(
+                "   {}",
+                t!("prescription.pills.more_archived", count = archived_hidden).dimmed()
+            );
+        }
+        println!();
     } else {
         println!();
     }
@@ -822,7 +876,7 @@ pub fn prescription_show(rx: &Prescription, pills: &[pillbox::domain::pill::Pill
 
 /// Muestra el detalle completo de una pill: metadatos y contenido formateado.
 pub fn pill_detail(pill: &Pill) {
-    let short_id = format!("#{}", pill.id);
+    let short_id = format!("id: {}", pill.id);
     let rx_short = &pill.prescription_id[..pill.prescription_id.len().min(8)];
     let author_val = pill.author_name.as_deref().unwrap_or("-").to_string();
     let rows = vec![
@@ -859,14 +913,30 @@ pub fn pill_detail(pill: &Pill) {
 // ─── Capsules list ────────────────────────────────────────────────────────────
 
 /// Muestra la lista de capsules, separando activas de archivadas.
-pub fn capsules_list(capsules: &[Capsule], total: u32) {
-    let (active, archived): (Vec<&Capsule>, Vec<&Capsule>) =
-        capsules.iter().partition(|c| c.deleted_at.is_none());
-
+///
+/// Caller pre-divide los registros entre `active` y `archived`. La función
+/// aplica el cap visible (`archived_limit`) sobre los archivados y muestra
+/// el trailer `... N más archivados` con `N = archived_total - archived_limit`
+/// cuando el total exceda el cap. Si `archived_limit == 0`, oculta toda la
+/// sección de archivadas.
+pub fn capsules_list(
+    active: &[Capsule],
+    archived: &[Capsule],
+    archived_limit: u32,
+    archived_total: u32,
+    total: u32,
+) {
     let count = active.len();
     println!("\nCapsules    {}", count.to_string().bold());
 
-    if active.is_empty() && archived.is_empty() {
+    let archived_cap = archived_limit as usize;
+    let archived_shown: Vec<&Capsule> = if archived_cap == 0 {
+        Vec::new()
+    } else {
+        archived.iter().take(archived_cap).collect()
+    };
+
+    if active.is_empty() && archived_shown.is_empty() {
         println!("\n  {}\n", t!("capsules.none").dimmed());
         return;
     }
@@ -894,7 +964,8 @@ pub fn capsules_list(capsules: &[Capsule], total: u32) {
                 rows,
             )
         );
-        let hidden = total.saturating_sub(capsules.len() as u32);
+        let active_count = active.len() as u32;
+        let hidden = total.saturating_sub(active_count + archived_total);
         if hidden > 0 {
             println!("   … {} más", hidden);
         } else {
@@ -902,15 +973,15 @@ pub fn capsules_list(capsules: &[Capsule], total: u32) {
         }
     }
 
-    if !archived.is_empty() {
-        let n = archived.len();
+    if !archived_shown.is_empty() {
+        let n = archived_shown.len();
         println!(
             "\n  {}\n",
             t!("capsules.list.archived_section", count = n)
                 .dimmed()
                 .to_string()
         );
-        let rows = archived
+        let rows = archived_shown
             .iter()
             .map(|c| {
                 let archived_date = c
@@ -928,8 +999,8 @@ pub fn capsules_list(capsules: &[Capsule], total: u32) {
                 ]
             })
             .collect();
-        println!(
-            "{}\n",
+        print!(
+            "{}",
             table::plain_list(
                 &[
                     t!("capsules.list.col.num").as_ref(),
@@ -940,6 +1011,14 @@ pub fn capsules_list(capsules: &[Capsule], total: u32) {
                 rows,
             )
         );
+        let archived_hidden = archived_total.saturating_sub(archived_cap as u32);
+        if archived_hidden > 0 {
+            println!(
+                "   {}",
+                t!("capsules.list.more_archived", count = archived_hidden).dimmed()
+            );
+        }
+        println!();
     } else {
         println!();
     }
@@ -949,7 +1028,7 @@ pub fn capsules_list(capsules: &[Capsule], total: u32) {
 
 /// Muestra el detalle completo de una capsule: metadatos y contenido formateado.
 pub fn capsule_detail(capsule: &Capsule) {
-    let short_id = format!("#{}", capsule.id);
+    let short_id = format!("id: {}", capsule.id);
     let updated = if capsule.updated_at != capsule.created_at {
         capsule.updated_at.dimmed().to_string()
     } else {

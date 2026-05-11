@@ -5,7 +5,7 @@ import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
 import { ElInput, ElOption, ElSelect } from 'element-plus'
 import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesRepository'
-import type { CapsuleSummary, CapsuleCompound } from '@/core/domain/types'
+import type { CapsuleSummary } from '@/core/domain/types'
 import CompoundBadge from '@/components/CompoundBadge.vue'
 import TruncatedTitle from '@/components/TruncatedTitle.vue'
 import { RouterLink } from 'vue-router'
@@ -15,10 +15,10 @@ import ITrash2 from '~icons/lucide/trash-2'
 const { t } = useI18n()
 const { confirm } = useConfirm()
 
-const CAPSULE_COMPOUNDS: CapsuleCompound[] = ['convention', 'workflow', 'environment', 'context', 'goal', 'feedback', 'manual']
+const CAPSULE_COMPOUNDS: string[] = ['convention', 'workflow', 'environment', 'context', 'goal', 'feedback', 'manual']
 
 const capsules = ref<CapsuleSummary[]>([])
-const filterCompound = ref<CapsuleCompound | ''>('')
+const filterCompound = ref('')
 const searchQuery = ref('')
 
 const activeCapsules = computed(() => capsules.value.filter(c => c.deleted_at === null))

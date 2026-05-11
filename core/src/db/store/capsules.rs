@@ -5,6 +5,7 @@ use rusqlite::{params, Connection, TransactionBehavior};
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::db::store::ListFilter;
 use crate::domain::capsule::{Capsule, CapsulePatch, NewCapsule};
 
 // ─── Tipos de resultado ───────────────────────────────────────────────────────
@@ -12,8 +13,7 @@ use crate::domain::capsule::{Capsule, CapsulePatch, NewCapsule};
 /// Resultado de guardar una capsule nueva.
 #[derive(Debug, Serialize)]
 pub struct CapsuleStoreResult {
-    pub id: i64,
-    pub sync_id: String,
+    pub id: String,
     pub action: &'static str, // "created"
     pub title: String,
     pub compound: String,
@@ -23,7 +23,7 @@ pub struct CapsuleStoreResult {
 /// Resultado de descartar una capsule (soft delete).
 #[derive(Debug, Serialize)]
 pub struct CapsuleDiscardResult {
-    pub id: i64,
+    pub id: String,
     pub deleted_at: String,
 }
 
@@ -31,22 +31,19 @@ pub struct CapsuleDiscardResult {
 
 /// Guarda una capsule de conocimiento personal (sin prescription ni bottle).
 pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleStoreResult> {
-    let sync_id = Uuid::now_v7().to_string();
+    let id = Uuid::now_v7().to_string();
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     tx.execute(
-        "INSERT INTO capsules (sync_id, compound, title, content)
+        "INSERT INTO capsules (id, compound, title, content)
          VALUES (?1, ?2, ?3, ?4)",
-        params![sync_id, input.compound.as_str(), input.title, input.content],
+        params![id, input.compound.as_str(), input.title, input.content],
     )
     .context("failed to insert capsule")?;
-
-    let id = tx.last_insert_rowid();
 
     tx.commit()?;
     Ok(CapsuleStoreResult {
         id,
-        sync_id,
         action: "created",
         title: input.title.clone(),
         compound: input.compound.as_str().to_string(),
@@ -54,10 +51,10 @@ pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleStoreRes
     })
 }
 
-/// Lee una capsule completa por ID (no descartada).
-pub fn read(conn: &Connection, id: i64) -> Result<Option<Capsule>> {
+/// Lee una capsule completa por UUID (no descartada).
+pub fn read(conn: &Connection, id: &str) -> Result<Option<Capsule>> {
     match conn.query_row(
-        "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
+        "SELECT id, compound, title, content, created_at, updated_at, deleted_at
          FROM capsules WHERE id = ?1 AND deleted_at IS NULL",
         params![id],
         row_to_capsule,
@@ -68,10 +65,10 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Capsule>> {
     }
 }
 
-/// Lee una capsule completa por ID incluyendo descartadas.
-pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Capsule>> {
+/// Lee una capsule completa por UUID incluyendo descartadas.
+pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Capsule>> {
     match conn.query_row(
-        "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
+        "SELECT id, compound, title, content, created_at, updated_at, deleted_at
          FROM capsules WHERE id = ?1",
         params![id],
         row_to_capsule,
@@ -84,7 +81,7 @@ pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Capsule>> {
 
 /// Actualiza campos de una capsule existente (patch parcial).
 /// Devuelve `None` si no existe o fue descartada.
-pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Option<Capsule>> {
+pub fn revise(conn: &mut Connection, id: &str, patch: &CapsulePatch) -> Result<Option<Capsule>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
@@ -110,7 +107,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Op
 
     let capsule = tx
         .query_row(
-            "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
+            "SELECT id, compound, title, content, created_at, updated_at, deleted_at
              FROM capsules WHERE id = ?1",
             params![id],
             row_to_capsule,
@@ -123,7 +120,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &CapsulePatch) -> Result<Op
 
 /// Soft delete de una capsule.
 /// Devuelve `None` si no existe o ya estaba descartada.
-pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<CapsuleDiscardResult>> {
+pub fn discard(conn: &mut Connection, id: &str) -> Result<Option<CapsuleDiscardResult>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
@@ -145,7 +142,7 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<CapsuleDiscardRe
     )?;
 
     tx.commit()?;
-    Ok(Some(CapsuleDiscardResult { id, deleted_at }))
+    Ok(Some(CapsuleDiscardResult { id: id.to_string(), deleted_at }))
 }
 
 /// Lista capsules globales con filtros opcionales (incluye archivadas).
@@ -158,15 +155,40 @@ pub fn count(conn: &Connection) -> Result<u32> {
     Ok(n)
 }
 
-pub fn list(conn: &Connection, limit: Option<u32>, compound: Option<&str>) -> Result<Vec<Capsule>> {
+/// Cuenta capsules archivadas (`deleted_at IS NOT NULL`).
+///
+/// Permite mostrar el trailer `... N más archivados` con el número exacto
+/// de capsules ocultas tras aplicar el cap del CLI.
+pub fn count_archived(conn: &Connection) -> Result<u32> {
+    let n: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM capsules WHERE deleted_at IS NOT NULL",
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(n)
+}
+
+pub fn list(
+    conn: &Connection,
+    limit: Option<u32>,
+    compound: Option<&str>,
+    filter: ListFilter,
+) -> Result<Vec<Capsule>> {
     let limit = limit.unwrap_or(50);
-    let mut stmt = conn.prepare(
-        "SELECT id, sync_id, compound, title, content, created_at, updated_at, deleted_at
+    let filter_clause = match filter {
+        ListFilter::Active => "AND deleted_at IS NULL",
+        ListFilter::Archived => "AND deleted_at IS NOT NULL",
+        ListFilter::All => "",
+    };
+    let sql = format!(
+        "SELECT id, compound, title, content, created_at, updated_at, deleted_at
          FROM capsules
-         WHERE (?1 IS NULL OR compound = ?1)
+         WHERE (?1 IS NULL OR compound = ?1) {}
          ORDER BY updated_at DESC
          LIMIT ?2",
-    )?;
+        filter_clause,
+    );
+    let mut stmt = conn.prepare(&sql)?;
     let capsules = stmt
         .query_map(params![compound, limit], row_to_capsule)?
         .collect::<rusqlite::Result<Vec<_>>>()
@@ -178,7 +200,7 @@ pub fn list(conn: &Connection, limit: Option<u32>, compound: Option<&str>) -> Re
 ///
 /// Elimina la fila de `capsules` permanentemente.
 /// Devuelve `Ok(true)` si existía y fue eliminada, `Ok(false)` si no existía.
-pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<bool> {
+pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<bool> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let exists: bool = tx.query_row(
@@ -202,13 +224,12 @@ pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<bool> {
 fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
     Ok(Capsule {
         id: row.get(0)?,
-        sync_id: row.get(1)?,
-        compound: row.get(2)?,
-        title: row.get(3)?,
-        content: row.get(4)?,
-        created_at: row.get(5)?,
-        updated_at: row.get(6)?,
-        deleted_at: row.get(7)?,
+        compound: row.get(1)?,
+        title: row.get(2)?,
+        content: row.get(3)?,
+        created_at: row.get(4)?,
+        updated_at: row.get(5)?,
+        deleted_at: row.get(6)?,
     })
 }
 
@@ -216,13 +237,13 @@ fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
 mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
-    use crate::domain::capsule::{CapsuleCompound, CapsulePatch, NewCapsule};
+    use crate::domain::capsule::{CapsulePatch, NewCapsule};
 
     fn sample_capsule() -> NewCapsule {
         NewCapsule {
             title: "Snake_case siempre".into(),
             content: "Prefiero snake_case en todos los proyectos, incluso en TypeScript.".into(),
-            compound: CapsuleCompound::Convention,
+            compound: "convention".into(),
         }
     }
 
@@ -236,7 +257,7 @@ mod tests {
         assert_eq!(result.compound, input.compound.as_str());
         assert_eq!(result.content, input.content);
 
-        let cap = read(&conn, result.id).unwrap().unwrap();
+        let cap = read(&conn, &result.id).unwrap().unwrap();
         assert_eq!(cap.compound, "convention");
         assert_eq!(cap.title, "Snake_case siempre");
     }
@@ -248,7 +269,7 @@ mod tests {
 
         let updated = revise(
             &mut conn,
-            cap.id,
+            &cap.id,
             &CapsulePatch {
                 title: Some("Convención de nombres".into()),
                 content: None,
@@ -266,23 +287,23 @@ mod tests {
     fn discard_soft_deletes() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
-        let result = discard(&mut conn, cap.id).unwrap().unwrap();
+        let result = discard(&mut conn, &cap.id).unwrap().unwrap();
         assert_eq!(result.id, cap.id);
-        assert!(read(&conn, cap.id).unwrap().is_none());
+        assert!(read(&conn, &cap.id).unwrap().is_none());
     }
 
     #[test]
     fn discard_twice_returns_none() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
-        discard(&mut conn, cap.id).unwrap();
-        assert!(discard(&mut conn, cap.id).unwrap().is_none());
+        discard(&mut conn, &cap.id).unwrap();
+        assert!(discard(&mut conn, &cap.id).unwrap().is_none());
     }
 
     #[test]
     fn read_missing_returns_none() {
         let conn = open_in_memory().unwrap();
-        assert!(read(&conn, 9999).unwrap().is_none());
+        assert!(read(&conn, "00000000-0000-0000-0000-000000000000").unwrap().is_none());
     }
 
     #[test]
@@ -290,7 +311,7 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let result = revise(
             &mut conn,
-            9999,
+            "00000000-0000-0000-0000-000000000000",
             &CapsulePatch {
                 title: Some("x".into()),
                 content: None,
@@ -305,11 +326,11 @@ mod tests {
     fn revise_discarded_returns_none() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
-        discard(&mut conn, cap.id).unwrap();
+        discard(&mut conn, &cap.id).unwrap();
 
         let result = revise(
             &mut conn,
-            cap.id,
+            &cap.id,
             &CapsulePatch {
                 title: Some("nuevo".into()),
                 content: None,
@@ -329,12 +350,12 @@ mod tests {
             &NewCapsule {
                 title: "Otra convención".into(),
                 content: "Usar PascalCase para tipos.".into(),
-                compound: CapsuleCompound::Convention,
+                compound: "convention".into(),
             },
         )
         .unwrap();
 
-        let all = list(&conn, None, None).unwrap();
+        let all = list(&conn, None, None, ListFilter::All).unwrap();
         assert_eq!(all.len(), 2);
     }
 
@@ -347,12 +368,12 @@ mod tests {
             &NewCapsule {
                 title: "Workflow de deploy".into(),
                 content: "push a main = deploy automático.".into(),
-                compound: CapsuleCompound::Workflow,
+                compound: "workflow".into(),
             },
         )
         .unwrap();
 
-        let conventions = list(&conn, None, Some("convention")).unwrap();
+        let conventions = list(&conn, None, Some("convention"), ListFilter::All).unwrap();
         assert_eq!(conventions.len(), 1);
         assert_eq!(conventions[0].compound, "convention");
     }
@@ -366,13 +387,13 @@ mod tests {
                 &NewCapsule {
                     title: format!("Cap {i}"),
                     content: "contenido".into(),
-                    compound: CapsuleCompound::Manual,
+                    compound: "manual".into(),
                 },
             )
             .unwrap();
         }
 
-        let limited = list(&conn, Some(3), None).unwrap();
+        let limited = list(&conn, Some(3), None, ListFilter::All).unwrap();
         assert_eq!(limited.len(), 3);
     }
 
@@ -380,9 +401,9 @@ mod tests {
     fn list_includes_discarded_after_filter_removal() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
-        discard(&mut conn, cap.id).unwrap();
+        discard(&mut conn, &cap.id).unwrap();
 
-        let all = list(&conn, None, None).unwrap();
+        let all = list(&conn, None, None, ListFilter::All).unwrap();
         assert_eq!(all.len(), 1);
         assert!(all[0].deleted_at.is_some());
     }
@@ -391,9 +412,9 @@ mod tests {
     fn read_any_finds_archived() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
-        discard(&mut conn, cap.id).unwrap();
+        discard(&mut conn, &cap.id).unwrap();
 
-        let found = read_any(&conn, cap.id).unwrap();
+        let found = read_any(&conn, &cap.id).unwrap();
         assert!(found.is_some());
         assert!(found.unwrap().deleted_at.is_some());
     }
@@ -402,25 +423,25 @@ mod tests {
     fn read_excludes_archived_but_read_any_does_not() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
-        discard(&mut conn, cap.id).unwrap();
+        discard(&mut conn, &cap.id).unwrap();
 
-        assert!(read(&conn, cap.id).unwrap().is_none());
-        assert!(read_any(&conn, cap.id).unwrap().is_some());
+        assert!(read(&conn, &cap.id).unwrap().is_none());
+        assert!(read_any(&conn, &cap.id).unwrap().is_some());
     }
 
     #[test]
     fn hard_delete_removes_row() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
-        let deleted = hard_delete(&mut conn, cap.id).unwrap();
+        let deleted = hard_delete(&mut conn, &cap.id).unwrap();
         assert!(deleted);
-        assert!(read_any(&conn, cap.id).unwrap().is_none());
+        assert!(read_any(&conn, &cap.id).unwrap().is_none());
     }
 
     #[test]
     fn hard_delete_nonexistent_returns_false() {
         let mut conn = open_in_memory().unwrap();
-        let deleted = hard_delete(&mut conn, 9999).unwrap();
+        let deleted = hard_delete(&mut conn, "00000000-0000-0000-0000-000000000000").unwrap();
         assert!(!deleted);
     }
 
@@ -428,10 +449,59 @@ mod tests {
     fn list_includes_archived() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
-        discard(&mut conn, cap.id).unwrap();
+        discard(&mut conn, &cap.id).unwrap();
 
-        let all = list(&conn, None, None).unwrap();
+        let all = list(&conn, None, None, ListFilter::All).unwrap();
         assert_eq!(all.len(), 1);
         assert!(all[0].deleted_at.is_some());
+    }
+
+    #[test]
+    fn list_active_filter_excludes_archived() {
+        let mut conn = open_in_memory().unwrap();
+        for i in 0..3 {
+            take(&mut conn, &NewCapsule { title: format!("Active {i}"), content: "c".into(), compound: "discovery".into() }).unwrap();
+        }
+        let archived_ids: Vec<String> = (0..5)
+            .map(|i| take(&mut conn, &NewCapsule { title: format!("Archived {i}"), content: "c".into(), compound: "discovery".into() }).unwrap().id)
+            .collect();
+        for id in &archived_ids {
+            discard(&mut conn, id).unwrap();
+        }
+        let active = list(&conn, Some(100), None, ListFilter::Active).unwrap();
+        assert_eq!(active.len(), 3);
+        assert!(active.iter().all(|c| c.deleted_at.is_none()));
+    }
+
+    #[test]
+    fn list_archived_filter_excludes_active() {
+        let mut conn = open_in_memory().unwrap();
+        for i in 0..3 {
+            take(&mut conn, &NewCapsule { title: format!("Active {i}"), content: "c".into(), compound: "discovery".into() }).unwrap();
+        }
+        let archived_ids: Vec<String> = (0..5)
+            .map(|i| take(&mut conn, &NewCapsule { title: format!("Archived {i}"), content: "c".into(), compound: "discovery".into() }).unwrap().id)
+            .collect();
+        for id in &archived_ids {
+            discard(&mut conn, id).unwrap();
+        }
+        let archived = list(&conn, Some(100), None, ListFilter::Archived).unwrap();
+        assert_eq!(archived.len(), 5);
+        assert!(archived.iter().all(|c| c.deleted_at.is_some()));
+    }
+
+    #[test]
+    fn archived_limit_clamps_and_count_matches_total() {
+        let mut conn = open_in_memory().unwrap();
+        let archived_ids: Vec<String> = (0..9)
+            .map(|i| take(&mut conn, &NewCapsule { title: format!("Archived {i}"), content: "c".into(), compound: "discovery".into() }).unwrap().id)
+            .collect();
+        for id in &archived_ids {
+            discard(&mut conn, id).unwrap();
+        }
+        let archived = list(&conn, Some(3), None, ListFilter::Archived).unwrap();
+        assert_eq!(archived.len(), 3);
+        let total = count_archived(&conn).unwrap();
+        assert_eq!(total, 9);
     }
 }
