@@ -140,11 +140,19 @@ pub fn bottle_context(conn: &mut Conn, input: Value) -> Response {
         Err(r) => return r,
     };
     match store::search::bottle_context(conn, &req.bottle_id, req.limit) {
-        Ok(ctx) => Response::ok(json!({
-            "context":            ctx.context,
-            "prescription_count": ctx.prescription_count,
-            "pill_count":         ctx.pill_count,
-        })),
+        Ok(ctx) => {
+            let prescriptions: Vec<_> = ctx.prescriptions.into_iter().map(|rx| json!({
+                "id":         rx.id,
+                "title":      rx.title,
+                "started_at": rx.started_at,
+                "ended_at":   rx.ended_at,
+                "pill_count": rx.pill_count,
+            })).collect();
+            Response::ok(json!({
+                "prescription_count": ctx.prescription_count,
+                "prescriptions":      prescriptions,
+            }))
+        }
         Err(e) => anyhow_to_response(e),
     }
 }
@@ -170,11 +178,22 @@ pub fn prescription_context(conn: &mut Conn, input: Value) -> Response {
         Err(r) => return r,
     };
     match store::search::prescription_context(conn, &req.prescription_id, req.limit) {
-        Ok(ctx) => Response::ok(json!({
-            "context":            ctx.context,
-            "prescription_count": ctx.prescription_count,
-            "pill_count":         ctx.pill_count,
-        })),
+        Ok(ctx) => {
+            let pills: Vec<_> = ctx.pills.into_iter().map(|p| json!({
+                "id":       p.id,
+                "compound": p.compound,
+                "title":    p.title,
+                "snippet":  p.snippet,
+            })).collect();
+            Response::ok(json!({
+                "id":         ctx.id,
+                "title":      ctx.title,
+                "started_at": ctx.started_at,
+                "ended_at":   ctx.ended_at,
+                "pill_count": ctx.pill_count,
+                "pills":      pills,
+            }))
+        }
         Err(e) => anyhow_to_response(e),
     }
 }

@@ -236,10 +236,32 @@ pub fn capsule_find(
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-/// Resultado de contexto: texto formateado + contadores.
-pub struct ContextResult {
-    pub context: String,
+pub struct BottleRxEntry {
+    pub id: String,
+    pub title: String,
+    pub started_at: String,
+    pub ended_at: Option<String>,
+    pub pill_count: i64,
+}
+
+pub struct BottleContextResult {
+    pub prescriptions: Vec<BottleRxEntry>,
     pub prescription_count: usize,
+}
+
+pub struct PrescriptionPillEntry {
+    pub id: String,
+    pub compound: String,
+    pub title: String,
+    pub snippet: String,
+}
+
+pub struct PrescriptionContextResult {
+    pub id: Option<String>,
+    pub title: String,
+    pub started_at: String,
+    pub ended_at: Option<String>,
+    pub pills: Vec<PrescriptionPillEntry>,
     pub pill_count: usize,
 }
 
@@ -252,7 +274,7 @@ pub fn bottle_context(
     conn: &Connection,
     bottle_id: &str,
     limit: u32,
-) -> Result<ContextResult> {
+) -> Result<BottleContextResult> {
     let mut stmt = conn.prepare(
         "SELECT rx.id, rx.title, rx.started_at, rx.ended_at,
                 COUNT(p.id) AS pill_count
@@ -264,17 +286,9 @@ pub fn bottle_context(
          LIMIT ?2",
     )?;
 
-    struct RxEntry {
-        id: String,
-        title: String,
-        started_at: String,
-        ended_at: Option<String>,
-        pill_count: i64,
-    }
-
-    let prescriptions: Vec<RxEntry> = stmt
+    let prescriptions: Vec<BottleRxEntry> = stmt
         .query_map(params![bottle_id, limit], |row| {
-            Ok(RxEntry {
+            Ok(BottleRxEntry {
                 id: row.get(0)?,
                 title: row.get(1)?,
                 started_at: row.get(2)?,
@@ -286,27 +300,7 @@ pub fn bottle_context(
         .context("failed to load prescriptions for bottle_context")?;
 
     let prescription_count = prescriptions.len();
-    let mut md = String::new();
-
-    for rx in &prescriptions {
-        let status = if rx.ended_at.is_some() { "closed" } else { "open" };
-        let started = rx.started_at.get(..10).unwrap_or(&rx.started_at);
-        let date_range = if let Some(ref ended) = rx.ended_at {
-            format!("{started} → {}", ended.get(..10).unwrap_or(ended))
-        } else {
-            started.to_string()
-        };
-        md.push_str(&format!(
-            "[{status}] {date_range}  {} pills  {}\nid: {}\n\n",
-            rx.pill_count, rx.title, rx.id,
-        ));
-    }
-
-    Ok(ContextResult {
-        context: md,
-        prescription_count,
-        pill_count: 0,
-    })
+    Ok(BottleContextResult { prescriptions, prescription_count })
 }
 
 /// Pills de una prescription concreta, ordenadas de más reciente a más antigua.
@@ -317,7 +311,7 @@ pub fn prescription_context(
     conn: &Connection,
     prescription_id: &str,
     limit: u32,
-) -> Result<ContextResult> {
+) -> Result<PrescriptionContextResult> {
     let row = conn.query_row(
         "SELECT id, title, started_at, ended_at
          FROM prescriptions
@@ -337,7 +331,14 @@ pub fn prescription_context(
     let (rx_id, rx_title, rx_started, rx_ended) = match row {
         Ok(r) => r,
         Err(rusqlite::Error::QueryReturnedNoRows) => {
-            return Ok(ContextResult { context: String::new(), prescription_count: 0, pill_count: 0 });
+            return Ok(PrescriptionContextResult {
+                id: None,
+                title: String::new(),
+                started_at: String::new(),
+                ended_at: None,
+                pills: vec![],
+                pill_count: 0,
+            });
         }
         Err(e) => return Err(e).context("failed to read prescription"),
     };
@@ -350,55 +351,33 @@ pub fn prescription_context(
          LIMIT ?2",
     )?;
 
-    struct PillEntry {
-        id: String,
-        compound: String,
-        title: String,
-        content: String,
-    }
-
-    let pills: Vec<PillEntry> = pill_stmt
+    let pills: Vec<PrescriptionPillEntry> = pill_stmt
         .query_map(params![rx_id, limit], |row| {
-            Ok(PillEntry {
+            let content: String = row.get(3)?;
+            let flat: String = content.replace("\r\n", "\\n").replace('\n', "\\n").replace('\r', "\\n");
+            let chars: Vec<char> = flat.chars().collect();
+            let snippet = if chars.len() > 300 {
+                format!("{}…", chars[..299].iter().collect::<String>())
+            } else {
+                flat
+            };
+            Ok(PrescriptionPillEntry {
                 id: row.get(0)?,
                 compound: row.get(1)?,
                 title: row.get(2)?,
-                content: row.get(3)?,
+                snippet,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to load pills for prescription_context")?;
 
     let pill_count = pills.len();
-    let status = if rx_ended.is_some() { "closed" } else { "open" };
-    let started = rx_started.get(..10).unwrap_or(&rx_started);
-    let date_range = if let Some(ref ended) = rx_ended {
-        format!("{started} → {}", ended.get(..10).unwrap_or(ended))
-    } else {
-        started.to_string()
-    };
-
-    let mut md = format!("[{status}] {rx_title}\nid: {rx_id}  started: {date_range}\n");
-
-    for pill in &pills {
-        let snippet = {
-            let flat: String = pill.content.replace("\r\n", "\\n").replace('\n', "\\n").replace('\r', "\\n");
-            let chars: Vec<char> = flat.chars().collect();
-            if chars.len() > 300 {
-                format!("{}…", chars[..299].iter().collect::<String>())
-            } else {
-                flat
-            }
-        };
-        md.push_str(&format!(
-            "\n  id: {} [{}] {}\n  {}\n",
-            pill.id, pill.compound, pill.title, snippet
-        ));
-    }
-
-    Ok(ContextResult {
-        context: md,
-        prescription_count: 1,
+    Ok(PrescriptionContextResult {
+        id: Some(rx_id),
+        title: rx_title,
+        started_at: rx_started,
+        ended_at: rx_ended,
+        pills,
         pill_count,
     })
 }
@@ -658,9 +637,9 @@ mod tests {
 
         let ctx = bottle_context(&conn, &bottle_id, 30).unwrap();
         assert!(ctx.prescription_count > 0);
-        assert!(ctx.context.contains("id:"));
-        assert!(ctx.context.contains("[open]") || ctx.context.contains("[closed]"));
-        assert!(ctx.context.contains("pills"));
+        assert!(!ctx.prescriptions.is_empty());
+        assert!(!ctx.prescriptions[0].id.is_empty());
+        assert!(ctx.prescriptions[0].pill_count >= 0);
     }
 
     #[test]
@@ -679,7 +658,7 @@ mod tests {
 
         let ctx = bottle_context(&conn, &bottle.id, 30).unwrap();
         assert_eq!(ctx.prescription_count, 0);
-        assert!(ctx.context.is_empty());
+        assert!(ctx.prescriptions.is_empty());
     }
 
     #[test]
@@ -697,10 +676,12 @@ mod tests {
             .unwrap();
 
         let ctx = prescription_context(&conn, &rx_id, 30).unwrap();
-        assert_eq!(ctx.prescription_count, 1);
+        assert!(ctx.id.is_some());
         assert!(ctx.pill_count > 0);
-        assert!(ctx.context.contains("id:"));
-        assert!(ctx.context.contains("[decision]") || ctx.context.contains("[bugfix]") || ctx.context.contains("[discovery]"));
+        assert!(!ctx.pills.is_empty());
+        assert!(!ctx.pills[0].id.is_empty());
+        let compounds = ["decision", "bugfix", "discovery"];
+        assert!(compounds.contains(&ctx.pills[0].compound.as_str()));
     }
 
     #[test]
@@ -743,15 +724,16 @@ mod tests {
         let result = prescription_context(&conn, &rx.id, 30);
         assert!(result.is_ok());
         let ctx = result.unwrap();
-        assert!(ctx.context.contains("🦀") || ctx.context.contains("…"));
+        assert!(!ctx.pills.is_empty());
+        assert!(ctx.pills[0].snippet.contains("🦀") || ctx.pills[0].snippet.contains("…"));
     }
 
     #[test]
     fn prescription_context_unknown_id_returns_empty() {
         let conn = open_in_memory().unwrap();
         let ctx = prescription_context(&conn, "00000000-0000-0000-0000-000000000000", 30).unwrap();
-        assert_eq!(ctx.prescription_count, 0);
-        assert!(ctx.context.is_empty());
+        assert!(ctx.id.is_none());
+        assert!(ctx.pills.is_empty());
     }
 
     #[test]
