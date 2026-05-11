@@ -13,8 +13,7 @@ use crate::error::PillboxError;
 /// Resultado de guardar una pill nueva.
 #[derive(Debug, Serialize)]
 pub struct PillStoreResult {
-    pub id: i64,
-    pub sync_id: String,
+    pub id: String,
     pub action: &'static str, // "created"
     pub title: String,
     pub compound: String,
@@ -24,7 +23,7 @@ pub struct PillStoreResult {
 /// Resultado de descartar una pill (soft delete).
 #[derive(Debug, Serialize)]
 pub struct PillDiscardResult {
-    pub id: i64,
+    pub id: String,
     pub deleted_at: String,
 }
 
@@ -54,15 +53,15 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
         .into());
     }
 
-    let sync_id = Uuid::now_v7().to_string();
+    let id = Uuid::now_v7().to_string();
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     tx.execute(
         "INSERT INTO pills
-             (sync_id, compound, title, content, prescription_id, author_name, author_email)
+             (id, compound, title, content, prescription_id, author_name, author_email)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
-            sync_id,
+            id,
             input.compound.as_str(),
             input.title,
             input.content,
@@ -73,12 +72,9 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
     )
     .context("failed to insert pill")?;
 
-    let id = tx.last_insert_rowid();
-
     tx.commit()?;
     Ok(PillStoreResult {
         id,
-        sync_id,
         action: "created",
         title: input.title.clone(),
         compound: input.compound.as_str().to_string(),
@@ -86,10 +82,10 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
     })
 }
 
-/// Lee una pill completa por ID numérico (no descartada).
-pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
+/// Lee una pill completa por UUID (no descartada).
+pub fn read(conn: &Connection, id: &str) -> Result<Option<Pill>> {
     match conn.query_row(
-        "SELECT id, sync_id, compound, title, content, prescription_id,
+        "SELECT id, compound, title, content, prescription_id,
                 author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE id = ?1 AND deleted_at IS NULL",
         params![id],
@@ -101,10 +97,10 @@ pub fn read(conn: &Connection, id: i64) -> Result<Option<Pill>> {
     }
 }
 
-/// Lee una pill completa por ID numérico, incluyendo descartadas.
-pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Pill>> {
+/// Lee una pill completa por UUID, incluyendo descartadas.
+pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Pill>> {
     match conn.query_row(
-        "SELECT id, sync_id, compound, title, content, prescription_id,
+        "SELECT id, compound, title, content, prescription_id,
                 author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE id = ?1",
         params![id],
@@ -118,7 +114,7 @@ pub fn read_any(conn: &Connection, id: i64) -> Result<Option<Pill>> {
 
 /// Actualiza campos de una pill existente (patch parcial).
 /// Solo se modifican los campos no-None. Devuelve `None` si no existe o fue descartada.
-pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Option<Pill>> {
+pub fn revise(conn: &mut Connection, id: &str, patch: &PillPatch) -> Result<Option<Pill>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
@@ -144,7 +140,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
 
     let pill = tx
         .query_row(
-            "SELECT id, sync_id, compound, title, content, prescription_id,
+            "SELECT id, compound, title, content, prescription_id,
                     author_name, author_email, created_at, updated_at, deleted_at
              FROM pills WHERE id = ?1",
             params![id],
@@ -158,7 +154,7 @@ pub fn revise(conn: &mut Connection, id: i64, patch: &PillPatch) -> Result<Optio
 
 /// Soft delete de una pill.
 /// Devuelve `None` si no existe o ya estaba descartada.
-pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<PillDiscardResult>> {
+pub fn discard(conn: &mut Connection, id: &str) -> Result<Option<PillDiscardResult>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
@@ -180,17 +176,16 @@ pub fn discard(conn: &mut Connection, id: i64) -> Result<Option<PillDiscardResul
     )?;
 
     tx.commit()?;
-    Ok(Some(PillDiscardResult { id, deleted_at }))
+    Ok(Some(PillDiscardResult { id: id.to_string(), deleted_at }))
 }
 
 /// Hard delete de una pill (irreversible).
 ///
 /// Elimina la fila de `pills` permanentemente.
 /// Devuelve `Some(id)` si se eliminó, `None` si la pill no existía.
-pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<Option<i64>> {
+pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<Option<String>> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-    // Verificar que la pill existe
     let exists: bool = tx.query_row(
         "SELECT EXISTS(SELECT 1 FROM pills WHERE id = ?1)",
         params![id],
@@ -205,13 +200,13 @@ pub fn hard_delete(conn: &mut Connection, id: i64) -> Result<Option<i64>> {
         .context("failed to delete pill")?;
 
     tx.commit()?;
-    Ok(Some(id))
+    Ok(Some(id.to_string()))
 }
 
 /// Lista todas las pills de una prescription, ordenadas por fecha de creación.
 pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
-        "SELECT id, sync_id, compound, title, content, prescription_id,
+        "SELECT id, compound, title, content, prescription_id,
                 author_name, author_email, created_at, updated_at, deleted_at
          FROM pills
          WHERE prescription_id = ?1
@@ -239,7 +234,7 @@ pub fn count_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
 /// Pills más recientes de un bottle, ordenadas de más nueva a más antigua.
 pub fn list_recent(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
-        "SELECT p.id, p.sync_id, p.compound, p.title, p.content, p.prescription_id,
+        "SELECT p.id, p.compound, p.title, p.content, p.prescription_id,
                 p.author_name, p.author_email, p.created_at, p.updated_at, p.deleted_at
          FROM pills p
          JOIN prescriptions rx ON rx.id = p.prescription_id
@@ -310,16 +305,15 @@ pub fn open_rx_pill_count(conn: &Connection) -> Result<i64> {
 fn row_to_pill(row: &rusqlite::Row<'_>) -> rusqlite::Result<Pill> {
     Ok(Pill {
         id: row.get(0)?,
-        sync_id: row.get(1)?,
-        compound: row.get(2)?,
-        title: row.get(3)?,
-        content: row.get(4)?,
-        prescription_id: row.get(5)?,
-        author_name: row.get(6)?,
-        author_email: row.get(7)?,
-        created_at: row.get(8)?,
-        updated_at: row.get(9)?,
-        deleted_at: row.get(10)?,
+        compound: row.get(1)?,
+        title: row.get(2)?,
+        content: row.get(3)?,
+        prescription_id: row.get(4)?,
+        author_name: row.get(5)?,
+        author_email: row.get(6)?,
+        created_at: row.get(7)?,
+        updated_at: row.get(8)?,
+        deleted_at: row.get(9)?,
     })
 }
 
@@ -377,12 +371,12 @@ mod tests {
         let input = sample_pill(&rx_id);
         let result = take(&mut conn, &input).unwrap();
         assert_eq!(result.action, "created");
-        assert!(result.id > 0);
+        assert!(!result.id.is_empty());
         assert_eq!(result.title, input.title);
         assert_eq!(result.compound, input.compound.as_str());
         assert_eq!(result.content, input.content);
 
-        let pill = read(&conn, result.id).unwrap().unwrap();
+        let pill = read(&conn, &result.id).unwrap().unwrap();
         assert_eq!(pill.compound, "decision");
         assert_eq!(pill.prescription_id, rx_id);
     }
@@ -405,7 +399,7 @@ mod tests {
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         let updated = revise(
             &mut conn,
-            pill.id,
+            &pill.id,
             &PillPatch {
                 title: Some("Título revisado".into()),
                 content: None,
@@ -426,12 +420,12 @@ mod tests {
         let (_, rx_id) = setup(&mut conn);
 
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
-        let result = discard(&mut conn, pill.id).unwrap().unwrap();
+        let result = discard(&mut conn, &pill.id).unwrap().unwrap();
         assert_eq!(result.id, pill.id);
         assert!(!result.deleted_at.is_empty());
 
         // read ya no lo devuelve
-        assert!(read(&conn, pill.id).unwrap().is_none());
+        assert!(read(&conn, &pill.id).unwrap().is_none());
     }
 
     #[test]
@@ -440,14 +434,14 @@ mod tests {
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
 
-        discard(&mut conn, pill.id).unwrap();
-        assert!(discard(&mut conn, pill.id).unwrap().is_none());
+        discard(&mut conn, &pill.id).unwrap();
+        assert!(discard(&mut conn, &pill.id).unwrap().is_none());
     }
 
     #[test]
     fn read_missing_returns_none() {
         let conn = open_in_memory().unwrap();
-        assert!(read(&conn, 9999).unwrap().is_none());
+        assert!(read(&conn, "00000000-0000-0000-0000-000000000000").unwrap().is_none());
     }
 
     #[test]
@@ -455,7 +449,7 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let result = revise(
             &mut conn,
-            9999,
+            "00000000-0000-0000-0000-000000000000",
             &PillPatch {
                 title: Some("x".into()),
                 content: None,
@@ -471,11 +465,11 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
-        discard(&mut conn, pill.id).unwrap();
+        discard(&mut conn, &pill.id).unwrap();
 
         let result = revise(
             &mut conn,
-            pill.id,
+            &pill.id,
             &PillPatch {
                 title: Some("nuevo".into()),
                 content: None,
@@ -524,10 +518,10 @@ mod tests {
         let (_, rx_id) = setup(&mut conn);
 
         let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
-        let pill_id = result.id;
+        let pill_id = result.id.clone();
 
-        let deleted = hard_delete(&mut conn, pill_id).unwrap();
-        assert_eq!(deleted, Some(pill_id));
+        let deleted = hard_delete(&mut conn, &pill_id).unwrap();
+        assert_eq!(deleted, Some(pill_id.clone()));
 
         // pill ya no existe
         let pill_count: i64 = conn
@@ -539,7 +533,7 @@ mod tests {
     #[test]
     fn hard_delete_nonexistent_pill_returns_none() {
         let mut conn = open_in_memory().unwrap();
-        let result = hard_delete(&mut conn, 9999).unwrap();
+        let result = hard_delete(&mut conn, "00000000-0000-0000-0000-000000000000").unwrap();
         assert_eq!(result, None);
     }
 
@@ -548,10 +542,10 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
-        discard(&mut conn, pill.id).unwrap();
+        discard(&mut conn, &pill.id).unwrap();
 
         // read() should return None for a discarded pill
-        assert!(read(&conn, pill.id).unwrap().is_none());
+        assert!(read(&conn, &pill.id).unwrap().is_none());
     }
 
     #[test]
@@ -559,7 +553,7 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
-        discard(&mut conn, pill.id).unwrap();
+        discard(&mut conn, &pill.id).unwrap();
 
         // list_by_prescription() should now include discarded pills
         let pills = list_by_prescription(&conn, &rx_id).unwrap();
@@ -588,7 +582,7 @@ mod tests {
             },
         )
         .unwrap();
-        discard(&mut conn, pill2.id).unwrap();
+        discard(&mut conn, &pill2.id).unwrap();
 
         let pills = list_by_prescription(&conn, &rx_id).unwrap();
         assert_eq!(pills.len(), 2);
@@ -604,9 +598,9 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
-        discard(&mut conn, pill.id).unwrap();
+        discard(&mut conn, &pill.id).unwrap();
 
-        let found = read_any(&conn, pill.id).unwrap();
+        let found = read_any(&conn, &pill.id).unwrap();
         assert!(found.is_some());
         assert!(found.unwrap().deleted_at.is_some());
     }
@@ -616,9 +610,9 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
-        discard(&mut conn, pill.id).unwrap();
+        discard(&mut conn, &pill.id).unwrap();
 
-        assert!(read(&conn, pill.id).unwrap().is_none());
-        assert!(read_any(&conn, pill.id).unwrap().is_some());
+        assert!(read(&conn, &pill.id).unwrap().is_none());
+        assert!(read_any(&conn, &pill.id).unwrap().is_some());
     }
 }

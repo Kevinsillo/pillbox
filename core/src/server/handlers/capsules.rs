@@ -48,13 +48,13 @@ pub async fn capsule_create(
     }
 }
 
-/// Handler `GET /api/capsules/:id` — lee una capsule (incluyendo archivadas) por ID.
-pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+/// Handler `GET /api/capsules/:id` — lee una capsule (incluyendo archivadas) por UUID.
+pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
     let conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::capsules::read_any(&conn, id) {
+    match store::capsules::read_any(&conn, &id) {
         Ok(Some(c)) => ok(c),
         Ok(None) => err_404_capsule(id),
         Err(e) => err_500(e),
@@ -62,13 +62,13 @@ pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<i64>) -> ApiR
 }
 
 /// Handler `DELETE /api/capsules/:id/purge` — elimina permanentemente una capsule.
-pub async fn capsule_purge(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+pub async fn capsule_purge(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
     use serde_json::json;
     let mut conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::capsules::hard_delete(&mut conn, id) {
+    match store::capsules::hard_delete(&mut conn, &id) {
         Ok(true) => ok(json!({ "purged": true })),
         Ok(false) => err_404_capsule(id),
         Err(e) => err_500(e),
@@ -78,7 +78,7 @@ pub async fn capsule_purge(State(s): State<AppState>, Path(id): Path<i64>) -> Ap
 /// Handler `PATCH /api/capsules/:id` — aplica un patch parcial sobre una capsule.
 pub async fn capsule_patch(
     State(s): State<AppState>,
-    Path(id): Path<i64>,
+    Path(id): Path<String>,
     Json(patch): Json<CapsulePatch>,
 ) -> ApiResponse {
     if let Err(e) = patch.validate() {
@@ -88,7 +88,7 @@ pub async fn capsule_patch(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::capsules::revise(&mut conn, id, &patch) {
+    match store::capsules::revise(&mut conn, &id, &patch) {
         Ok(Some(c)) => ok(c),
         Ok(None) => err_404_capsule(id),
         Err(e) => err_500(e),
@@ -96,12 +96,12 @@ pub async fn capsule_patch(
 }
 
 /// Handler `DELETE /api/capsules/:id` — realiza un soft delete de una capsule.
-pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
     let mut conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::capsules::discard(&mut conn, id) {
+    match store::capsules::discard(&mut conn, &id) {
         Ok(Some(r)) => ok(r),
         Ok(None) => err_404_capsule(id),
         Err(e) => err_500(e),

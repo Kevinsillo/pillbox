@@ -192,10 +192,10 @@ enum PrescriptionCommand {
 
 #[derive(Subcommand)]
 enum PillCommand {
-    /// Muestra el detalle de una pill por su ID numérico.
+    /// Muestra el detalle de una pill por su UUID.
     Show {
-        /// ID numérico de la pill (visible en `prescription show`).
-        id: i64,
+        /// UUID de la pill (visible en `prescription show`).
+        id: String,
     },
 }
 
@@ -206,10 +206,10 @@ enum CapsuleCommand {
         #[arg(short, long, default_value = "50")]
         limit: u32,
     },
-    /// Muestra el detalle de una capsule por ID.
+    /// Muestra el detalle de una capsule por UUID.
     Show {
-        /// ID numérico de la capsule.
-        id: i64,
+        /// UUID de la capsule.
+        id: String,
     },
 }
 
@@ -293,12 +293,12 @@ async fn main() -> Result<()> {
             None => cmd_sub_help("bottle"),
         },
         Some(Command::Pill { cmd }) => match cmd {
-            Some(PillCommand::Show { id }) => cmd::pill::cmd_pill_show(id),
+            Some(PillCommand::Show { id }) => cmd::pill::cmd_pill_show(&id),
             None => cmd_sub_help("pill"),
         },
         Some(Command::Capsule { cmd }) => match cmd {
             Some(CapsuleCommand::List { limit }) => cmd::capsule::cmd_capsule_list(limit),
-            Some(CapsuleCommand::Show { id }) => cmd::capsule::cmd_capsule_show(id),
+            Some(CapsuleCommand::Show { id }) => cmd::capsule::cmd_capsule_show(&id),
             None => cmd_sub_help("capsule"),
         },
         Some(Command::Prescription { cmd }) => match cmd {

@@ -60,16 +60,16 @@ pub async fn pill_create(
     }
 }
 
-/// Handler `GET /api/.../pills/:id` — lee una pill (incluyendo archivadas) por ID.
+/// Handler `GET /api/.../pills/:id` — lee una pill (incluyendo archivadas) por UUID.
 pub async fn pill_get(
     State(s): State<AppState>,
-    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
+    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, String)>,
 ) -> ApiResponse {
     let conn = match conn_for_bottle(&s, &bottle_id) {
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::pills::read_any(&conn, pill_id) {
+    match store::pills::read_any(&conn, &pill_id) {
         Ok(Some(p)) => ok(p),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => err_500(e),
@@ -79,7 +79,7 @@ pub async fn pill_get(
 /// Handler `PATCH /api/.../pills/:id` — aplica un patch parcial sobre una pill.
 pub async fn pill_patch(
     State(s): State<AppState>,
-    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
+    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, String)>,
     Json(patch): Json<PillPatch>,
 ) -> ApiResponse {
     if let Err(e) = patch.validate() {
@@ -89,7 +89,7 @@ pub async fn pill_patch(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::pills::revise(&mut conn, pill_id, &patch) {
+    match store::pills::revise(&mut conn, &pill_id, &patch) {
         Ok(Some(p)) => ok(p),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => err_500(e),
@@ -99,13 +99,13 @@ pub async fn pill_patch(
 /// Handler `DELETE /api/.../pills/:id` — realiza un soft delete de una pill.
 pub async fn pill_delete(
     State(s): State<AppState>,
-    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
+    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, String)>,
 ) -> ApiResponse {
     let mut conn = match conn_for_bottle(&s, &bottle_id) {
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::pills::discard(&mut conn, pill_id) {
+    match store::pills::discard(&mut conn, &pill_id) {
         Ok(Some(r)) => ok(r),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => err_500(e),
@@ -115,13 +115,13 @@ pub async fn pill_delete(
 /// Handler `DELETE /api/.../pills/:id/purge` — elimina permanentemente una pill.
 pub async fn pill_purge(
     State(s): State<AppState>,
-    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, i64)>,
+    Path((bottle_id, _rx_id, pill_id)): Path<(String, String, String)>,
 ) -> ApiResponse {
     let mut conn = match conn_for_bottle(&s, &bottle_id) {
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::pills::hard_delete(&mut conn, pill_id) {
+    match store::pills::hard_delete(&mut conn, &pill_id) {
         Ok(Some(_)) => ok(json!({ "purged": true })),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => err_500(e),

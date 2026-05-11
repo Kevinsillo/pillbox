@@ -26,8 +26,7 @@ pub struct NewPill {
 /// Pill completa tal como se devuelve al leerla por ID.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Pill {
-    pub id: i64,
-    pub sync_id: String,
+    pub id: String,
     pub compound: String,
     pub title: String,
     pub content: String,

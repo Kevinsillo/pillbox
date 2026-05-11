@@ -25,8 +25,7 @@ export interface Prescription {
 }
 
 export interface Pill {
-    id: number
-    sync_id: string
+    id: string
     compound: PillCompound
     title: string
     content: string
@@ -39,8 +38,7 @@ export interface Pill {
 }
 
 export interface PillSearchResult {
-    id: number
-    sync_id: string
+    id: string
     compound: PillCompound
     title: string
     snippet: string
@@ -52,8 +50,7 @@ export interface PillSearchResult {
 }
 
 export interface Capsule {
-    id: number
-    sync_id: string
+    id: string
     compound: CapsuleCompound
     title: string
     content: string
@@ -63,8 +60,7 @@ export interface Capsule {
 }
 
 export interface CapsuleSummary {
-    id: number
-    sync_id: string
+    id: string
     compound: CapsuleCompound
     title: string
     created_at: string

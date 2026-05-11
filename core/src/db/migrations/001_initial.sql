@@ -56,8 +56,7 @@ CREATE UNIQUE INDEX idx_rx_open ON prescriptions(bottle_id)
     WHERE ended_at IS NULL AND deleted_at IS NULL;
 
 CREATE TABLE pills (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    sync_id         TEXT NOT NULL UNIQUE,
+    id              TEXT PRIMARY KEY,              -- UUID v7, generado en Rust antes del INSERT
     compound        TEXT NOT NULL,
     title           TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 255),
     content         TEXT NOT NULL CHECK (length(content) BETWEEN 1 AND 5000),
@@ -73,11 +72,9 @@ CREATE TABLE pills (
 CREATE INDEX idx_pill_compound ON pills(compound)        WHERE deleted_at IS NULL;
 CREATE INDEX idx_pill_rx       ON pills(prescription_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pill_created  ON pills(created_at DESC);
-CREATE UNIQUE INDEX idx_pill_sync ON pills(sync_id);
 
 CREATE TABLE capsules (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    sync_id    TEXT NOT NULL UNIQUE,
+    id         TEXT PRIMARY KEY,                   -- UUID v7, generado en Rust antes del INSERT
     compound   TEXT NOT NULL,
     title      TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 255),
     content    TEXT NOT NULL CHECK (length(content) BETWEEN 1 AND 5000),
@@ -88,56 +85,55 @@ CREATE TABLE capsules (
 
 CREATE INDEX idx_cap_compound ON capsules(compound)  WHERE deleted_at IS NULL;
 CREATE INDEX idx_cap_created  ON capsules(created_at DESC);
-CREATE UNIQUE INDEX idx_cap_sync ON capsules(sync_id);
 
 -- ─── FTS5 ────────────────────────────────────────────────────────────────────
 
 CREATE VIRTUAL TABLE pills_fts USING fts5(
     title, content, compound,
     content='pills',
-    content_rowid='id',
+    content_rowid='rowid',
     tokenize='unicode61 remove_diacritics 2'
 );
 
 CREATE TRIGGER pills_ai AFTER INSERT ON pills BEGIN
     INSERT INTO pills_fts(rowid, title, content, compound)
-    VALUES (new.id, new.title, new.content, new.compound);
+    VALUES (new.rowid, new.title, new.content, new.compound);
 END;
 
 CREATE TRIGGER pills_ad AFTER DELETE ON pills BEGIN
     INSERT INTO pills_fts(pills_fts, rowid, title, content, compound)
-    VALUES ('delete', old.id, old.title, old.content, old.compound);
+    VALUES ('delete', old.rowid, old.title, old.content, old.compound);
 END;
 
 CREATE TRIGGER pills_au AFTER UPDATE ON pills BEGIN
     INSERT INTO pills_fts(pills_fts, rowid, title, content, compound)
-    VALUES ('delete', old.id, old.title, old.content, old.compound);
+    VALUES ('delete', old.rowid, old.title, old.content, old.compound);
     INSERT INTO pills_fts(rowid, title, content, compound)
-    VALUES (new.id, new.title, new.content, new.compound);
+    VALUES (new.rowid, new.title, new.content, new.compound);
 END;
 
 CREATE VIRTUAL TABLE capsules_fts USING fts5(
     title, content, compound,
     content='capsules',
-    content_rowid='id',
+    content_rowid='rowid',
     tokenize='unicode61 remove_diacritics 2'
 );
 
 CREATE TRIGGER capsules_ai AFTER INSERT ON capsules BEGIN
     INSERT INTO capsules_fts(rowid, title, content, compound)
-    VALUES (new.id, new.title, new.content, new.compound);
+    VALUES (new.rowid, new.title, new.content, new.compound);
 END;
 
 CREATE TRIGGER capsules_ad AFTER DELETE ON capsules BEGIN
     INSERT INTO capsules_fts(capsules_fts, rowid, title, content, compound)
-    VALUES ('delete', old.id, old.title, old.content, old.compound);
+    VALUES ('delete', old.rowid, old.title, old.content, old.compound);
 END;
 
 CREATE TRIGGER capsules_au AFTER UPDATE ON capsules BEGIN
     INSERT INTO capsules_fts(capsules_fts, rowid, title, content, compound)
-    VALUES ('delete', old.id, old.title, old.content, old.compound);
+    VALUES ('delete', old.rowid, old.title, old.content, old.compound);
     INSERT INTO capsules_fts(rowid, title, content, compound)
-    VALUES (new.id, new.title, new.content, new.compound);
+    VALUES (new.rowid, new.title, new.content, new.compound);
 END;
 
 -- ─── REGISTRY DE BOTTLES LOCALES (solo en DB global) ────────────────────────

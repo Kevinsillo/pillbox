@@ -30,7 +30,7 @@ const form = ref({ title: "", content: "", compound: "convention" })
 const isArchived = computed(() => !!capsule.value?.deleted_at)
 
 async function load() {
-    capsule.value = await capsulesApi.get(Number(props.id))
+    capsule.value = await capsulesApi.get(props.id)
 }
 
 const poll = usePoll(load, 5000)
@@ -46,7 +46,7 @@ async function save() {
     saving.value = true
     formError.value = null
     try {
-        capsule.value = await capsulesApi.update(Number(props.id), form.value)
+        capsule.value = await capsulesApi.update(props.id, form.value)
         editing.value = false
         poll.restart()
     } catch (e: unknown) {
@@ -63,7 +63,7 @@ async function deleteCapsule() {
             t("confirm.delete_capsule_title"),
             { confirmText: t("common.delete"), cancelText: t("common.cancel") }
         )
-        await capsulesApi.delete(Number(props.id))
+        await capsulesApi.delete(props.id)
         router.push("/capsules")
     } catch {
         /* cancelled */
@@ -77,7 +77,7 @@ async function purgeCapsule() {
             t("confirm.purge_capsule_title"),
             { confirmText: t("common.delete_permanent"), cancelText: t("common.cancel") }
         )
-        await capsulesApi.purge(Number(props.id))
+        await capsulesApi.purge(props.id)
         router.push("/capsules")
     } catch {
         /* cancelled */

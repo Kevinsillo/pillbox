@@ -155,7 +155,6 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
 
     let mut stmt = conn.prepare(
         "SELECT p.id,
-                p.sync_id,
                 p.compound,
                 p.title,
                 snippet(pills_fts, 1, '<b>', '</b>', '...', 12) AS snippet,
@@ -165,7 +164,7 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
                 p.prescription_id,
                 rx.bottle_id
          FROM pills_fts
-         JOIN pills p ON pills_fts.rowid = p.id
+         JOIN pills p ON pills_fts.rowid = p.rowid
          LEFT JOIN prescriptions rx ON p.prescription_id = rx.id
          WHERE pills_fts MATCH ?1
            AND p.deleted_at IS NULL
@@ -210,7 +209,6 @@ pub fn capsule_find(
 
     let mut stmt = conn.prepare(
         "SELECT c.id,
-                c.sync_id,
                 c.compound,
                 c.title,
                 snippet(capsules_fts, 1, '<b>', '</b>', '...', 12) AS snippet,
@@ -218,7 +216,7 @@ pub fn capsule_find(
                 c.updated_at,
                 capsules_fts.rank
          FROM capsules_fts
-         JOIN capsules c ON capsules_fts.rowid = c.id
+         JOIN capsules c ON capsules_fts.rowid = c.rowid
          WHERE capsules_fts MATCH ?1
            AND c.deleted_at IS NULL
            AND (?2 IS NULL OR c.compound = ?2)
@@ -353,7 +351,7 @@ pub fn prescription_context(
     )?;
 
     struct PillEntry {
-        id: i64,
+        id: String,
         compound: String,
         title: String,
         content: String,
@@ -408,7 +406,7 @@ pub fn prescription_context(
 /// Devuelve las `limit` pills más recientes de un bottle, ordenadas por fecha de creación descendente.
 pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
-        "SELECT p.id, p.sync_id, p.compound, p.title, p.content, p.prescription_id,
+        "SELECT p.id, p.compound, p.title, p.content, p.prescription_id,
                 p.author_name, p.author_email, p.created_at, p.updated_at, p.deleted_at
          FROM pills p
          JOIN prescriptions rx ON p.prescription_id = rx.id
@@ -421,16 +419,15 @@ pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Ve
         .query_map(params![bottle_id, limit], |row| {
             Ok(Pill {
                 id: row.get(0)?,
-                sync_id: row.get(1)?,
-                compound: row.get(2)?,
-                title: row.get(3)?,
-                content: row.get(4)?,
-                prescription_id: row.get(5)?,
-                author_name: row.get(6)?,
-                author_email: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-                deleted_at: row.get(10)?,
+                compound: row.get(1)?,
+                title: row.get(2)?,
+                content: row.get(3)?,
+                prescription_id: row.get(4)?,
+                author_name: row.get(5)?,
+                author_email: row.get(6)?,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
+                deleted_at: row.get(9)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
@@ -449,20 +446,19 @@ fn row_to_search_result(
 ) -> rusqlite::Result<SearchResult> {
     Ok(SearchResult {
         id: row.get(0)?,
-        sync_id: row.get(1)?,
-        compound: row.get(2)?,
-        title: row.get(3)?,
-        snippet: row.get(4)?,
-        created_at: row.get(5)?,
-        updated_at: row.get(6)?,
-        rank: row.get(7)?,
+        compound: row.get(1)?,
+        title: row.get(2)?,
+        snippet: row.get(3)?,
+        created_at: row.get(4)?,
+        updated_at: row.get(5)?,
+        rank: row.get(6)?,
         prescription_id: if has_prescription_id {
-            row.get(8)?
+            row.get(7)?
         } else {
             None
         },
         bottle_id: if has_prescription_id {
-            row.get(9)?
+            row.get(8)?
         } else {
             None
         },

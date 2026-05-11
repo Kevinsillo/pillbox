@@ -102,11 +102,11 @@ pub(super) fn err_404_registered_bottle(id: &str) -> ApiResponse {
 }
 
 /// Respuesta 404 para una pill no encontrada por `pill_id`.
-pub(super) fn err_404_pill(id: i64) -> ApiResponse {
+pub(super) fn err_404_pill(id: impl std::fmt::Display) -> ApiResponse {
     err_with_context(
         StatusCode::NOT_FOUND,
         "pill_not_found",
-        json!({ "pill_id": id }),
+        json!({ "pill_id": id.to_string() }),
     )
 }
 
@@ -120,11 +120,11 @@ pub(super) fn err_404_prescription(id: &str) -> ApiResponse {
 }
 
 /// Respuesta 404 para una capsule no encontrada por `capsule_id`.
-pub(super) fn err_404_capsule(id: i64) -> ApiResponse {
+pub(super) fn err_404_capsule(id: impl std::fmt::Display) -> ApiResponse {
     err_with_context(
         StatusCode::NOT_FOUND,
         "capsule_not_found",
-        json!({ "capsule_id": id }),
+        json!({ "capsule_id": id.to_string() }),
     )
 }
 

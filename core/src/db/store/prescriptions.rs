@@ -503,10 +503,9 @@ mod tests {
         )
         .unwrap();
 
-        // Insertar una pill con sync_id único
         conn.execute(
-            "INSERT INTO pills (sync_id, compound, title, content, prescription_id)
-             VALUES ('sync-hd-001', 'decision', 'T', 'C', ?1)",
+            "INSERT INTO pills (id, compound, title, content, prescription_id)
+             VALUES ('01900000-0000-7000-0000-000000000001', 'decision', 'T', 'C', ?1)",
             params![rx.id],
         )
         .unwrap();
@@ -548,10 +547,9 @@ mod tests {
         )
         .unwrap();
 
-        // Insertar una pill directamente para verificar el cascade
         conn.execute(
-            "INSERT INTO pills (sync_id, compound, title, content, prescription_id)
-             VALUES ('sync-001', 'decision', 'T', 'C', ?1)",
+            "INSERT INTO pills (id, compound, title, content, prescription_id)
+             VALUES ('01900000-0000-7000-0000-000000000002', 'decision', 'T', 'C', ?1)",
             params![rx.id],
         )
         .unwrap();

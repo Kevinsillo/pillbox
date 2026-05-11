@@ -17,7 +17,7 @@ dev-webui:
 
 ## Compila la WebUI y genera dist/
 webui-build:
-	cd webui && pnpm build
+	cd webui && pnpm install && pnpm build
 
 ## Compila la WebUI y luego el binario Rust (WebUI embebida)
 build-full: webui-build

@@ -31,7 +31,7 @@ const form = ref({ title: "", content: "", compound: "task" })
 async function load() {
     loading.value = true
     try {
-        const pill = await pillsApi.get(Number(props.pill_id), props.bottle_id, props.rx_id)
+        const pill = await pillsApi.get(props.pill_id, props.bottle_id, props.rx_id)
         form.value = { title: pill.title, content: pill.content, compound: pill.compound }
     } finally {
         loading.value = false
@@ -44,7 +44,7 @@ async function save() {
     saving.value = true
     error.value = null
     try {
-        await pillsApi.update(Number(props.pill_id), form.value, props.bottle_id, props.rx_id)
+        await pillsApi.update(props.pill_id, form.value, props.bottle_id, props.rx_id)
         router.back()
     } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : t("common.error")

@@ -19,8 +19,7 @@ pub struct NewCapsule {
 /// Capsule completa.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Capsule {
-    pub id: i64,
-    pub sync_id: String,
+    pub id: String,
     pub compound: String,
     pub title: String,
     pub content: String,

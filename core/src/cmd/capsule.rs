@@ -6,8 +6,8 @@ use rust_i18n::t;
 
 use crate::output;
 
-/// Muestra el detalle de una capsule por su ID numérico, incluyendo archivadas.
-pub fn cmd_capsule_show(id: i64) -> Result<()> {
+/// Muestra el detalle de una capsule por su UUID, incluyendo archivadas.
+pub fn cmd_capsule_show(id: &str) -> Result<()> {
     use pillbox::db::{connection, store::capsules};
 
     let global_path = pillbox::config::global_db_path();

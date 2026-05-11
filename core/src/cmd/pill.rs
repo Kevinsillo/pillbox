@@ -6,11 +6,11 @@ use rust_i18n::t;
 
 use crate::output;
 
-/// Muestra el detalle de una pill por su ID numérico, incluyendo descartadas.
+/// Muestra el detalle de una pill por su UUID, incluyendo descartadas.
 ///
 /// Intenta primero la DB resuelta por contexto (local o global); si no existe,
 /// usa la DB global como fallback.
-pub fn cmd_pill_show(id: i64) -> Result<()> {
+pub fn cmd_pill_show(id: &str) -> Result<()> {
     use pillbox::db::{connection, store::pills};
 
     let db_path =
