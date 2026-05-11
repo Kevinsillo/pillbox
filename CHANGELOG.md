@@ -1,3 +1,41 @@
+## [0.11.0] - 2026-05-11
+
+### 🚀 Features
+
+- *(webui)* Añadir TruncatedTitle con tooltip en tarjetas y vistas
+- *(mcp)* Reemplazar pill_context por bottle_context y prescription_context
+- Renombrar compounds pattern→specification y manual→task en webui
+- Añadir roadmap visual al README
+- *(readme)* Reemplazar logos PNG por SVG adaptativo claro/oscuro y añadir banner de estrella GitHub
+- *(readme)* Añadir roadmap SVG adaptativo y rediseñar banner de estrella GitHub
+- *(webui)* Añadir syntax highlighting y mejorar estilos markdown
+- *(cli)* Limitar registros archivados en listados con trailer
+
+### 🐛 Bug Fixes
+
+- *(webui)* Desacoplar endpoint /context de las MCP tools
+- *(readme)* Corregir licencia — PolyForm Noncommercial, no MIT
+- *(roadmap)* Cambiar etiqueta MIT release por Public release
+- *(serve)* Activar autostart al instalar el servicio del sistema
+- *(webui)* Escapar HTML en bloques de código sin lenguaje reconocido
+
+### 💼 Other
+
+- *(webui)* Mejoras visuales en checkboxes, código y cards
+- *(webui)* Checkboxes markdown con colores del design system
+
+### 🚜 Refactor
+
+- *(mcp)* Aplanar parámetros de revise para pills y capsules
+- Eliminar tablas dispense_log y action_types
+- Renombrar compound prescription_summary a summary
+- *(compounds)* Eliminar enums y usar string libre como compound
+- *(db)* Migrar pills y capsules a UUID v7 como clave primaria
+
+### 🧪 Testing
+
+- Añadir test manual de integración MCP (fmcp_integration)
+
 ## [0.10.0] - 2026-05-03
 
 ### 🚀 Features
@@ -30,6 +68,10 @@
 
 - *(webui)* Añadir icono de clipboard antes del nombre en detalle de prescription
 - *(output)* Mejorar formato de lang show y tabla dict
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.10.0
 
 ## [0.9.0] - 2026-04-30
 
