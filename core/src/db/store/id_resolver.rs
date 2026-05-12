@@ -64,7 +64,7 @@ pub fn display_id(uuid: &str) -> String {
 /// - `"019e1d521a89"` → `"019e1d52-1a89"` (prefijo de display, 12 chars)
 /// - `"019e1d52"` → `"019e1d52"` (sin cambio, guion no alcanzado)
 /// - `"019e1d52-1a89"` → `"019e1d52-1a89"` (ya tiene guiones)
-fn normalize_prefix(id: &str) -> String {
+pub fn normalize_prefix(id: &str) -> String {
     if id.contains('-') {
         return id.to_string();
     }

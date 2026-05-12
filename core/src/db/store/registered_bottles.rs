@@ -8,6 +8,7 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 
 /// Registro de una DB de bottle en la tabla `registered_bottles` de la DB global.
+#[derive(Debug)]
 pub struct RegisteredBottle {
     pub id: i64,
     pub bottle_id: String,
@@ -71,7 +72,7 @@ pub fn unregister(conn: &Connection, id: i64) -> Result<bool> {
 /// semántica aquí (`InvalidId` si prefijo < 8 chars, `AmbiguousId` si match
 /// múltiple, `Ok(None)` si no hay match).
 pub fn find_by_bottle_id(conn: &Connection, bottle_id: &str) -> Result<Option<RegisteredBottle>> {
-    use crate::db::store::id_resolver::MIN_PREFIX_LEN;
+    use crate::db::store::id_resolver::{normalize_prefix, MIN_PREFIX_LEN};
     use crate::error::PillboxError;
 
     if bottle_id.len() < MIN_PREFIX_LEN {
@@ -81,14 +82,15 @@ pub fn find_by_bottle_id(conn: &Connection, bottle_id: &str) -> Result<Option<Re
         .into());
     }
 
-    let pattern = format!("{}%", bottle_id);
+    let normalized = normalize_prefix(bottle_id);
+    let pattern = format!("{}%", normalized);
     let mut stmt = conn.prepare(
         "SELECT id, bottle_id, name, display_name, db_path, registered_at, last_seen_at
          FROM registered_bottles WHERE bottle_id = ?1 OR bottle_id LIKE ?2
          LIMIT 3",
     )?;
     let rows: Vec<RegisteredBottle> = stmt
-        .query_map(params![bottle_id, pattern], row_to_registered)?
+        .query_map(params![normalized, pattern], row_to_registered)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to find registered bottle by bottle_id")?;
 
@@ -133,6 +135,7 @@ fn row_to_registered(row: &rusqlite::Row<'_>) -> rusqlite::Result<RegisteredBott
 mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
+    use crate::error::PillboxError;
 
     const BOTTLE_UUID: &str = "019db1d0-bd9e-7940-aa29-054b250450ec";
 
@@ -198,5 +201,55 @@ mod tests {
         let conn = open_in_memory().unwrap();
         let found = find_by_bottle_id(&conn, "uuid-inexistente").unwrap();
         assert!(found.is_none());
+    }
+
+    #[test]
+    fn find_by_bottle_id_8char_prefix() {
+        let conn = open_in_memory().unwrap();
+        register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
+        // "019db1d0" son los primeros 8 chars del UUID
+        let found = find_by_bottle_id(&conn, "019db1d0").unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().bottle_id, BOTTLE_UUID);
+    }
+
+    #[test]
+    fn find_by_bottle_id_12char_prefix_without_dashes() {
+        let conn = open_in_memory().unwrap();
+        register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
+        // "019db1d0bd9e" son los primeros 12 hex chars sin guiones
+        let found = find_by_bottle_id(&conn, "019db1d0bd9e").unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().bottle_id, BOTTLE_UUID);
+    }
+
+    #[test]
+    fn find_by_bottle_id_12char_prefix_with_dashes() {
+        let conn = open_in_memory().unwrap();
+        register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
+        // Formato con guion: "019db1d0-bd9e"
+        let found = find_by_bottle_id(&conn, "019db1d0-bd9e").unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().bottle_id, BOTTLE_UUID);
+    }
+
+    #[test]
+    fn find_by_bottle_id_too_short_returns_invalid_id() {
+        let conn = open_in_memory().unwrap();
+        let err = find_by_bottle_id(&conn, "abc").unwrap_err();
+        let pe = err.downcast_ref::<PillboxError>().expect("PillboxError");
+        assert!(matches!(pe, PillboxError::InvalidId { .. }));
+    }
+
+    #[test]
+    fn find_by_bottle_id_ambiguous_returns_ambiguous_id() {
+        let conn = open_in_memory().unwrap();
+        let uuid_a = "019db1d0-aaaa-7000-aa00-000000000000";
+        let uuid_b = "019db1d0-bbbb-7000-bb00-000000000000";
+        register(&conn, uuid_a, "a", "A", "/tmp/a.db").unwrap();
+        register(&conn, uuid_b, "b", "B", "/tmp/b.db").unwrap();
+        let err = find_by_bottle_id(&conn, "019db1d0").unwrap_err();
+        let pe = err.downcast_ref::<PillboxError>().expect("PillboxError");
+        assert!(matches!(pe, PillboxError::AmbiguousId { .. }));
     }
 }

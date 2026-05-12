@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use rayon::prelude::*;
 use rusqlite::{params, Connection};
 
+use crate::db::store::id_resolver::normalize_prefix;
 use crate::domain::pill::Pill;
 use crate::domain::search::{SearchParams, SearchResult};
 
@@ -275,19 +276,22 @@ pub fn bottle_context(
     bottle_id: &str,
     limit: u32,
 ) -> Result<BottleContextResult> {
+    let normalized_bottle = normalize_prefix(bottle_id);
+    let bottle_pattern = format!("{}%", normalized_bottle);
+
     let mut stmt = conn.prepare(
         "SELECT rx.id, rx.title, rx.started_at, rx.ended_at,
                 COUNT(p.id) AS pill_count
          FROM prescriptions rx
          LEFT JOIN pills p ON p.prescription_id = rx.id AND p.deleted_at IS NULL
-         WHERE rx.bottle_id = ?1 AND rx.deleted_at IS NULL
+         WHERE (rx.bottle_id = ?1 OR rx.bottle_id LIKE ?2) AND rx.deleted_at IS NULL
          GROUP BY rx.id
          ORDER BY rx.started_at DESC
-         LIMIT ?2",
+         LIMIT ?3",
     )?;
 
     let prescriptions: Vec<BottleRxEntry> = stmt
-        .query_map(params![bottle_id, limit], |row| {
+        .query_map(params![normalized_bottle, bottle_pattern, limit], |row| {
             Ok(BottleRxEntry {
                 id: row.get(0)?,
                 title: row.get(1)?,
@@ -317,7 +321,7 @@ pub fn prescription_context(
          FROM prescriptions
          WHERE (id = ?1 OR id LIKE ?2) AND deleted_at IS NULL
          ORDER BY started_at DESC LIMIT 1",
-        params![prescription_id, format!("{}%", prescription_id)],
+        params![normalize_prefix(prescription_id), format!("{}%", normalize_prefix(prescription_id))],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -643,6 +647,27 @@ mod tests {
     }
 
     #[test]
+    fn bottle_context_resolves_12char_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = setup_with_pills(&mut conn);
+        // Primeros 12 hex chars sin guiones
+        let short = bottle_id.replace('-', "").chars().take(12).collect::<String>();
+
+        let ctx = bottle_context(&conn, &short, 30).unwrap();
+        assert!(ctx.prescription_count > 0, "debe encontrar prescriptions con prefijo de 12 chars");
+    }
+
+    #[test]
+    fn bottle_context_resolves_8char_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = setup_with_pills(&mut conn);
+        let short = bottle_id.replace('-', "").chars().take(8).collect::<String>();
+
+        let ctx = bottle_context(&conn, &short, 30).unwrap();
+        assert!(ctx.prescription_count > 0, "debe encontrar prescriptions con prefijo de 8 chars");
+    }
+
+    #[test]
     fn bottle_context_empty_bottle_returns_empty() {
         let mut conn = open_in_memory().unwrap();
         let bottle = bottles::create(
@@ -666,7 +691,6 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
-        // Obtener el ID de la prescription creada en setup
         let rx_id: String = conn
             .query_row(
                 "SELECT id FROM prescriptions WHERE bottle_id = ?1 LIMIT 1",
@@ -682,6 +706,26 @@ mod tests {
         assert!(!ctx.pills[0].id.is_empty());
         let compounds = ["decision", "bugfix", "discovery"];
         assert!(compounds.contains(&ctx.pills[0].compound.as_str()));
+    }
+
+    #[test]
+    fn prescription_context_resolves_12char_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = setup_with_pills(&mut conn);
+
+        let rx_id: String = conn
+            .query_row(
+                "SELECT id FROM prescriptions WHERE bottle_id = ?1 LIMIT 1",
+                params![bottle_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+
+        // Primeros 12 hex chars sin guiones
+        let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
+        let ctx = prescription_context(&conn, &short, 30).unwrap();
+        assert!(ctx.id.is_some(), "debe resolver la prescription con prefijo de 12 chars");
+        assert!(ctx.pill_count > 0);
     }
 
     #[test]
