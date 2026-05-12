@@ -2,6 +2,7 @@
 
 use super::{table, truncate};
 use owo_colors::OwoColorize;
+use pillbox::db::store::id_resolver::display_id;
 use pillbox::domain::{bottle::Bottle, capsule::Capsule, pill::Pill, prescription::Prescription};
 use rust_i18n::t;
 
@@ -157,7 +158,7 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
             t!(
                 "bottle.status.rx_open",
                 title = title,
-                id = &id[..id.len().min(8)]
+                id = &display_id(&id)
             )
         ),
         None => t!("bottle.status.rx_none").dimmed().to_string(),
@@ -402,7 +403,7 @@ pub fn prescriptions_list(
         let rows = active
             .iter()
             .map(|rx| {
-                let short_id = &rx.id[..rx.id.len().min(8)];
+                let short_id = &display_id(&rx.id);
                 let estado = if rx.ended_at.is_some() {
                     t!("prescriptions.state.closed").dimmed().to_string()
                 } else {
@@ -447,7 +448,7 @@ pub fn prescriptions_list(
         let rows = archived_shown
             .iter()
             .map(|rx| {
-                let short_id = &rx.id[..rx.id.len().min(8)];
+                let short_id = &display_id(&rx.id);
                 let estado = if rx.ended_at.is_some() {
                     t!("prescriptions.state.closed").dimmed().to_string()
                 } else {
@@ -502,7 +503,7 @@ pub fn prescriptions_list(
 
 /// Confirma en pantalla la apertura de una prescripción nueva.
 pub fn prescription_opened(id: &str, title: &str) {
-    let short_id = &id[..id.len().min(8)];
+    let short_id = &display_id(&id);
     print_a(
         &t!("prescriptions.msg.opened"),
         &[("title", title), ("id", short_id)],
@@ -745,7 +746,7 @@ pub fn prescription_show(
     } else {
         t!("prescriptions.state.open").green().to_string()
     };
-    let short_id = &rx.id[..rx.id.len().min(8)];
+    let short_id = &display_id(&rx.id);
     let author_val = rx.author_name.as_deref().unwrap_or("-").to_string();
     let rows = vec![
         [
@@ -802,7 +803,7 @@ pub fn prescription_show(
             .iter()
             .map(|p| {
                 vec![
-                    p.id[..p.id.len().min(8)].to_string(),
+                    display_id(&p.id),
                     truncate(&p.compound, 16),
                     truncate(&p.title, 50),
                     p.author_name.as_deref().map(|n| truncate(n, 18)).unwrap_or_else(|| "-".dimmed().to_string()),
@@ -876,8 +877,8 @@ pub fn prescription_show(
 
 /// Muestra el detalle completo de una pill: metadatos y contenido formateado.
 pub fn pill_detail(pill: &Pill) {
-    let short_id = format!("id: {}", &pill.id[..pill.id.len().min(8)]);
-    let rx_short = &pill.prescription_id[..pill.prescription_id.len().min(8)];
+    let short_id = format!("id: {}", display_id(&pill.id));
+    let rx_short = display_id(&pill.prescription_id);
     let author_val = pill.author_name.as_deref().unwrap_or("-").to_string();
     let rows = vec![
         [t!("pill.detail.id").bold().to_string(), short_id],
@@ -947,7 +948,7 @@ pub fn capsules_list(
             .iter()
             .map(|c| {
                 vec![
-                    c.id[..c.id.len().min(8)].to_string(),
+                    display_id(&c.id),
                     truncate(&c.compound, 14),
                     truncate(&c.title, 50),
                 ]
@@ -992,7 +993,7 @@ pub fn capsules_list(
                     .dimmed()
                     .to_string();
                 vec![
-                    c.id[..c.id.len().min(8)].to_string().dimmed().to_string(),
+                    display_id(&c.id).dimmed().to_string(),
                     truncate(&c.compound, 14).dimmed().to_string(),
                     truncate(&c.title, 46).dimmed().to_string(),
                     archived_date,
@@ -1028,7 +1029,7 @@ pub fn capsules_list(
 
 /// Muestra el detalle completo de una capsule: metadatos y contenido formateado.
 pub fn capsule_detail(capsule: &Capsule) {
-    let short_id = format!("id: {}", &capsule.id[..capsule.id.len().min(8)]);
+    let short_id = format!("id: {}", display_id(&capsule.id));
     let updated = if capsule.updated_at != capsule.created_at {
         capsule.updated_at.dimmed().to_string()
     } else {
