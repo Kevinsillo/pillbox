@@ -101,6 +101,16 @@ fn pillbox_to_response(pe: &PillboxError) -> Response {
                 "pill_count": pill_count,
             }),
         ),
+        PillboxError::AmbiguousId { id_prefix, candidates } => Response::err_with_data(
+            pe.code(),
+            pe.to_string(),
+            json!({ "id_prefix": id_prefix, "candidates": candidates }),
+        ),
+        PillboxError::InvalidId { id } => Response::err_with_data(
+            pe.code(),
+            pe.to_string(),
+            json!({ "id": id }),
+        ),
         _ => Response::err(pe.code(), pe.to_string()),
     }
 }

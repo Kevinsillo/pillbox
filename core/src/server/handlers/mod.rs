@@ -22,6 +22,7 @@ use serde_json::json;
 
 use pillbox::db;
 use pillbox::db::store::registered_bottles;
+use pillbox::error::PillboxError;
 
 use super::AppState;
 
@@ -141,6 +142,24 @@ pub(super) fn err_409(error: &str, message: &str, data: serde_json::Value) -> Ap
     )
 }
 
+/// Respuesta 400 para un ID demasiado corto (menos de 8 chars).
+pub(super) fn err_400_invalid_id(id: &str) -> ApiResponse {
+    err_with_context(
+        StatusCode::BAD_REQUEST,
+        "invalid_id",
+        json!({ "id": id, "message": "El ID debe tener al menos 8 caracteres" }),
+    )
+}
+
+/// Respuesta 409 para un prefijo de ID ambiguo (coincide con >1 registro).
+pub(super) fn err_409_ambiguous_id(prefix: &str, candidates: &[String]) -> ApiResponse {
+    err_with_context(
+        StatusCode::CONFLICT,
+        "ambiguous_id",
+        json!({ "id_prefix": prefix, "candidates": candidates }),
+    )
+}
+
 /// Abre la DB local del bottle identificado por UUID.
 /// Busca la ruta en registered_bottles de la DB global.
 pub(super) fn conn_for_bottle(
@@ -149,7 +168,15 @@ pub(super) fn conn_for_bottle(
 ) -> Result<rusqlite::Connection, ApiResponse> {
     let global = db::connection::open(&s.global_db_path).map_err(err_500)?;
     let reg = registered_bottles::find_by_bottle_id(&global, bottle_id)
-        .map_err(err_500)?
+        .map_err(|e| match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        })?
         .ok_or_else(|| err_404_bottle(bottle_id))?;
     db::connection::open_existing(std::path::Path::new(&reg.db_path)).map_err(err_500)
 }

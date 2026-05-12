@@ -5,6 +5,7 @@ use rusqlite::{params, Connection};
 use uuid::Uuid;
 
 use crate::{
+    db::store::id_resolver::resolve_id,
     domain::bottle::{Bottle, NewBottle},
     error::PillboxError,
 };
@@ -64,12 +65,15 @@ pub fn list(conn: &Connection) -> Result<Vec<Bottle>> {
     Ok(bottles)
 }
 
-/// Busca un bottle por su ID (UUID).
+/// Busca un bottle por su ID (UUID completo o prefijo ≥8 chars).
 pub fn find_by_id(conn: &Connection, id: &str) -> Result<Option<Bottle>> {
+    let Some(resolved_id) = resolve_id(conn, "bottles", id)? else {
+        return Ok(None);
+    };
     match conn.query_row(
         "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
          FROM bottles WHERE id = ?1",
-        params![id],
+        params![resolved_id],
         row_to_bottle,
     ) {
         Ok(b) => Ok(Some(b)),
@@ -94,27 +98,30 @@ pub fn find_by_directory(conn: &Connection, directory: &str) -> Result<Option<Bo
 
 /// Elimina un bottle y en cascada sus prescriptions y pills.
 ///
-/// El orden de borrado respeta las FK: `pills` antes que `prescriptions`,
-/// y `prescriptions` antes que `bottles`.
+/// Acepta UUID completo o prefijo ≥8 chars. El orden de borrado respeta las
+/// FK: `pills` antes que `prescriptions`, y `prescriptions` antes que `bottles`.
 ///
 /// Devuelve `Ok(true)` si el bottle existía y fue eliminado, `Ok(false)` si no existía.
 pub fn delete(conn: &mut Connection, id: &str) -> Result<bool> {
+    let Some(resolved_id) = resolve_id(conn, "bottles", id)? else {
+        return Ok(false);
+    };
     let tx = conn.transaction()?;
 
     tx.execute(
         "DELETE FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)",
-        params![id],
+        params![resolved_id],
     )
     .context("failed to delete bottle pills")?;
 
     tx.execute(
         "DELETE FROM prescriptions WHERE bottle_id = ?1",
-        params![id],
+        params![resolved_id],
     )
     .context("failed to delete bottle prescriptions")?;
 
     let count = tx
-        .execute("DELETE FROM bottles WHERE id = ?1", params![id])
+        .execute("DELETE FROM bottles WHERE id = ?1", params![resolved_id])
         .context("failed to delete bottle")?;
 
     tx.commit()?;

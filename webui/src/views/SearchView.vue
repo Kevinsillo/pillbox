@@ -5,6 +5,7 @@ import { useActiveBottle } from "@/composables/useActiveBottle"
 import type { CapsuleSearchResult, PillSearchResult } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
+import { shortId } from "@/core/utils/id"
 import { ref } from "vue"
 import { useI18n } from "vue-i18n"
 import { ElInput } from "element-plus"
@@ -81,7 +82,7 @@ function onInput() {
                     <RouterLink
                         v-for="c in capsuleResults"
                         :key="c.id"
-                        :to="`/capsules/${c.id}`"
+                        :to="`/capsules/${shortId(c.id)}`"
                         class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                     >
                         <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
@@ -109,7 +110,7 @@ function onInput() {
                         :is="p.bottle_id && p.prescription_id ? RouterLink : 'div'"
                         v-for="p in pillResults"
                         :key="p.id"
-                        :to="p.bottle_id && p.prescription_id ? `/bottles/${p.bottle_id}/prescriptions/${p.prescription_id}/pills/${p.id}` : undefined"
+                        :to="p.bottle_id && p.prescription_id ? `/bottles/${shortId(p.bottle_id)}/prescriptions/${shortId(p.prescription_id)}/pills/${shortId(p.id)}` : undefined"
                         class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                     >
                         <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">

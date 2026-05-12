@@ -10,8 +10,8 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, err_404_prescription, err_409, err_422, err_500, ok, ok_created, ApiResponse,
-    AppState,
+    conn_for_bottle, err_400_invalid_id, err_404_prescription, err_409, err_409_ambiguous_id,
+    err_422, err_500, ok, ok_created, ApiResponse, AppState,
 };
 
 /// Cuerpo JSON para abrir una prescripción nueva via REST API.
@@ -78,7 +78,15 @@ pub async fn prescription_get(
     match store::prescriptions::read_any(&conn, &rx_id) {
         Ok(Some(rx)) => ok(rx),
         Ok(None) => err_404_prescription(&rx_id),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 
@@ -93,7 +101,15 @@ pub async fn prescription_close(
     };
     match store::prescriptions::close(&mut conn, &rx_id) {
         Ok(rx) => ok(rx),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 
@@ -108,7 +124,15 @@ pub async fn prescription_delete(
     };
     match store::prescriptions::discard(&mut conn, &rx_id) {
         Ok(()) => ok(json!({ "discarded": true })),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 
@@ -125,6 +149,11 @@ pub async fn prescription_purge(
         Ok(()) => ok(json!({ "purged": true })),
         Err(e) => match e.downcast::<PillboxError>() {
             Ok(PillboxError::PrescriptionNotFound { .. }) => err_404_prescription(&rx_id),
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
             Ok(other) => err_500(other.into()),
             Err(e) => err_500(e),
         },

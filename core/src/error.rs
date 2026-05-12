@@ -47,6 +47,16 @@ pub enum PillboxError {
 
     #[error("bottle_already_exists: ya existe un bottle con el nombre '{name}'")]
     BottleAlreadyExists { name: String },
+
+    // ── ID resolution ─────────────────────────────────────────────────────────
+    #[error("invalid_id: '{id}' es demasiado corto (mínimo 8 caracteres)")]
+    InvalidId { id: String },
+
+    #[error("ambiguous_id: el prefijo '{id_prefix}' coincide con {} registros", candidates.len())]
+    AmbiguousId {
+        id_prefix: String,
+        candidates: Vec<String>,
+    },
 }
 
 impl PillboxError {
@@ -61,6 +71,8 @@ impl PillboxError {
             Self::PrescriptionNotFound { .. } => "prescription_not_found",
             Self::BottleNotFound { .. } => "bottle_not_found",
             Self::BottleAlreadyExists { .. } => "bottle_already_exists",
+            Self::InvalidId { .. } => "invalid_id",
+            Self::AmbiguousId { .. } => "ambiguous_id",
         }
     }
 }
@@ -114,6 +126,11 @@ mod tests {
         assert_eq!(
             PillboxError::BottleAlreadyExists { name: "n".into() }.code(),
             "bottle_already_exists"
+        );
+        assert_eq!(PillboxError::InvalidId { id: "abc".into() }.code(), "invalid_id");
+        assert_eq!(
+            PillboxError::AmbiguousId { id_prefix: "abc".into(), candidates: vec![] }.code(),
+            "ambiguous_id"
         );
     }
 

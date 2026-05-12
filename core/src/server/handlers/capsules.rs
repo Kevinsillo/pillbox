@@ -7,12 +7,14 @@ use axum::{
 use pillbox::{
     db::{store, store::ListFilter},
     domain::capsule::{CapsulePatch, NewCapsule},
+    error::PillboxError,
 };
 use serde::Deserialize;
 use validator::Validate;
 
 use super::{
-    err_404_capsule, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
+    err_400_invalid_id, err_404_capsule, err_409_ambiguous_id, err_422, err_500, ok, ok_created,
+    open_global_conn, ApiResponse, AppState,
 };
 
 /// Parámetros de query para listar capsules con filtro opcional por compound.
@@ -57,7 +59,15 @@ pub async fn capsule_get(State(s): State<AppState>, Path(id): Path<String>) -> A
     match store::capsules::read_any(&conn, &id) {
         Ok(Some(c)) => ok(c),
         Ok(None) => err_404_capsule(id),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 
@@ -71,7 +81,15 @@ pub async fn capsule_purge(State(s): State<AppState>, Path(id): Path<String>) ->
     match store::capsules::hard_delete(&mut conn, &id) {
         Ok(true) => ok(json!({ "purged": true })),
         Ok(false) => err_404_capsule(id),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 
@@ -91,7 +109,15 @@ pub async fn capsule_patch(
     match store::capsules::revise(&mut conn, &id, &patch) {
         Ok(Some(c)) => ok(c),
         Ok(None) => err_404_capsule(id),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 
@@ -104,7 +130,15 @@ pub async fn capsule_delete(State(s): State<AppState>, Path(id): Path<String>) -
     match store::capsules::discard(&mut conn, &id) {
         Ok(Some(r)) => ok(r),
         Ok(None) => err_404_capsule(id),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 

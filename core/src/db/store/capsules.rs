@@ -5,6 +5,7 @@ use rusqlite::{params, Connection, TransactionBehavior};
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::db::store::id_resolver::resolve_id;
 use crate::db::store::ListFilter;
 use crate::domain::capsule::{Capsule, CapsulePatch, NewCapsule};
 
@@ -51,12 +52,15 @@ pub fn take(conn: &mut Connection, input: &NewCapsule) -> Result<CapsuleStoreRes
     })
 }
 
-/// Lee una capsule completa por UUID (no descartada).
+/// Lee una capsule completa por UUID completo o prefijo ≥8 chars (no descartada).
 pub fn read(conn: &Connection, id: &str) -> Result<Option<Capsule>> {
+    let Some(resolved_id) = resolve_id(conn, "capsules", id)? else {
+        return Ok(None);
+    };
     match conn.query_row(
         "SELECT id, compound, title, content, created_at, updated_at, deleted_at
          FROM capsules WHERE id = ?1 AND deleted_at IS NULL",
-        params![id],
+        params![resolved_id],
         row_to_capsule,
     ) {
         Ok(c) => Ok(Some(c)),
@@ -65,12 +69,15 @@ pub fn read(conn: &Connection, id: &str) -> Result<Option<Capsule>> {
     }
 }
 
-/// Lee una capsule completa por UUID incluyendo descartadas.
+/// Lee una capsule completa por UUID completo o prefijo ≥8 chars, incluyendo descartadas.
 pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Capsule>> {
+    let Some(resolved_id) = resolve_id(conn, "capsules", id)? else {
+        return Ok(None);
+    };
     match conn.query_row(
         "SELECT id, compound, title, content, created_at, updated_at, deleted_at
          FROM capsules WHERE id = ?1",
-        params![id],
+        params![resolved_id],
         row_to_capsule,
     ) {
         Ok(c) => Ok(Some(c)),
@@ -80,8 +87,14 @@ pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Capsule>> {
 }
 
 /// Actualiza campos de una capsule existente (patch parcial).
-/// Devuelve `None` si no existe o fue descartada.
+///
+/// Acepta UUID completo o prefijo ≥8 chars. Devuelve `None` si no existe
+/// o fue descartada.
 pub fn revise(conn: &mut Connection, id: &str, patch: &CapsulePatch) -> Result<Option<Capsule>> {
+    let Some(resolved_id) = resolve_id(conn, "capsules", id)? else {
+        return Ok(None);
+    };
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
@@ -96,7 +109,7 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &CapsulePatch) -> Result<O
                 patch.title.as_deref(),
                 patch.content.as_deref(),
                 patch.compound.as_ref().map(|c| c.as_str()),
-                id,
+                resolved_id,
             ],
         )
         .context("failed to update capsule")?;
@@ -109,7 +122,7 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &CapsulePatch) -> Result<O
         .query_row(
             "SELECT id, compound, title, content, created_at, updated_at, deleted_at
              FROM capsules WHERE id = ?1",
-            params![id],
+            params![resolved_id],
             row_to_capsule,
         )
         .context("failed to read revised capsule")?;
@@ -119,15 +132,21 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &CapsulePatch) -> Result<O
 }
 
 /// Soft delete de una capsule.
-/// Devuelve `None` si no existe o ya estaba descartada.
+///
+/// Acepta UUID completo o prefijo ≥8 chars. Devuelve `None` si no existe
+/// o ya estaba descartada.
 pub fn discard(conn: &mut Connection, id: &str) -> Result<Option<CapsuleDiscardResult>> {
+    let Some(resolved_id) = resolve_id(conn, "capsules", id)? else {
+        return Ok(None);
+    };
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
         .execute(
             "UPDATE capsules SET deleted_at = datetime('now')
          WHERE id = ?1 AND deleted_at IS NULL",
-            params![id],
+            params![resolved_id],
         )
         .context("failed to discard capsule")?;
 
@@ -137,12 +156,12 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<Option<CapsuleDiscardR
 
     let deleted_at: String = tx.query_row(
         "SELECT deleted_at FROM capsules WHERE id = ?1",
-        params![id],
+        params![resolved_id],
         |row| row.get(0),
     )?;
 
     tx.commit()?;
-    Ok(Some(CapsuleDiscardResult { id: id.to_string(), deleted_at }))
+    Ok(Some(CapsuleDiscardResult { id: resolved_id, deleted_at }))
 }
 
 /// Lista capsules globales con filtros opcionales (incluye archivadas).
@@ -198,26 +217,24 @@ pub fn list(
 
 /// Hard delete de una capsule (irreversible).
 ///
-/// Elimina la fila de `capsules` permanentemente.
-/// Devuelve `Ok(true)` si existía y fue eliminada, `Ok(false)` si no existía.
+/// Acepta UUID completo o prefijo ≥8 chars. Elimina la fila de `capsules`
+/// permanentemente. Devuelve `Ok(true)` si existía y fue eliminada,
+/// `Ok(false)` si no existía.
 pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<bool> {
+    let Some(resolved_id) = resolve_id(conn, "capsules", id)? else {
+        return Ok(false);
+    };
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-    let exists: bool = tx.query_row(
-        "SELECT EXISTS(SELECT 1 FROM capsules WHERE id = ?1)",
-        params![id],
-        |row| row.get(0),
-    )?;
-
-    if !exists {
-        return Ok(false);
-    }
-
-    tx.execute("DELETE FROM capsules WHERE id = ?1", params![id])
+    // resolve_id puede hacer short-circuit con un UUID completo sin verificar
+    // que exista, por lo que volvemos a verificar con `changes` del DELETE.
+    let count = tx
+        .execute("DELETE FROM capsules WHERE id = ?1", params![resolved_id])
         .context("failed to delete capsule")?;
 
     tx.commit()?;
-    Ok(true)
+    Ok(count > 0)
 }
 
 /// Mapea una fila de SQLite al tipo [`Capsule`].

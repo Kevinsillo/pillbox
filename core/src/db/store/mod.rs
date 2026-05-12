@@ -5,6 +5,7 @@
 
 pub mod bottles;
 pub mod capsules;
+pub mod id_resolver;
 pub mod pills;
 pub mod prescriptions;
 pub mod registered_bottles;

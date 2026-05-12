@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
 import { useActiveBottle } from '@/composables/useActiveBottle'
 import { usePoll } from '@/composables/usePoll'
+import { shortId } from '@/core/utils/id'
 import type { Bottle } from '@/core/domain/types'
 import { RouterLink } from 'vue-router'
 import { useConfirm } from '@/composables/useConfirm'
@@ -82,7 +83,7 @@ async function deleteRegistration(b: Bottle) {
                 <!-- Bottle vinculado (normal) -->
                 <RouterLink
                     v-if="b.linked"
-                    :to="`/bottles/${b.id}`"
+                    :to="`/bottles/${shortId(b.id)}`"
                     class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                 >
                     <div class="flex items-center gap-3 min-w-0">

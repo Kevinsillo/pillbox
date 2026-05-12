@@ -7,13 +7,15 @@ use axum::{
 use pillbox::{
     db::{self, store, store::registered_bottles, store::ListFilter},
     domain::bottle::{Bottle, NewBottle},
+    error::PillboxError,
 };
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, default_30, default_50, err_404_bottle, err_404_registered_bottle, err_422,
-    err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
+    conn_for_bottle, default_30, default_50, err_400_invalid_id, err_404_bottle,
+    err_404_registered_bottle, err_409_ambiguous_id, err_422, err_500, ok, ok_created,
+    open_global_conn, ApiResponse, AppState,
 };
 
 /// Parámetros de query para listar prescripciones de un bottle.
@@ -32,7 +34,15 @@ pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<String>) -> Ap
     match store::bottles::find_by_id(&conn, &id) {
         Ok(Some(b)) => ok(b),
         Ok(None) => err_404_bottle(&id),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 
@@ -187,7 +197,15 @@ pub async fn bottle_delete(State(s): State<AppState>, Path(id): Path<String>) ->
             ok(serde_json::Value::Null)
         }
         Ok(false) => err_404_bottle(&id),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::AmbiguousId {
+                ref id_prefix,
+                ref candidates,
+            }) => err_409_ambiguous_id(id_prefix, candidates),
+            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 

@@ -3,6 +3,7 @@ import CompoundBadge from "@/components/CompoundBadge.vue"
 import type { Pill } from "@/core/domain/types"
 import { formatAuthor } from "@/core/domain/author"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
+import { shortId } from "@/core/utils/id"
 import { useConfirm } from "@/composables/useConfirm"
 import { useMarkdown } from "@/composables/useMarkdown"
 import { usePoll } from "@/composables/usePoll"
@@ -105,7 +106,7 @@ watchEffect(async () => {
                     <template v-if="!isArchived">
                         <button
                             class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg transition-colors"
-                            @click="router.push(`/bottles/${props.bottle_id}/prescriptions/${props.rx_id}/pills/${props.pill_id}/edit`)"
+                            @click="router.push(`/bottles/${shortId(props.bottle_id)}/prescriptions/${shortId(props.rx_id)}/pills/${shortId(props.pill_id)}/edit`)"
                         >
                             {{ $t("common.edit") }}
                         </button>

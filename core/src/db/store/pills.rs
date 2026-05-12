@@ -5,6 +5,7 @@ use rusqlite::{params, Connection, TransactionBehavior};
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::db::store::id_resolver::resolve_id;
 use crate::domain::pill::{NewPill, Pill, PillPatch};
 use crate::error::PillboxError;
 
@@ -82,13 +83,16 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
     })
 }
 
-/// Lee una pill completa por UUID (no descartada).
+/// Lee una pill completa por UUID completo o prefijo ≥8 chars (no descartada).
 pub fn read(conn: &Connection, id: &str) -> Result<Option<Pill>> {
+    let Some(resolved_id) = resolve_id(conn, "pills", id)? else {
+        return Ok(None);
+    };
     match conn.query_row(
         "SELECT id, compound, title, content, prescription_id,
                 author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE id = ?1 AND deleted_at IS NULL",
-        params![id],
+        params![resolved_id],
         row_to_pill,
     ) {
         Ok(p) => Ok(Some(p)),
@@ -97,13 +101,16 @@ pub fn read(conn: &Connection, id: &str) -> Result<Option<Pill>> {
     }
 }
 
-/// Lee una pill completa por UUID, incluyendo descartadas.
+/// Lee una pill completa por UUID completo o prefijo ≥8 chars, incluyendo descartadas.
 pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Pill>> {
+    let Some(resolved_id) = resolve_id(conn, "pills", id)? else {
+        return Ok(None);
+    };
     match conn.query_row(
         "SELECT id, compound, title, content, prescription_id,
                 author_name, author_email, created_at, updated_at, deleted_at
          FROM pills WHERE id = ?1",
-        params![id],
+        params![resolved_id],
         row_to_pill,
     ) {
         Ok(p) => Ok(Some(p)),
@@ -113,8 +120,14 @@ pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Pill>> {
 }
 
 /// Actualiza campos de una pill existente (patch parcial).
-/// Solo se modifican los campos no-None. Devuelve `None` si no existe o fue descartada.
+///
+/// Acepta UUID completo o prefijo ≥8 chars. Solo se modifican los campos
+/// no-None. Devuelve `None` si no existe o fue descartada.
 pub fn revise(conn: &mut Connection, id: &str, patch: &PillPatch) -> Result<Option<Pill>> {
+    let Some(resolved_id) = resolve_id(conn, "pills", id)? else {
+        return Ok(None);
+    };
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
@@ -129,7 +142,7 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &PillPatch) -> Result<Opti
                 patch.title.as_deref(),
                 patch.content.as_deref(),
                 patch.compound.as_ref().map(|c| c.as_str()),
-                id,
+                resolved_id,
             ],
         )
         .context("failed to update pill")?;
@@ -143,7 +156,7 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &PillPatch) -> Result<Opti
             "SELECT id, compound, title, content, prescription_id,
                     author_name, author_email, created_at, updated_at, deleted_at
              FROM pills WHERE id = ?1",
-            params![id],
+            params![resolved_id],
             row_to_pill,
         )
         .context("failed to read revised pill")?;
@@ -153,15 +166,21 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &PillPatch) -> Result<Opti
 }
 
 /// Soft delete de una pill.
-/// Devuelve `None` si no existe o ya estaba descartada.
+///
+/// Acepta UUID completo o prefijo ≥8 chars. Devuelve `None` si no existe
+/// o ya estaba descartada.
 pub fn discard(conn: &mut Connection, id: &str) -> Result<Option<PillDiscardResult>> {
+    let Some(resolved_id) = resolve_id(conn, "pills", id)? else {
+        return Ok(None);
+    };
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
         .execute(
             "UPDATE pills SET deleted_at = datetime('now')
          WHERE id = ?1 AND deleted_at IS NULL",
-            params![id],
+            params![resolved_id],
         )
         .context("failed to discard pill")?;
 
@@ -171,12 +190,12 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<Option<PillDiscardResu
 
     let deleted_at: String = tx.query_row(
         "SELECT deleted_at FROM pills WHERE id = ?1",
-        params![id],
+        params![resolved_id],
         |row| row.get(0),
     )?;
 
     tx.commit()?;
-    Ok(Some(PillDiscardResult { id: id.to_string(), deleted_at }))
+    Ok(Some(PillDiscardResult { id: resolved_id, deleted_at }))
 }
 
 /// Hard delete de una pill (irreversible).

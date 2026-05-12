@@ -802,7 +802,7 @@ pub fn prescription_show(
             .iter()
             .map(|p| {
                 vec![
-                    p.id.to_string(),
+                    p.id[..p.id.len().min(8)].to_string(),
                     truncate(&p.compound, 16),
                     truncate(&p.title, 50),
                     p.author_name.as_deref().map(|n| truncate(n, 18)).unwrap_or_else(|| "-".dimmed().to_string()),
@@ -876,7 +876,7 @@ pub fn prescription_show(
 
 /// Muestra el detalle completo de una pill: metadatos y contenido formateado.
 pub fn pill_detail(pill: &Pill) {
-    let short_id = format!("id: {}", pill.id);
+    let short_id = format!("id: {}", &pill.id[..pill.id.len().min(8)]);
     let rx_short = &pill.prescription_id[..pill.prescription_id.len().min(8)];
     let author_val = pill.author_name.as_deref().unwrap_or("-").to_string();
     let rows = vec![
@@ -947,7 +947,7 @@ pub fn capsules_list(
             .iter()
             .map(|c| {
                 vec![
-                    c.id.to_string(),
+                    c.id[..c.id.len().min(8)].to_string(),
                     truncate(&c.compound, 14),
                     truncate(&c.title, 50),
                 ]
@@ -992,7 +992,7 @@ pub fn capsules_list(
                     .dimmed()
                     .to_string();
                 vec![
-                    c.id.to_string().dimmed().to_string(),
+                    c.id[..c.id.len().min(8)].to_string().dimmed().to_string(),
                     truncate(&c.compound, 14).dimmed().to_string(),
                     truncate(&c.title, 46).dimmed().to_string(),
                     archived_date,
@@ -1028,7 +1028,7 @@ pub fn capsules_list(
 
 /// Muestra el detalle completo de una capsule: metadatos y contenido formateado.
 pub fn capsule_detail(capsule: &Capsule) {
-    let short_id = format!("id: {}", capsule.id);
+    let short_id = format!("id: {}", &capsule.id[..capsule.id.len().min(8)]);
     let updated = if capsule.updated_at != capsule.created_at {
         capsule.updated_at.dimmed().to_string()
     } else {

@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import type { Pill } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
+import { shortId } from '@/core/utils/id'
 import CompoundBadge from './CompoundBadge.vue'
 import TruncatedTitle from './TruncatedTitle.vue'
 import IFileText from '~icons/lucide/file-text'
@@ -22,7 +23,7 @@ defineEmits<{ delete: [] }>()
 <template>
     <component
         :is="pill.prescription_id ? RouterLink : 'div'"
-        :to="pill.prescription_id ? `/bottles/${bottleId}/prescriptions/${pill.prescription_id}/pills/${pill.id}` : undefined"
+        :to="pill.prescription_id ? `/bottles/${shortId(bottleId)}/prescriptions/${shortId(pill.prescription_id)}/pills/${shortId(pill.id)}` : undefined"
         class="flex items-center justify-between gap-4 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
     >
         <div class="flex items-center gap-3 min-w-0">
@@ -39,7 +40,7 @@ defineEmits<{ delete: [] }>()
         </div>
         <div v-if="editable && pill.prescription_id" class="flex gap-2 shrink-0" @click.prevent>
             <RouterLink
-                :to="`/bottles/${bottleId}/prescriptions/${pill.prescription_id}/pills/${pill.id}/edit`"
+                :to="`/bottles/${shortId(bottleId)}/prescriptions/${shortId(pill.prescription_id)}/pills/${shortId(pill.id)}/edit`"
                 class="text-xs text-zinc-400 hover:text-(--text-h) border border-(--border) px-2.5 py-1.5 rounded-lg transition-colors"
                 @click.stop>
                 {{ $t('pill_card.edit') }}

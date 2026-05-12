@@ -5,6 +5,7 @@ import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
 import { ElInput, ElOption, ElSelect } from 'element-plus'
 import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesRepository'
+import { shortId } from '@/core/utils/id'
 import type { CapsuleSummary } from '@/core/domain/types'
 import CompoundBadge from '@/components/CompoundBadge.vue'
 import TruncatedTitle from '@/components/TruncatedTitle.vue'
@@ -125,7 +126,7 @@ async function purgeCapsule(c: CapsuleSummary) {
                     <RouterLink
                         v-for="c in activeCapsules"
                         :key="`active-${c.id}`"
-                        :to="`/capsules/${c.id}`"
+                        :to="`/capsules/${shortId(c.id)}`"
                         class="flex items-center justify-between gap-4 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                     >
                         <div class="flex items-center gap-3 min-w-0">
@@ -142,7 +143,7 @@ async function purgeCapsule(c: CapsuleSummary) {
                         </div>
                         <div class="flex gap-2 shrink-0" @click.prevent>
                             <RouterLink
-                                :to="`/capsules/${c.id}`"
+                                :to="`/capsules/${shortId(c.id)}`"
                                 class="text-xs text-zinc-400 hover:text-(--text-h) border border-(--border) px-2.5 py-1.5 rounded-lg transition-colors"
                                 @click.stop>
                                 {{ $t('common.edit') }}
@@ -178,7 +179,7 @@ async function purgeCapsule(c: CapsuleSummary) {
                         class="relative opacity-50"
                     >
                         <RouterLink
-                            :to="`/capsules/${c.id}`"
+                            :to="`/capsules/${shortId(c.id)}`"
                             class="flex items-center justify-between gap-4 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
                         >
                             <div class="flex items-center gap-3 min-w-0">

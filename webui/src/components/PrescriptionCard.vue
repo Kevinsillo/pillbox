@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { Prescription } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
+import { shortId } from '@/core/utils/id'
 import PrescriptionStatusBadge from './PrescriptionStatusBadge.vue'
 import TruncatedTitle from './TruncatedTitle.vue'
 import IClipboard from '~icons/lucide/clipboard'
@@ -24,7 +25,7 @@ const isOpen = computed(() =>
 <template>
     <div :class="['relative', archived && 'opacity-50']">
         <RouterLink
-            :to="`/bottles/${bottleId}/prescriptions/${prescription.id}`"
+            :to="`/bottles/${shortId(bottleId)}/prescriptions/${shortId(prescription.id)}`"
             class="flex items-center gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
         >
             <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">

@@ -64,17 +64,42 @@ pub fn unregister(conn: &Connection, id: i64) -> Result<bool> {
     Ok(count > 0)
 }
 
-/// Busca un registro por el UUID del bottle.
+/// Busca un registro por el UUID del bottle (completo o prefijo ≥8 chars).
+///
+/// La columna lookup es `bottle_id` (no `id`), por lo que no se puede usar
+/// [`crate::db::store::id_resolver::resolve_id`] directamente: replicamos su
+/// semántica aquí (`InvalidId` si prefijo < 8 chars, `AmbiguousId` si match
+/// múltiple, `Ok(None)` si no hay match).
 pub fn find_by_bottle_id(conn: &Connection, bottle_id: &str) -> Result<Option<RegisteredBottle>> {
-    match conn.query_row(
+    use crate::db::store::id_resolver::MIN_PREFIX_LEN;
+    use crate::error::PillboxError;
+
+    if bottle_id.len() < MIN_PREFIX_LEN {
+        return Err(PillboxError::InvalidId {
+            id: bottle_id.to_string(),
+        }
+        .into());
+    }
+
+    let pattern = format!("{}%", bottle_id);
+    let mut stmt = conn.prepare(
         "SELECT id, bottle_id, name, display_name, db_path, registered_at, last_seen_at
-         FROM registered_bottles WHERE bottle_id = ?1",
-        params![bottle_id],
-        row_to_registered,
-    ) {
-        Ok(r) => Ok(Some(r)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e).context("failed to find registered bottle by bottle_id"),
+         FROM registered_bottles WHERE bottle_id = ?1 OR bottle_id LIKE ?2
+         LIMIT 3",
+    )?;
+    let rows: Vec<RegisteredBottle> = stmt
+        .query_map(params![bottle_id, pattern], row_to_registered)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("failed to find registered bottle by bottle_id")?;
+
+    match rows.len() {
+        0 => Ok(None),
+        1 => Ok(Some(rows.into_iter().next().unwrap())),
+        _ => Err(PillboxError::AmbiguousId {
+            id_prefix: bottle_id.to_string(),
+            candidates: rows.iter().map(|r| r.bottle_id.clone()).collect(),
+        }
+        .into()),
     }
 }
 

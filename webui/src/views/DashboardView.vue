@@ -9,6 +9,7 @@ import type { Bottle, BottleStats, Context, Prescription } from '@/core/domain/t
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
 import { contextApi } from '@/core/infrastructure/repositories/ContextRepository'
 import { ApiError } from '@/core/infrastructure/managers/httpClient'
+import { shortId } from '@/core/utils/id'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
@@ -143,7 +144,7 @@ const displayRxCount = computed(() => Math.round(rxCountTween.value))
                     </div>
 
                     <!-- Rx abierta -->
-                    <RouterLink v-if="openRx" :to="`/bottles/${activeBottleId}/prescriptions/${openRx.id}`"
+                    <RouterLink v-if="openRx && activeBottleId" :to="`/bottles/${shortId(activeBottleId)}/prescriptions/${shortId(openRx.id)}`"
                                 class="block bg-(--bg-surface) border border-green-900/40 rounded-lg p-4 hover:border-green-700/60 transition-colors">
                         <p class="text-xs text-green-500 uppercase tracking-wider mb-1">{{ $t('dashboard.open_rx_label') }}</p>
                         <TruncatedTitle tag="p" :title="openRx.title" class="text-(--text-h) font-medium" />
@@ -161,7 +162,7 @@ const displayRxCount = computed(() => Math.round(rxCountTween.value))
                                 :bottle-id="activeBottleId ?? ''"
                             />
                         </TransitionGroup>
-                        <RouterLink :to="`/bottles/${activeBottleId}`"
+                        <RouterLink v-if="activeBottleId" :to="`/bottles/${shortId(activeBottleId)}`"
                                     class="text-xs text-zinc-500 hover:text-zinc-300 mt-2 inline-block">
                             <span class="flex items-center gap-1">{{ $t('dashboard.view_all') }} <IArrowRight class="w-3 h-3" /></span>
                         </RouterLink>

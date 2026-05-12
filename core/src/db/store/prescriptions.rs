@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection, TransactionBehavior};
 use uuid::Uuid;
 
+use crate::db::store::id_resolver::resolve_id;
 use crate::db::store::ListFilter;
 use crate::domain::prescription::{NewPrescription, Prescription};
 use crate::error::PillboxError;
@@ -94,14 +95,19 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
 }
 
 /// Cierra una prescription existente (establece `ended_at`).
+///
+/// Acepta UUID completo o prefijo ≥8 chars.
 pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
+    let resolved_id = resolve_id(conn, "prescriptions", id)?
+        .ok_or_else(|| PillboxError::PrescriptionNotFoundOrClosed { id: id.to_string() })?;
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
         .execute(
             "UPDATE prescriptions SET ended_at = datetime('now')
          WHERE id = ?1 AND ended_at IS NULL AND deleted_at IS NULL",
-            params![id],
+            params![resolved_id],
         )
         .context("failed to close prescription")?;
 
@@ -113,7 +119,7 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
         .query_row(
             "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions WHERE id = ?1",
-            params![id],
+            params![resolved_id],
             row_to_prescription,
         )
         .context("failed to read closed prescription")?;
@@ -124,20 +130,24 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
 
 /// Soft delete de una prescription y todas sus pills.
 ///
-/// El cascade es lógico: establece `deleted_at` en la prescription y en
-/// todas sus pills activas. No borra filas de forma permanente.
+/// Acepta UUID completo o prefijo ≥8 chars. El cascade es lógico: establece
+/// `deleted_at` en la prescription y en todas sus pills activas. No borra
+/// filas de forma permanente.
 ///
 /// # Errors
 ///
 /// Devuelve [`PillboxError::PrescriptionNotFound`] si la prescription no existe
 /// o ya estaba descartada.
 pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
+    let resolved_id = resolve_id(conn, "prescriptions", id)?
+        .ok_or_else(|| PillboxError::PrescriptionNotFound { id: id.to_string() })?;
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx.execute(
         "UPDATE prescriptions SET deleted_at = datetime('now')
          WHERE id = ?1 AND deleted_at IS NULL",
-        params![id],
+        params![resolved_id],
     )?;
 
     if affected == 0 {
@@ -147,7 +157,7 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
     tx.execute(
         "UPDATE pills SET deleted_at = datetime('now')
          WHERE prescription_id = ?1 AND deleted_at IS NULL",
-        params![id],
+        params![resolved_id],
     )?;
 
     tx.commit()?;
@@ -156,17 +166,21 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
 
 /// Hard delete de una prescription y todos sus datos relacionados (irreversible).
 ///
-/// Elimina en orden dentro de una tx IMMEDIATE:
-/// pills → prescriptions.
+/// Acepta UUID completo o prefijo ≥8 chars. Elimina en orden dentro de una
+/// tx IMMEDIATE: pills → prescriptions.
 ///
 /// Falla con `PillboxError::PrescriptionNotFound` si la prescription no existe.
 pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<()> {
+    let resolved_id = resolve_id(conn, "prescriptions", id)?
+        .ok_or_else(|| PillboxError::PrescriptionNotFound { id: id.to_string() })?;
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-    // Verificar que la prescription existe
+    // resolve_id puede hacer short-circuit con un UUID completo sin verificar
+    // que exista, así que comprobamos existencia explícita dentro de la tx.
     let exists: bool = tx.query_row(
         "SELECT EXISTS(SELECT 1 FROM prescriptions WHERE id = ?1)",
-        params![id],
+        params![resolved_id],
         |row| row.get(0),
     )?;
 
@@ -177,27 +191,28 @@ pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<()> {
     // 1. Eliminar pills de la prescription
     tx.execute(
         "DELETE FROM pills WHERE prescription_id = ?1",
-        params![id],
+        params![resolved_id],
     )
     .context("failed to delete pills for prescription")?;
 
     // 2. Eliminar la prescription
-    tx.execute("DELETE FROM prescriptions WHERE id = ?1", params![id])
+    tx.execute("DELETE FROM prescriptions WHERE id = ?1", params![resolved_id])
         .context("failed to delete prescription")?;
 
     tx.commit()?;
     Ok(())
 }
 
-/// Lee una prescription por ID exacto o prefijo de UUID incluyendo descartadas.
+/// Lee una prescription por UUID completo o prefijo ≥8 chars, incluyendo descartadas.
 pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
-    let pattern = format!("{}%", id);
+    let Some(resolved_id) = resolve_id(conn, "prescriptions", id)? else {
+        return Ok(None);
+    };
     match conn.query_row(
         "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions
-         WHERE (id = ?1 OR id LIKE ?2)
-         ORDER BY started_at DESC LIMIT 1",
-        params![id, pattern],
+         WHERE id = ?1",
+        params![resolved_id],
         row_to_prescription,
     ) {
         Ok(rx) => Ok(Some(rx)),
@@ -206,15 +221,16 @@ pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
     }
 }
 
-/// Lee una prescription por ID exacto o prefijo de UUID (no descartada).
+/// Lee una prescription por UUID completo o prefijo ≥8 chars (no descartada).
 pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
-    let pattern = format!("{}%", id);
+    let Some(resolved_id) = resolve_id(conn, "prescriptions", id)? else {
+        return Ok(None);
+    };
     match conn.query_row(
         "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions
-         WHERE (id = ?1 OR id LIKE ?2) AND deleted_at IS NULL
-         ORDER BY started_at DESC LIMIT 1",
-        params![id, pattern],
+         WHERE id = ?1 AND deleted_at IS NULL",
+        params![resolved_id],
         row_to_prescription,
     ) {
         Ok(rx) => Ok(Some(rx)),
