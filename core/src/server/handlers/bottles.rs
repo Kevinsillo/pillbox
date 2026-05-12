@@ -143,7 +143,7 @@ pub async fn registered_bottle_patch(
         return super::err(
             axum::http::StatusCode::UNPROCESSABLE_ENTITY,
             "db_path_not_found",
-            "La ruta especificada no existe o no es un fichero",
+            "The specified path does not exist or is not a file",
         );
     }
     let reg_id: i64 = match id.parse() {

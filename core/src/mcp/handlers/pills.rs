@@ -3,15 +3,17 @@
 use pillbox::{
     db::store,
     domain::{
-        pill::{NewPill, PillPatch},
+        pill::{self, NewPill, PillPatch},
         search::SearchParams,
     },
+    error::PillboxError,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::mcp::response::{
-    anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
+    anyhow_to_response, check_content_size, from_pillbox, from_value, validate_input, Conn,
+    Response,
 };
 
 /// Crea una pill nueva a partir de los datos del input y la persiste en la DB.
@@ -24,6 +26,9 @@ pub fn take(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
+    if let Err(r) = check_content_size(&req.content, pill::CONTENT_MAX_CHARS) {
+        return r;
+    }
     if let Err(r) = validate_input(&req) {
         return r;
     }
@@ -49,7 +54,7 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
     };
     match store::pills::read(conn, &req.id) {
         Ok(Some(p)) => Response::ok(p),
-        Ok(None) => not_found("pill", req.id),
+        Ok(None) => from_pillbox(&PillboxError::PillNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
 }
@@ -72,12 +77,17 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
         Err(r) => return r,
     };
     let patch = PillPatch { title: req.title, content: req.content, compound: req.compound };
+    if let Some(content) = patch.content.as_deref() {
+        if let Err(r) = check_content_size(content, pill::CONTENT_MAX_CHARS) {
+            return r;
+        }
+    }
     if let Err(r) = validate_input(&patch) {
         return r;
     }
     match store::pills::revise(conn, &req.id, &patch) {
         Ok(Some(p)) => Response::ok(p),
-        Ok(None) => not_found("pill", req.id),
+        Ok(None) => from_pillbox(&PillboxError::PillNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
 }
@@ -98,7 +108,7 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
     };
     match store::pills::discard(conn, &req.id) {
         Ok(Some(r)) => Response::ok(r),
-        Ok(None) => not_found("pill", req.id),
+        Ok(None) => from_pillbox(&PillboxError::PillNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
 }

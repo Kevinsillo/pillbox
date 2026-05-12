@@ -147,7 +147,7 @@ pub(super) fn err_400_invalid_id(id: &str) -> ApiResponse {
     err_with_context(
         StatusCode::BAD_REQUEST,
         "invalid_id",
-        json!({ "id": id, "message": "El ID debe tener al menos 8 caracteres" }),
+        json!({ "id": id, "message": "ID must be at least 8 characters long" }),
     )
 }
 

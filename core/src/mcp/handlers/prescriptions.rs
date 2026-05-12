@@ -1,11 +1,11 @@
 //! Handlers MCP para la entidad Prescription.
 
-use pillbox::{db::store, domain::prescription::NewPrescription};
+use pillbox::{db::store, domain::prescription::NewPrescription, error::PillboxError};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::mcp::response::{
-    anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
+    anyhow_to_response, from_pillbox, from_value, validate_input, Conn, Response,
 };
 
 /// Abre una prescripción nueva en la DB y la devuelve serializada.
@@ -63,7 +63,7 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
     };
     match store::prescriptions::read(conn, &req.id) {
         Ok(Some(rx)) => Response::ok(rx),
-        Ok(None) => not_found("prescription", &req.id),
+        Ok(None) => from_pillbox(&PillboxError::PrescriptionNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
 }

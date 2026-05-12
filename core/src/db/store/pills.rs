@@ -35,14 +35,20 @@ pub struct PillDiscardResult {
 /// La prescription debe existir y estar abierta (`ended_at IS NULL`).
 /// Falla con `prescription_required` si no se cumple.
 pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
-    // Verificar que la prescription existe y está abierta (fuera de tx: lectura rápida)
+    // Resolver el prescription_id (acepta UUID completo o prefijo ≥8 chars) y
+    // validar que existe y está abierta antes de insertar la pill.
+    let resolved_rx_id = resolve_id(conn, "prescriptions", &input.prescription_id)?
+        .ok_or_else(|| PillboxError::PrescriptionRequired {
+            prescription_id: input.prescription_id.clone(),
+        })?;
+
     let rx_open: bool = conn
         .query_row(
             "SELECT EXISTS(
              SELECT 1 FROM prescriptions
              WHERE id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
          )",
-            params![input.prescription_id],
+            params![resolved_rx_id],
             |row| row.get(0),
         )
         .context("failed to check prescription status")?;
@@ -66,7 +72,7 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
             input.compound.as_str(),
             input.title,
             input.content,
-            input.prescription_id,
+            resolved_rx_id,
             input.author_name,
             input.author_email,
         ],
@@ -380,6 +386,33 @@ mod tests {
             author_name: Some("Kevin".into()),
             author_email: None,
         }
+    }
+
+    #[test]
+    fn take_resolves_12char_prescription_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
+
+        let mut input = sample_pill(&rx_id);
+        input.prescription_id = short;
+        let result = take(&mut conn, &input).unwrap();
+        assert_eq!(result.action, "created");
+
+        // La pill debe quedar enlazada al UUID completo de la prescription
+        let pill = read(&conn, &result.id).unwrap().unwrap();
+        assert_eq!(pill.prescription_id, rx_id);
+    }
+
+    #[test]
+    fn take_short_prescription_id_not_found() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, _rx_id) = setup(&mut conn);
+
+        let mut input = sample_pill("019dca5fc003");
+        input.prescription_id = "019dca5fc003".into();
+        let err = take(&mut conn, &input).unwrap_err();
+        assert!(err.to_string().contains("prescription_required"));
     }
 
     #[test]

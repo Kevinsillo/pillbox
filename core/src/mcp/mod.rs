@@ -63,7 +63,7 @@ fn execute(raw: &str) -> Result<Response> {
         config::global_db_path()
     } else {
         config::resolve_db_path()
-            .ok_or_else(|| anyhow::anyhow!("no_db: no se encontró ninguna DB de Pillbox"))?
+            .ok_or_else(|| anyhow::anyhow!("no_db: no Pillbox DB found"))?
     };
 
     let mut conn = db::connection::open(&path)?;

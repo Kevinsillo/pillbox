@@ -1,32 +1,32 @@
-//! Errores de dominio tipados de Pillbox.
+//! Typed domain errors for Pillbox.
 //!
-//! [`PillboxError`] es el único tipo de error de negocio. Los errores de
-//! infraestructura (SQLite, I/O, red) se propagan como [`anyhow::Error`].
+//! [`PillboxError`] is the single business-error type. Infrastructure errors
+//! (SQLite, I/O, network) propagate as [`anyhow::Error`].
 
 use serde::Serialize;
 use thiserror::Error;
 
-/// Errores de dominio que pueden retornar las operaciones de Pillbox.
+/// Domain errors returned by Pillbox operations.
 ///
-/// Serializable como JSON con `serde` para respuestas MCP/HTTP.
-/// Cada variante incluye los campos necesarios para que el cliente
-/// muestre un mensaje de error útil sin parsear strings.
+/// Serializable as JSON via `serde` for MCP/HTTP responses. Each variant
+/// carries the fields a client needs to render a useful message without
+/// parsing strings.
 #[derive(Debug, Error, Serialize)]
 #[serde(tag = "error", rename_all = "snake_case")]
 pub enum PillboxError {
     // ── Pill ──────────────────────────────────────────────────────────────────
-    #[error("pill_not_found: no existe la pill con id={id}")]
-    PillNotFound { id: i64 },
+    #[error("pill_not_found: no pill exists with id={id}")]
+    PillNotFound { id: String },
 
     // ── Capsule ───────────────────────────────────────────────────────────────
-    #[error("capsule_not_found: no existe la capsule con id={id}")]
-    CapsuleNotFound { id: i64 },
+    #[error("capsule_not_found: no capsule exists with id={id}")]
+    CapsuleNotFound { id: String },
     // ── Prescription ──────────────────────────────────────────────────────────
-    #[error("prescription_required: la prescription '{prescription_id}' no existe o está cerrada")]
+    #[error("prescription_required: prescription '{prescription_id}' does not exist or is closed")]
     PrescriptionRequired { prescription_id: String },
 
     #[error(
-        "prescription_already_open: '{title}' (id={id}, iniciada={started_at}, {pill_count} pills)"
+        "prescription_already_open: '{title}' (id={id}, started={started_at}, {pill_count} pills)"
     )]
     PrescriptionAlreadyOpen {
         id: String,
@@ -42,21 +42,25 @@ pub enum PillboxError {
     PrescriptionNotFound { id: String },
 
     // ── Bottle ────────────────────────────────────────────────────────────────
-    #[error("bottle_not_found: no existe el bottle {bottle_id}")]
+    #[error("bottle_not_found: no bottle exists with id={bottle_id}")]
     BottleNotFound { bottle_id: String },
 
-    #[error("bottle_already_exists: ya existe un bottle con el nombre '{name}'")]
+    #[error("bottle_already_exists: a bottle named '{name}' already exists")]
     BottleAlreadyExists { name: String },
 
     // ── ID resolution ─────────────────────────────────────────────────────────
-    #[error("invalid_id: '{id}' es demasiado corto (mínimo 8 caracteres)")]
+    #[error("invalid_id: '{id}' is too short (minimum 8 characters)")]
     InvalidId { id: String },
 
-    #[error("ambiguous_id: el prefijo '{id_prefix}' coincide con {} registros", candidates.len())]
+    #[error("ambiguous_id: prefix '{id_prefix}' matches {} records", candidates.len())]
     AmbiguousId {
         id_prefix: String,
         candidates: Vec<String>,
     },
+
+    // ── Content ───────────────────────────────────────────────────────────────
+    #[error("content_too_large: {actual} characters exceed the limit of {limit}")]
+    ContentTooLarge { actual: usize, limit: usize },
 }
 
 impl PillboxError {
@@ -73,6 +77,7 @@ impl PillboxError {
             Self::BottleAlreadyExists { .. } => "bottle_already_exists",
             Self::InvalidId { .. } => "invalid_id",
             Self::AmbiguousId { .. } => "ambiguous_id",
+            Self::ContentTooLarge { .. } => "content_too_large",
         }
     }
 }
@@ -84,11 +89,11 @@ mod tests {
     #[test]
     fn code_matches_each_variant() {
         assert_eq!(
-            PillboxError::PillNotFound { id: 1 }.code(),
+            PillboxError::PillNotFound { id: "1".into() }.code(),
             "pill_not_found"
         );
         assert_eq!(
-            PillboxError::CapsuleNotFound { id: 2 }.code(),
+            PillboxError::CapsuleNotFound { id: "2".into() }.code(),
             "capsule_not_found"
         );
         assert_eq!(
@@ -132,11 +137,15 @@ mod tests {
             PillboxError::AmbiguousId { id_prefix: "abc".into(), candidates: vec![] }.code(),
             "ambiguous_id"
         );
+        assert_eq!(
+            PillboxError::ContentTooLarge { actual: 6000, limit: 5000 }.code(),
+            "content_too_large"
+        );
     }
 
     #[test]
     fn display_contains_code() {
-        let err = PillboxError::PillNotFound { id: 42 };
+        let err = PillboxError::PillNotFound { id: "42".into() };
         assert!(err.to_string().contains("pill_not_found"));
         assert!(err.to_string().contains("42"));
 
@@ -159,7 +168,7 @@ mod tests {
 
     #[test]
     fn error_is_std_error() {
-        let err: Box<dyn std::error::Error> = Box::new(PillboxError::PillNotFound { id: 1 });
+        let err: Box<dyn std::error::Error> = Box::new(PillboxError::PillNotFound { id: "1".into() });
         assert!(err.to_string().contains("pill_not_found"));
     }
 }

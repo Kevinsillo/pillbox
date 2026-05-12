@@ -2,13 +2,15 @@
 
 use pillbox::{
     db::store,
-    domain::capsule::{CapsulePatch, NewCapsule},
+    domain::capsule::{self, CapsulePatch, NewCapsule},
+    error::PillboxError,
 };
 use serde::Deserialize;
 use serde_json::Value;
 
 use crate::mcp::response::{
-    anyhow_to_response, from_value, not_found, validate_input, Conn, Response,
+    anyhow_to_response, check_content_size, from_pillbox, from_value, validate_input, Conn,
+    Response,
 };
 
 /// Guarda una capsule nueva en la DB global.
@@ -17,6 +19,9 @@ pub fn take(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
+    if let Err(r) = check_content_size(&req.content, capsule::CONTENT_MAX_CHARS) {
+        return r;
+    }
     if let Err(r) = validate_input(&req) {
         return r;
     }
@@ -38,7 +43,7 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
     };
     match store::capsules::read(conn, &req.id) {
         Ok(Some(c)) => Response::ok(c),
-        Ok(None) => not_found("capsule", req.id),
+        Ok(None) => from_pillbox(&PillboxError::CapsuleNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
 }
@@ -57,12 +62,17 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
         Err(r) => return r,
     };
     let patch = CapsulePatch { title: req.title, content: req.content, compound: req.compound };
+    if let Some(content) = patch.content.as_deref() {
+        if let Err(r) = check_content_size(content, capsule::CONTENT_MAX_CHARS) {
+            return r;
+        }
+    }
     if let Err(r) = validate_input(&patch) {
         return r;
     }
     match store::capsules::revise(conn, &req.id, &patch) {
         Ok(Some(c)) => Response::ok(c),
-        Ok(None) => not_found("capsule", req.id),
+        Ok(None) => from_pillbox(&PillboxError::CapsuleNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
 }
@@ -79,7 +89,7 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
     };
     match store::capsules::discard(conn, &req.id) {
         Ok(Some(r)) => Response::ok(r),
-        Ok(None) => not_found("capsule", req.id),
+        Ok(None) => from_pillbox(&PillboxError::CapsuleNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
 }
@@ -108,7 +118,6 @@ mod tests {
         db::{connection::open_in_memory, store},
         domain::capsule::NewCapsule,
     };
-    use rusqlite::params;
     use serde_json::json;
 
     fn sample() -> NewCapsule {

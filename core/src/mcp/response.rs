@@ -58,11 +58,6 @@ impl Response {
 
 // ─── Helpers compartidos por handlers ─────────────────────────────────────────
 
-/// Respuesta de error 404 genérica para cualquier entidad.
-pub fn not_found(entity: &str, id: impl std::fmt::Display) -> Response {
-    Response::err("not_found", format!("{} {} no encontrada", entity, id))
-}
-
 /// Deserializa un [`Value`] JSON al tipo `T`, devolviendo [`Response::err`] si falla.
 pub fn from_value<T: for<'de> Deserialize<'de>>(v: Value) -> Result<T, Response> {
     serde_json::from_value(v).map_err(|e| Response::err("invalid_input", e.to_string()))
@@ -74,17 +69,33 @@ pub fn validate_input<T: Validate>(v: &T) -> Result<(), Response> {
         .map_err(|e| Response::err("validation_error", e.to_string()))
 }
 
+/// Verifica que el contenido no supere el límite de caracteres.
+///
+/// Devuelve [`Response`] con código `content_too_large` y datos estructurados
+/// (`actual`, `limit`) cuando el contenido excede el límite. El formatter
+/// del cliente decide cómo presentar la información al modelo.
+pub fn check_content_size(content: &str, limit: usize) -> Result<(), Response> {
+    let actual = content.chars().count();
+    if actual <= limit {
+        return Ok(());
+    }
+    Err(from_pillbox(&PillboxError::ContentTooLarge {
+        actual,
+        limit,
+    }))
+}
+
 /// Convierte un [`anyhow::Error`] en [`Response`], usando el código tipado si es [`PillboxError`].
 pub fn anyhow_to_response(e: anyhow::Error) -> Response {
     if let Some(pe) = e.downcast_ref::<PillboxError>() {
-        return pillbox_to_response(pe);
+        return from_pillbox(pe);
     }
     Response::err("internal_error", e.to_string())
 }
 
 /// Convierte un [`PillboxError`] tipado en [`Response`], incluyendo datos adicionales
 /// para la variante `PrescriptionAlreadyOpen`.
-fn pillbox_to_response(pe: &PillboxError) -> Response {
+pub fn from_pillbox(pe: &PillboxError) -> Response {
     match pe {
         PillboxError::PrescriptionAlreadyOpen {
             id,
@@ -110,6 +121,11 @@ fn pillbox_to_response(pe: &PillboxError) -> Response {
             pe.code(),
             pe.to_string(),
             json!({ "id": id }),
+        ),
+        PillboxError::ContentTooLarge { actual, limit } => Response::err_with_data(
+            pe.code(),
+            pe.to_string(),
+            json!({ "actual": actual, "limit": limit }),
         ),
         _ => Response::err(pe.code(), pe.to_string()),
     }

@@ -16,6 +16,13 @@ use crate::error::PillboxError;
 /// Falla con `PillboxError::PrescriptionAlreadyOpen` si ya hay una prescription activa
 /// (no cerrada ni descartada) para ese bottle.
 pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescription> {
+    // Resolver el bottle_id (acepta UUID completo o prefijo ≥8 chars) y validar
+    // que existe antes de abrir la prescription.
+    let resolved_bottle_id = resolve_id(conn, "bottles", &input.bottle_id)?
+        .ok_or_else(|| PillboxError::BottleNotFound {
+            bottle_id: input.bottle_id.clone(),
+        })?;
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     // Verificar si ya hay una prescription abierta para este bottle
@@ -27,7 +34,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
          WHERE rx.bottle_id = ?1
            AND rx.ended_at IS NULL
            AND rx.deleted_at IS NULL",
-        params![input.bottle_id],
+        params![resolved_bottle_id],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -52,20 +59,6 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
         .into());
     }
 
-    // Verificar que el bottle existe
-    let bottle_exists: bool = tx.query_row(
-        "SELECT EXISTS(SELECT 1 FROM bottles WHERE id = ?1)",
-        params![input.bottle_id],
-        |row| row.get(0),
-    )?;
-
-    if !bottle_exists {
-        return Err(PillboxError::BottleNotFound {
-            bottle_id: input.bottle_id.clone(),
-        }
-        .into());
-    }
-
     let id = Uuid::now_v7().to_string();
 
     tx.execute(
@@ -73,7 +66,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
          VALUES (?1, ?2, ?3, ?4, ?5)",
         params![
             id,
-            input.bottle_id,
+            resolved_bottle_id,
             input.title,
             input.author_name,
             input.author_email
@@ -438,6 +431,46 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("bottle_not_found"));
+    }
+
+    #[test]
+    fn open_resolves_12char_bottle_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "short-id-test");
+        let short = bottle_id.replace('-', "").chars().take(12).collect::<String>();
+
+        let rx = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: short,
+                title: "Con short bottle_id".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        // La prescription debe almacenar el UUID completo del bottle, no el prefijo
+        assert_eq!(rx.bottle_id, bottle_id);
+    }
+
+    #[test]
+    fn open_resolves_8char_bottle_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "short8-test");
+        let short = bottle_id.replace('-', "").chars().take(8).collect::<String>();
+
+        let rx = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: short,
+                title: "8 chars".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(rx.bottle_id, bottle_id);
     }
 
     #[test]

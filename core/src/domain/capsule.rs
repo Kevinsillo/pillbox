@@ -3,6 +3,9 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
+/// Límite máximo de caracteres para el contenido de una capsule.
+pub const CONTENT_MAX_CHARS: usize = 5000;
+
 /// Input para crear una capsule.
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct NewCapsule {
