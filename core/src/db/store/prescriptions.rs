@@ -838,6 +838,67 @@ mod tests {
     }
 
     #[test]
+    fn read_by_12char_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "prefix-rx-12");
+        let rx_id = make_rx(&mut conn, &bottle_id, "Test session");
+        let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
+        let found = read(&conn, &short).unwrap().unwrap();
+        assert_eq!(found.id, rx_id);
+    }
+
+    #[test]
+    fn close_by_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "close-short-rx");
+        let rx_id = make_rx(&mut conn, &bottle_id, "Closing session");
+        let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
+        let closed = close(&mut conn, &short).unwrap();
+        assert!(closed.ended_at.is_some());
+    }
+
+    #[test]
+    fn discard_by_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "discard-short-rx");
+        let rx_id = make_rx(&mut conn, &bottle_id, "Discard session");
+        let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
+        discard(&mut conn, &short).unwrap();
+        assert!(read(&conn, &rx_id).unwrap().is_none());
+    }
+
+    #[test]
+    fn read_too_short_returns_invalid_id() {
+        let conn = open_in_memory().unwrap();
+        let err = read(&conn, "abc").unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::InvalidId { .. }));
+    }
+
+    #[test]
+    fn read_ambiguous_returns_ambiguous_id() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "amb-rx");
+        // Primera rx cerrada (ended_at != NULL) para no violar el índice UNIQUE parcial
+        // que solo aplica a prescriptions con ended_at IS NULL.
+        conn.execute(
+            "INSERT INTO prescriptions (id, bottle_id, title, ended_at)
+             VALUES ('01234567-aaaa-7000-8000-000000000001', ?1, 'A', datetime('now'))",
+            params![bottle_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO prescriptions (id, bottle_id, title)
+             VALUES ('01234567-aaaa-7000-8000-000000000002', ?1, 'B')",
+            params![bottle_id],
+        )
+        .unwrap();
+        let err = read(&conn, "01234567aaaa").unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::AmbiguousId { .. }));
+    }
+
+    #[test]
     fn count_archived_pills_returns_exact_total() {
         use crate::db::store::pills;
         use crate::domain::pill::NewPill;

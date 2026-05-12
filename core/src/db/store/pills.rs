@@ -634,4 +634,70 @@ mod tests {
         assert!(read(&conn, &pill.id).unwrap().is_none());
         assert!(read_any(&conn, &pill.id).unwrap().is_some());
     }
+
+    #[test]
+    fn read_by_12char_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let found = read(&conn, &short).unwrap().unwrap();
+        assert_eq!(found.id, result.id);
+    }
+
+    #[test]
+    fn revise_by_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let updated = revise(
+            &mut conn,
+            &short,
+            &PillPatch { title: Some("Revisada por prefijo".into()), content: None, compound: None },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(updated.title, "Revisada por prefijo");
+    }
+
+    #[test]
+    fn discard_by_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let discarded = discard(&mut conn, &short).unwrap().unwrap();
+        assert_eq!(discarded.id, result.id);
+        assert!(read(&conn, &result.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn read_too_short_returns_invalid_id() {
+        let conn = open_in_memory().unwrap();
+        let err = read(&conn, "abc").unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::InvalidId { .. }));
+    }
+
+    #[test]
+    fn read_ambiguous_returns_ambiguous_id() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        conn.execute(
+            "INSERT INTO pills (id, compound, title, content, prescription_id)
+             VALUES ('01234567-aaaa-7000-8000-000000000001', 'decision', 'A', 'c', ?1)",
+            params![rx_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO pills (id, compound, title, content, prescription_id)
+             VALUES ('01234567-aaaa-7000-8000-000000000002', 'decision', 'B', 'c', ?1)",
+            params![rx_id],
+        )
+        .unwrap();
+        let err = read(&conn, "01234567aaaa").unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::AmbiguousId { .. }));
+    }
 }

@@ -232,4 +232,50 @@ mod tests {
         assert!(list(&conn).unwrap().is_empty());
     }
 
+    #[test]
+    fn find_by_id_12char_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let b = create(&mut conn, &test_bottle("prefix-12", "/tmp/prefix-12")).unwrap();
+        let short = b.id.replace('-', "").chars().take(12).collect::<String>();
+        let found = find_by_id(&conn, &short).unwrap().unwrap();
+        assert_eq!(found.id, b.id);
+    }
+
+    #[test]
+    fn find_by_id_too_short_returns_invalid_id() {
+        let conn = open_in_memory().unwrap();
+        let err = find_by_id(&conn, "abc").unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::InvalidId { .. }));
+    }
+
+    #[test]
+    fn find_by_id_ambiguous_returns_ambiguous_id() {
+        let mut conn = open_in_memory().unwrap();
+        conn.execute(
+            "INSERT INTO bottles (id, name, display_name, directory, scope)
+             VALUES ('01234567-aaaa-7000-8000-000000000001', 'amb-a', 'A', '/tmp/amb-a', 'local')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO bottles (id, name, display_name, directory, scope)
+             VALUES ('01234567-aaaa-7000-8000-000000000002', 'amb-b', 'B', '/tmp/amb-b', 'local')",
+            [],
+        )
+        .unwrap();
+        let err = find_by_id(&conn, "01234567aaaa").unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::AmbiguousId { .. }));
+    }
+
+    #[test]
+    fn delete_by_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let b = create(&mut conn, &test_bottle("del-short", "/tmp/del-short")).unwrap();
+        let short = b.id.replace('-', "").chars().take(12).collect::<String>();
+        assert!(delete(&mut conn, &short).unwrap());
+        assert!(find_by_id(&conn, &b.id).unwrap().is_none());
+    }
+
 }

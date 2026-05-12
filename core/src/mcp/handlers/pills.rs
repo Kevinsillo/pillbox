@@ -161,7 +161,7 @@ pub fn bottle_context(conn: &mut Conn, input: Value) -> Response {
 ///
 /// # Errors
 ///
-/// Retorna error si la consulta a la base de datos falla.
+/// Retorna error si la búsqueda en la base de datos falla.
 pub fn prescription_context(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -195,5 +195,120 @@ pub fn prescription_context(conn: &mut Conn, input: Value) -> Response {
             }))
         }
         Err(e) => anyhow_to_response(e),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pillbox::{
+        db::{connection::open_in_memory, store},
+        domain::{
+            bottle::{BottleScope, NewBottle},
+            pill::NewPill,
+            prescription::NewPrescription,
+        },
+    };
+    use rusqlite::params;
+    use serde_json::json;
+
+    fn setup(conn: &mut rusqlite::Connection) -> (String, String) {
+        let bottle = store::bottles::create(
+            conn,
+            &NewBottle {
+                name: "mcp-pills-test".into(),
+                display_name: "MCP Pills Test".into(),
+                directory: "/tmp/mcp-pills-test".into(),
+                scope: BottleScope::Local,
+            },
+        )
+        .unwrap();
+        let rx = store::prescriptions::open(
+            conn,
+            &NewPrescription {
+                bottle_id: bottle.id.clone(),
+                title: "Test session".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        (bottle.id, rx.id)
+    }
+
+    fn make_pill(conn: &mut rusqlite::Connection, rx_id: &str) -> String {
+        store::pills::take(
+            conn,
+            &NewPill {
+                title: "Test pill".into(),
+                content: "Contenido de prueba.".into(),
+                compound: "decision".into(),
+                prescription_id: rx_id.to_string(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap()
+        .id
+    }
+
+    #[test]
+    fn read_resolves_12char_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let pill_id = make_pill(&mut conn, &rx_id);
+        let short = pill_id.replace('-', "").chars().take(12).collect::<String>();
+        let response = super::read(&mut conn, json!({ "id": short }));
+        assert!(response.ok);
+        assert_eq!(response.data.unwrap()["id"].as_str().unwrap(), pill_id);
+    }
+
+    #[test]
+    fn read_returns_invalid_id_when_too_short() {
+        let mut conn = open_in_memory().unwrap();
+        let response = super::read(&mut conn, json!({ "id": "abc" }));
+        assert!(!response.ok);
+        assert_eq!(response.error.as_deref(), Some("invalid_id"));
+    }
+
+    #[test]
+    fn read_returns_ambiguous_id_error() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        conn.execute(
+            "INSERT INTO pills (id, compound, title, content, prescription_id)
+             VALUES ('01234567-aaaa-7000-8000-000000000001', 'decision', 'A', 'c', ?1)",
+            params![rx_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO pills (id, compound, title, content, prescription_id)
+             VALUES ('01234567-aaaa-7000-8000-000000000002', 'decision', 'B', 'c', ?1)",
+            params![rx_id],
+        )
+        .unwrap();
+        let response = super::read(&mut conn, json!({ "id": "01234567aaaa" }));
+        assert!(!response.ok);
+        assert_eq!(response.error.as_deref(), Some("ambiguous_id"));
+    }
+
+    #[test]
+    fn revise_resolves_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let pill_id = make_pill(&mut conn, &rx_id);
+        let short = pill_id.replace('-', "").chars().take(12).collect::<String>();
+        let response = super::revise(&mut conn, json!({ "id": short, "title": "Revisada" }));
+        assert!(response.ok);
+        assert_eq!(response.data.unwrap()["title"].as_str().unwrap(), "Revisada");
+    }
+
+    #[test]
+    fn discard_resolves_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let pill_id = make_pill(&mut conn, &rx_id);
+        let short = pill_id.replace('-', "").chars().take(12).collect::<String>();
+        let response = super::discard(&mut conn, json!({ "id": short }));
+        assert!(response.ok);
     }
 }

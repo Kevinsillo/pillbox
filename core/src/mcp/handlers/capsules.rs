@@ -84,7 +84,7 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
-/// Busca capsules por texto con FTS5 y expansión fuzzy.
+/// Busca capsules por texto con FTS5 y expansión fuzzy Jaro-Winkler.
 pub fn search(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
@@ -99,5 +99,80 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
     match store::search::capsule_find(conn, &req.query, req.compound.as_deref(), req.limit) {
         Ok(results) => Response::ok(results),
         Err(e) => anyhow_to_response(e),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pillbox::{
+        db::{connection::open_in_memory, store},
+        domain::capsule::NewCapsule,
+    };
+    use rusqlite::params;
+    use serde_json::json;
+
+    fn sample() -> NewCapsule {
+        NewCapsule {
+            title: "Test capsule".into(),
+            content: "Contenido de prueba.".into(),
+            compound: "convention".into(),
+        }
+    }
+
+    #[test]
+    fn read_resolves_12char_prefix() {
+        let mut conn = open_in_memory().unwrap();
+        let result = store::capsules::take(&mut conn, &sample()).unwrap();
+        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let response = super::read(&mut conn, json!({ "id": short }));
+        assert!(response.ok);
+        assert_eq!(response.data.unwrap()["id"].as_str().unwrap(), result.id);
+    }
+
+    #[test]
+    fn read_returns_invalid_id_when_too_short() {
+        let mut conn = open_in_memory().unwrap();
+        let response = super::read(&mut conn, json!({ "id": "abc" }));
+        assert!(!response.ok);
+        assert_eq!(response.error.as_deref(), Some("invalid_id"));
+    }
+
+    #[test]
+    fn read_returns_ambiguous_id_error() {
+        let mut conn = open_in_memory().unwrap();
+        conn.execute(
+            "INSERT INTO capsules (id, compound, title, content)
+             VALUES ('01234567-aaaa-7000-8000-000000000001', 'convention', 'A', 'c')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO capsules (id, compound, title, content)
+             VALUES ('01234567-aaaa-7000-8000-000000000002', 'convention', 'B', 'c')",
+            [],
+        )
+        .unwrap();
+        let response = super::read(&mut conn, json!({ "id": "01234567aaaa" }));
+        assert!(!response.ok);
+        assert_eq!(response.error.as_deref(), Some("ambiguous_id"));
+    }
+
+    #[test]
+    fn revise_resolves_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let result = store::capsules::take(&mut conn, &sample()).unwrap();
+        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let response = super::revise(&mut conn, json!({ "id": short, "title": "Revisada" }));
+        assert!(response.ok);
+        assert_eq!(response.data.unwrap()["title"].as_str().unwrap(), "Revisada");
+    }
+
+    #[test]
+    fn discard_resolves_short_id() {
+        let mut conn = open_in_memory().unwrap();
+        let result = store::capsules::take(&mut conn, &sample()).unwrap();
+        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let response = super::discard(&mut conn, json!({ "id": short }));
+        assert!(response.ok);
     }
 }
