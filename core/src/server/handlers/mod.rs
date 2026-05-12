@@ -181,6 +181,23 @@ pub(super) fn conn_for_bottle(
     db::connection::open_existing(std::path::Path::new(&reg.db_path)).map_err(err_500)
 }
 
+/// Abre la DB del bottle y devuelve la conexión junto con el UUID completo del bottle.
+///
+/// Necesario cuando el caller debe pasar el bottle_id como foreign key a otras queries
+/// (e.g. list_by_bottle, count_by_bottle) que requieren el UUID completo, no un prefijo.
+pub(super) fn conn_for_bottle_with_id(
+    s: &AppState,
+    bottle_id: &str,
+) -> Result<(rusqlite::Connection, String), ApiResponse> {
+    use pillbox::db::store;
+    let conn = conn_for_bottle(s, bottle_id)?;
+    match store::bottles::find_by_id(&conn, bottle_id) {
+        Ok(Some(b)) => Ok((conn, b.id)),
+        Ok(None) => Err(err_404_bottle(bottle_id)),
+        Err(e) => Err(err_500(e)),
+    }
+}
+
 /// Abre una conexión a la DB global del sistema.
 ///
 /// # Errors

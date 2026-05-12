@@ -17,8 +17,8 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, err_400_invalid_id, err_404_pill, err_409_ambiguous_id, err_422, err_500, ok,
-    ok_created, open_global_conn, ApiResponse, AppState,
+    conn_for_bottle, err_400_invalid_id, err_404_pill, err_404_prescription, err_409_ambiguous_id,
+    err_422, err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
 };
 
 /// Cuerpo JSON para crear una pill nueva via REST API.
@@ -47,11 +47,16 @@ pub async fn pill_create(
         Ok(c) => c,
         Err(r) => return r,
     };
+    let full_rx_id = match store::prescriptions::read_any(&conn, &rx_id) {
+        Ok(Some(rx)) => rx.id,
+        Ok(None) => return err_404_prescription(&rx_id),
+        Err(e) => return err_500(e),
+    };
     let new_pill = NewPill {
         title: input.title,
         content: input.content,
         compound: input.compound,
-        prescription_id: rx_id,
+        prescription_id: full_rx_id,
         author_name: input.author_name,
         author_email: input.author_email,
     };

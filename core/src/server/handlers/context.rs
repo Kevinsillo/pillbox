@@ -4,7 +4,7 @@ use axum::extract::{Path, Query, State};
 use pillbox::db::store;
 use serde::Deserialize;
 
-use super::{conn_for_bottle, err_500, ok, ApiResponse, AppState};
+use super::{conn_for_bottle_with_id, err_500, ok, ApiResponse, AppState};
 
 fn default_8() -> u32 { 8 }
 
@@ -21,19 +21,19 @@ pub async fn context_get(
     Path(bottle_id): Path<String>,
     Query(params): Query<ContextParams>,
 ) -> ApiResponse {
-    let conn = match conn_for_bottle(&s, &bottle_id) {
-        Ok(c) => c,
+    let (conn, full_id) = match conn_for_bottle_with_id(&s, &bottle_id) {
+        Ok(v) => v,
         Err(r) => return r,
     };
-    let pill_count = match store::pills::count_by_bottle(&conn, &bottle_id) {
+    let pill_count = match store::pills::count_by_bottle(&conn, &full_id) {
         Ok(n) => n,
         Err(e) => return err_500(e),
     };
-    let prescription_count = match store::prescriptions::count_by_bottle(&conn, &bottle_id) {
+    let prescription_count = match store::prescriptions::count_by_bottle(&conn, &full_id) {
         Ok(n) => n,
         Err(e) => return err_500(e),
     };
-    let recent_pills = match store::pills::list_recent(&conn, &bottle_id, params.pill_limit) {
+    let recent_pills = match store::pills::list_recent(&conn, &full_id, params.pill_limit) {
         Ok(v) => v,
         Err(e) => return err_500(e),
     };

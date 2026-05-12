@@ -10,8 +10,8 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, err_400_invalid_id, err_404_prescription, err_409, err_409_ambiguous_id,
-    err_422, err_500, ok, ok_created, ApiResponse, AppState,
+    conn_for_bottle, conn_for_bottle_with_id, err_400_invalid_id, err_404_prescription, err_409,
+    err_409_ambiguous_id, err_422, err_500, ok, ok_created, ApiResponse, AppState,
 };
 
 /// Cuerpo JSON para abrir una prescripción nueva via REST API.
@@ -32,12 +32,12 @@ pub async fn prescription_open(
     if let Err(e) = input.validate() {
         return err_422(e);
     }
-    let mut conn = match conn_for_bottle(&s, &bottle_id) {
-        Ok(c) => c,
+    let (mut conn, full_bottle_id) = match conn_for_bottle_with_id(&s, &bottle_id) {
+        Ok(v) => v,
         Err(r) => return r,
     };
     let new_rx = NewPrescription {
-        bottle_id,
+        bottle_id: full_bottle_id,
         title: input.title,
         author_name: None,
         author_email: None,
@@ -169,12 +169,12 @@ pub async fn prescription_pills(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::prescriptions::read_any(&conn, &rx_id) {
+    let rx = match store::prescriptions::read_any(&conn, &rx_id) {
+        Ok(Some(rx)) => rx,
         Ok(None) => return err_404_prescription(&rx_id),
         Err(e) => return err_500(e),
-        Ok(Some(_)) => {}
-    }
-    match store::pills::list_by_prescription(&conn, &rx_id) {
+    };
+    match store::pills::list_by_prescription(&conn, &rx.id) {
         Ok(pills) => ok(pills),
         Err(e) => err_500(e),
     }

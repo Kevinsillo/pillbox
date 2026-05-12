@@ -13,9 +13,9 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, default_30, default_50, err_400_invalid_id, err_404_bottle,
-    err_404_registered_bottle, err_409_ambiguous_id, err_422, err_500, ok, ok_created,
-    open_global_conn, ApiResponse, AppState,
+    conn_for_bottle, conn_for_bottle_with_id, default_30, default_50, err_400_invalid_id,
+    err_404_bottle, err_404_registered_bottle, err_409_ambiguous_id, err_422, err_500, ok,
+    ok_created, open_global_conn, ApiResponse, AppState,
 };
 
 /// Parámetros de query para listar prescripciones de un bottle.
@@ -255,16 +255,11 @@ pub async fn bottle_prescriptions(
     Path(id): Path<String>,
     Query(params): Query<BottlePrescriptionsParams>,
 ) -> ApiResponse {
-    let conn = match conn_for_bottle(&s, &id) {
-        Ok(c) => c,
+    let (conn, full_id) = match conn_for_bottle_with_id(&s, &id) {
+        Ok(v) => v,
         Err(r) => return r,
     };
-    match store::bottles::find_by_id(&conn, &id) {
-        Ok(None) => return err_404_bottle(&id),
-        Err(e) => return err_500(e),
-        Ok(Some(_)) => {}
-    }
-    match store::prescriptions::list_by_bottle(&conn, &id, params.limit, ListFilter::All) {
+    match store::prescriptions::list_by_bottle(&conn, &full_id, params.limit, ListFilter::All) {
         Ok(rxs) => ok(rxs),
         Err(e) => err_500(e),
     }
