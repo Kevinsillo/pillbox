@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
-import { onMounted, ref } from "vue"
+import { prescriptionsApi } from "@/core/infrastructure/repositories/PrescriptionsRepository"
+import { onMounted, ref, computed } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
@@ -27,12 +28,18 @@ const COMPOUNDS: string[] = [
 ]
 
 const form = ref({ title: "", content: "", compound: "task" })
+const rxClosed = ref(false)
+const locked = computed(() => rxClosed.value)
 
 async function load() {
     loading.value = true
     try {
-        const pill = await pillsApi.get(props.pill_id, props.bottle_id, props.rx_id)
+        const [pill, rx] = await Promise.all([
+            pillsApi.get(props.pill_id, props.bottle_id, props.rx_id),
+            prescriptionsApi.get(props.bottle_id, props.rx_id),
+        ])
         form.value = { title: pill.title, content: pill.content, compound: pill.compound }
+        rxClosed.value = !!rx.ended_at && !rx.deleted_at
     } finally {
         loading.value = false
     }
@@ -65,6 +72,10 @@ async function save() {
         <template v-else>
             <h1 class="text-xl font-bold text-(--text-h)">{{ $t("pill_edit.heading") }}</h1>
 
+            <div v-if="locked" class="text-xs text-zinc-500 border border-(--border) bg-(--bg-surface) px-3 py-2 rounded-lg">
+                {{ $t('pill_edit.closed_rx_hint') }}
+            </div>
+
             <form class="space-y-3" @submit.prevent="save">
                 <div>
                     <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.compound") }}</label>
@@ -92,8 +103,8 @@ async function save() {
                 <div class="flex gap-2">
                     <button
                         type="submit"
-                        :disabled="saving"
-                        class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                        :disabled="saving || locked"
+                        class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {{ saving ? $t("common.saving") + "…" : $t("common.save") }}
                     </button>

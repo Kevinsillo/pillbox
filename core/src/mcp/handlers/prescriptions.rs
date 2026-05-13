@@ -68,6 +68,30 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
     }
 }
 
+/// Reabre una prescripción cerrada (limpia `ended_at`).
+///
+/// # Errors
+///
+/// Retorna error si la prescription no existe, está descartada, ya está abierta
+/// o si otra prescription del mismo bottle está abierta (colisión).
+pub fn reopen(conn: &mut Conn, input: Value) -> Response {
+    #[derive(Deserialize)]
+    struct In {
+        id: String,
+    }
+    let req: In = match from_value(input) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    if req.id.trim().is_empty() {
+        return Response::err("invalid_input", "id must not be empty");
+    }
+    match store::prescriptions::reopen(conn, &req.id) {
+        Ok(rx) => Response::ok(rx),
+        Err(e) => anyhow_to_response(e),
+    }
+}
+
 /// Realiza un soft delete en cascada de una prescripción y sus pills asociadas.
 ///
 /// # Errors
@@ -167,6 +191,46 @@ mod tests {
         let response = super::read(&mut conn, json!({ "id": "abc" }));
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("invalid_id"));
+    }
+
+    #[test]
+    fn mcp_reopen_success() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "mcp-reopen-ok");
+        let rx_id = make_rx(&mut conn, &bottle_id, "Reabrir");
+        store::prescriptions::close(&mut conn, &rx_id).unwrap();
+
+        let response = super::reopen(&mut conn, json!({ "id": rx_id.clone() }));
+        assert!(response.ok, "expected ok response, got {:?}", response.error);
+        let data = response.data.unwrap();
+        assert_eq!(data["id"].as_str().unwrap(), rx_id);
+        assert!(data["ended_at"].is_null());
+    }
+
+    #[test]
+    fn mcp_reopen_collision() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "mcp-reopen-collision");
+
+        let rx_a = make_rx(&mut conn, &bottle_id, "A");
+        store::prescriptions::close(&mut conn, &rx_a).unwrap();
+
+        let rx_b = make_rx(&mut conn, &bottle_id, "B");
+
+        let response = super::reopen(&mut conn, json!({ "id": rx_a.clone() }));
+        assert!(!response.ok);
+        assert_eq!(response.error.as_deref(), Some("prescription_collision"));
+        let data = response.data.unwrap();
+        assert_eq!(data["existing_id"].as_str().unwrap(), rx_b);
+        assert_eq!(data["bottle_id"].as_str().unwrap(), bottle_id);
+    }
+
+    #[test]
+    fn mcp_reopen_empty_id() {
+        let mut conn = open_in_memory().unwrap();
+        let response = super::reopen(&mut conn, json!({ "id": "" }));
+        assert!(!response.ok);
+        assert_eq!(response.error.as_deref(), Some("invalid_input"));
     }
 
     #[test]

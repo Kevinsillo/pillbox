@@ -112,6 +112,19 @@ pub fn from_pillbox(pe: &PillboxError) -> Response {
                 "pill_count": pill_count,
             }),
         ),
+        PillboxError::PrescriptionClosed { prescription_id } => Response::err_with_data(
+            pe.code(),
+            pe.to_string(),
+            json!({ "prescription_id": prescription_id }),
+        ),
+        PillboxError::PrescriptionAlreadyOpenInBottle {
+            bottle_id,
+            existing_id,
+        } => Response::err_with_data(
+            pe.code(),
+            pe.to_string(),
+            json!({ "bottle_id": bottle_id, "existing_id": existing_id }),
+        ),
         PillboxError::AmbiguousId { id_prefix, candidates } => Response::err_with_data(
             pe.code(),
             pe.to_string(),

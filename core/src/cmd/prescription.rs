@@ -141,3 +141,55 @@ pub fn cmd_prescription_close() -> Result<()> {
     output::fmt::prescription_closed(&rx_title);
     Ok(())
 }
+
+/// Reabre una prescription cerrada del bottle actual.
+pub fn cmd_prescription_reopen(id: String) -> Result<()> {
+    use pillbox::db::store::prescriptions;
+    use pillbox::error::PillboxError;
+
+    let (mut conn, _) = open_resolved_db()?;
+
+    match prescriptions::reopen(&mut conn, &id) {
+        Ok(rx) => {
+            output::fmt::prescription_reopened(&rx.id, &rx.title);
+            Ok(())
+        }
+        Err(e) => {
+            if let Some(pe) = e.downcast_ref::<PillboxError>() {
+                match pe {
+                    PillboxError::PrescriptionAlreadyOpenInBottle {
+                        existing_id, ..
+                    } => {
+                        let short = &existing_id[..existing_id.len().min(8)];
+                        anyhow::bail!(
+                            "{}",
+                            t!("prescriptions.error.reopen_collision", existing_id = short)
+                        );
+                    }
+                    PillboxError::PrescriptionAlreadyOpen { title, id, .. } => {
+                        let short = &id[..id.len().min(8)];
+                        anyhow::bail!(
+                            "{}",
+                            t!(
+                                "prescriptions.error.reopen_already_open",
+                                title = title,
+                                id = short
+                            )
+                        );
+                    }
+                    PillboxError::PrescriptionNotFound { id } => {
+                        let short = &id[..id.len().min(8)];
+                        eprintln!(
+                            "\n{} {}\n",
+                            "✗".red(),
+                            t!("prescriptions.error.not_found", id = short)
+                        );
+                        return Ok(());
+                    }
+                    _ => {}
+                }
+            }
+            Err(e)
+        }
+    }
+}

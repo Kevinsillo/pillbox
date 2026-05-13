@@ -121,6 +121,144 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
     Ok(prescription)
 }
 
+/// Reabre una prescription cerrada (limpia `ended_at`).
+///
+/// Acepta UUID completo o prefijo ≥8 chars.
+///
+/// # Errores
+/// - [`PillboxError::PrescriptionNotFound`] si no existe (incluye prefijo no resoluble).
+/// - [`PillboxError::PrescriptionNotFound`] si está descartada (`deleted_at IS NOT NULL`).
+/// - [`PillboxError::PrescriptionAlreadyOpen`] si ya está abierta (`ended_at IS NULL`).
+/// - [`PillboxError::PrescriptionAlreadyOpenInBottle`] si otra prescription del mismo
+///   bottle está abierta (colisión).
+pub fn reopen(conn: &mut Connection, id: &str) -> Result<Prescription> {
+    let resolved_id = resolve_id(conn, "prescriptions", id)?
+        .ok_or_else(|| PillboxError::PrescriptionNotFound { id: id.to_string() })?;
+
+    // Pre-check fuera de tx: existencia + estado actual.
+    let (ended_at, deleted_at, bottle_id): (Option<String>, Option<String>, String) = match conn
+        .query_row(
+            "SELECT ended_at, deleted_at, bottle_id FROM prescriptions WHERE id = ?1",
+            params![resolved_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        ) {
+        Ok(t) => t,
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
+        }
+        Err(e) => return Err(e).context("failed to load prescription state for reopen"),
+    };
+
+    if deleted_at.is_some() {
+        // Target descartada — reusamos PrescriptionNotFound (no se puede reabrir una papelera).
+        return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
+    }
+
+    if ended_at.is_none() {
+        // Ya está abierta — devolvemos PrescriptionAlreadyOpen con los datos completos.
+        let (title, started_at, pill_count) = conn.query_row(
+            "SELECT title, started_at,
+                    (SELECT COUNT(*) FROM pills p
+                     WHERE p.prescription_id = ?1 AND p.deleted_at IS NULL) AS pill_count
+             FROM prescriptions WHERE id = ?1",
+            params![resolved_id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                ))
+            },
+        )?;
+        return Err(PillboxError::PrescriptionAlreadyOpen {
+            id: resolved_id,
+            title,
+            started_at,
+            pill_count,
+        }
+        .into());
+    }
+
+    // Tx IMMEDIATE: comprobación de colisión + UPDATE + lectura final.
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+
+    let collision: Option<String> = match tx.query_row(
+        "SELECT id FROM prescriptions
+         WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL",
+        params![bottle_id],
+        |row| row.get::<_, String>(0),
+    ) {
+        Ok(existing) => Some(existing),
+        Err(rusqlite::Error::QueryReturnedNoRows) => None,
+        Err(e) => return Err(e).context("failed to check bottle for open prescription"),
+    };
+
+    if let Some(existing_id) = collision {
+        return Err(PillboxError::PrescriptionAlreadyOpenInBottle {
+            bottle_id,
+            existing_id,
+        }
+        .into());
+    }
+
+    let affected = tx
+        .execute(
+            "UPDATE prescriptions SET ended_at = NULL
+             WHERE id = ?1 AND ended_at IS NOT NULL AND deleted_at IS NULL",
+            params![resolved_id],
+        )
+        .context("failed to reopen prescription")?;
+
+    if affected == 0 {
+        // Race: el estado cambió entre el pre-check y el UPDATE.
+        return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
+    }
+
+    let prescription = tx
+        .query_row(
+            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
+             FROM prescriptions WHERE id = ?1",
+            params![resolved_id],
+            row_to_prescription,
+        )
+        .context("failed to read reopened prescription")?;
+
+    tx.commit()?;
+    Ok(prescription)
+}
+
+/// Verifica que una prescription está abierta (no cerrada ni descartada).
+///
+/// Devuelve `Err(PrescriptionClosed)` si `ended_at IS NOT NULL` o
+/// `deleted_at IS NOT NULL`. Propaga `PrescriptionNotFound` si no existe.
+///
+/// Usado por las operaciones de edición de pills (`revise`, `discard`) como
+/// guard previo a modificar el contenido.
+pub(crate) fn ensure_rx_open(conn: &Connection, rx_id: &str) -> Result<()> {
+    let (ended_at, deleted_at): (Option<String>, Option<String>) = match conn.query_row(
+        "SELECT ended_at, deleted_at FROM prescriptions WHERE id = ?1",
+        params![rx_id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    ) {
+        Ok(t) => t,
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            return Err(PillboxError::PrescriptionNotFound {
+                id: rx_id.to_string(),
+            }
+            .into());
+        }
+        Err(e) => return Err(e).context("failed to verify prescription state"),
+    };
+
+    if ended_at.is_some() || deleted_at.is_some() {
+        return Err(PillboxError::PrescriptionClosed {
+            prescription_id: rx_id.to_string(),
+        }
+        .into());
+    }
+    Ok(())
+}
+
 /// Soft delete de una prescription y todas sus pills.
 ///
 /// Acepta UUID completo o prefijo ≥8 chars. El cascade es lógico: establece
@@ -929,6 +1067,73 @@ mod tests {
         let err = read(&conn, "01234567aaaa").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::AmbiguousId { .. }));
+    }
+
+    #[test]
+    fn reopen_closed_prescription_no_collision() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "reopen-basic");
+        let rx_id = make_rx(&mut conn, &bottle_id, "Reopen me");
+        close(&mut conn, &rx_id).unwrap();
+
+        let reopened = reopen(&mut conn, &rx_id).unwrap();
+        assert_eq!(reopened.id, rx_id);
+        assert!(reopened.ended_at.is_none());
+        assert!(reopened.deleted_at.is_none());
+
+        // verificar persistido
+        let found = read(&conn, &rx_id).unwrap().unwrap();
+        assert!(found.ended_at.is_none());
+    }
+
+    #[test]
+    fn reopen_collision_in_bottle() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "reopen-collision");
+
+        // Prescription A: abierta y luego cerrada
+        let rx_a = make_rx(&mut conn, &bottle_id, "A");
+        close(&mut conn, &rx_a).unwrap();
+
+        // Prescription B: abierta (única abierta actualmente)
+        let rx_b = make_rx(&mut conn, &bottle_id, "B");
+
+        // Intentar reabrir A → colisión con B
+        let err = reopen(&mut conn, &rx_a).unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        match typed {
+            PillboxError::PrescriptionAlreadyOpenInBottle {
+                bottle_id: bid,
+                existing_id,
+            } => {
+                assert_eq!(bid, &bottle_id);
+                assert_eq!(existing_id, &rx_b);
+            }
+            other => panic!("expected PrescriptionAlreadyOpenInBottle, got {:?}", other),
+        }
+
+        // Verificar que A sigue cerrada
+        let a_found = read(&conn, &rx_a).unwrap().unwrap();
+        assert!(a_found.ended_at.is_some());
+    }
+
+    #[test]
+    fn reopen_already_open() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "reopen-already-open");
+        let rx_id = make_rx(&mut conn, &bottle_id, "Already open");
+
+        let err = reopen(&mut conn, &rx_id).unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::PrescriptionAlreadyOpen { .. }));
+    }
+
+    #[test]
+    fn reopen_not_found() {
+        let mut conn = open_in_memory().unwrap();
+        let err = reopen(&mut conn, "00000000-0000-0000-0000-000000000000").unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::PrescriptionNotFound { .. }));
     }
 
     #[test]

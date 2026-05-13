@@ -50,6 +50,8 @@
     "purge_pill_msg": "The pill «<strong style=\"color: var(--chip-error-text)\">{title}</strong>» will be permanently deleted. This action cannot be undone.",
     "close_prescription_title": "Close prescription",
     "close_prescription_msg": "The prescription will be closed and no more pills can be added.",
+    "reopen_prescription_title": "Reopen prescription",
+    "reopen_prescription_msg": "The prescription will be reopened. You will be able to add and edit pills again.",
     "delete_bottle_title": "Delete bottle",
     "delete_bottle_msg": "This will permanently delete the bottle, all its prescriptions and pills. Type «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» to confirm.",
     "delete_bottle_prompt": "Type the bottle slug to confirm",
@@ -114,6 +116,8 @@
     "closed_at": "Closed",
     "add_pill_btn": "Pill",
     "close_btn": "Close",
+    "reopen_btn": "Reopen",
+    "closed_hint": "This prescription is closed. Pills cannot be created, edited or archived until you reopen it.",
     "pills_heading": "Pills",
     "empty": "No pills yet",
     "modal_edit_title": "Edit pill",
@@ -161,10 +165,12 @@
     "created_at": "Created",
     "updated_at": "Updated",
     "archived_badge": "Archived",
-    "author": "Author"
+    "author": "Author",
+    "closed_rx_hint": "The parent prescription is closed. Reopen it to edit or archive this pill."
   },
   "pill_edit": {
-    "heading": "Editing pill"
+    "heading": "Editing pill",
+    "closed_rx_hint": "The parent prescription is closed. Reopen it to save changes."
   },
   "pill_card": {
     "edit": "Edit",
@@ -177,7 +183,14 @@
     "prescription_not_found": "The prescription does not exist or was deleted.",
     "capsule_not_found": "The capsule does not exist or was deleted.",
     "prescription_already_open": "There is already an open prescription. Close it before opening a new one.",
+    "prescription_closed": "The prescription is closed. Reopen it before editing its pills.",
+    "prescription_collision": "The bottle already has another open prescription. Close it before reopening this one.",
     "validation_error": "The submitted data is not valid.",
     "unknown": "An unexpected error has occurred."
+  },
+  "errors": {
+    "prescription_closed": "The prescription is closed. Reopen it before editing its pills.",
+    "prescription_collision": "The bottle already has another open prescription (id={existing_id}). Close it before reopening this one.",
+    "prescription_already_open": "There is already an open prescription. Close it before opening a new one."
   }
 }

@@ -194,6 +194,11 @@ enum PrescriptionCommand {
     },
     /// Cierra la prescripción abierta del bottle actual.
     Close,
+    /// Reabre una prescription cerrada (limpia su `ended_at`).
+    Reopen {
+        /// ID (o prefijo ≥8 chars) de la prescription a reabrir.
+        id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -323,6 +328,9 @@ async fn main() -> Result<()> {
                 cmd::prescription::cmd_prescription_show(id, limit, archived_limit)
             }
             Some(PrescriptionCommand::Close) => cmd::prescription::cmd_prescription_close(),
+            Some(PrescriptionCommand::Reopen { id }) => {
+                cmd::prescription::cmd_prescription_reopen(id)
+            }
             None => cmd_sub_help("prescription"),
         },
         Some(Command::Mcp { cmd }) => match cmd {

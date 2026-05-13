@@ -6,6 +6,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::db::store::id_resolver::resolve_id;
+use crate::db::store::prescriptions;
 use crate::domain::pill::{NewPill, Pill, PillPatch};
 use crate::error::PillboxError;
 
@@ -42,23 +43,20 @@ pub fn take(conn: &mut Connection, input: &NewPill) -> Result<PillStoreResult> {
             prescription_id: input.prescription_id.clone(),
         })?;
 
-    let rx_open: bool = conn
-        .query_row(
-            "SELECT EXISTS(
-             SELECT 1 FROM prescriptions
-             WHERE id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
-         )",
-            params![resolved_rx_id],
-            |row| row.get(0),
-        )
-        .context("failed to check prescription status")?;
-
-    if !rx_open {
-        return Err(PillboxError::PrescriptionRequired {
-            prescription_id: input.prescription_id.clone(),
+    // Si el id resuelve pero la prescription está cerrada o descartada → PrescriptionClosed.
+    // Si la prescription no existe físicamente → PrescriptionRequired (no pudo resolverse a
+    // una fila real). Reusamos ensure_rx_open que distingue ambos casos.
+    prescriptions::ensure_rx_open(conn, &resolved_rx_id).map_err(|e| {
+        match e.downcast::<PillboxError>() {
+            Ok(PillboxError::PrescriptionNotFound { .. }) => {
+                anyhow::Error::from(PillboxError::PrescriptionRequired {
+                    prescription_id: input.prescription_id.clone(),
+                })
+            }
+            Ok(other) => anyhow::Error::from(other),
+            Err(e) => e,
         }
-        .into());
-    }
+    })?;
 
     let id = Uuid::now_v7().to_string();
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -134,6 +132,21 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &PillPatch) -> Result<Opti
         return Ok(None);
     };
 
+    // Guard: la prescription padre debe estar abierta antes de modificar la pill.
+    let rx_id: Option<String> = match conn.query_row(
+        "SELECT prescription_id FROM pills WHERE id = ?1 AND deleted_at IS NULL",
+        params![resolved_id],
+        |row| row.get::<_, String>(0),
+    ) {
+        Ok(rx) => Some(rx),
+        Err(rusqlite::Error::QueryReturnedNoRows) => None,
+        Err(e) => return Err(e).context("failed to read pill's prescription_id"),
+    };
+    let Some(rx_id) = rx_id else {
+        return Ok(None);
+    };
+    prescriptions::ensure_rx_open(conn, &rx_id)?;
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx
@@ -179,6 +192,21 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<Option<PillDiscardResu
     let Some(resolved_id) = resolve_id(conn, "pills", id)? else {
         return Ok(None);
     };
+
+    // Guard: la prescription padre debe estar abierta antes de descartar la pill.
+    let rx_id: Option<String> = match conn.query_row(
+        "SELECT prescription_id FROM pills WHERE id = ?1 AND deleted_at IS NULL",
+        params![resolved_id],
+        |row| row.get::<_, String>(0),
+    ) {
+        Ok(rx) => Some(rx),
+        Err(rusqlite::Error::QueryReturnedNoRows) => None,
+        Err(e) => return Err(e).context("failed to read pill's prescription_id"),
+    };
+    let Some(rx_id) = rx_id else {
+        return Ok(None);
+    };
+    prescriptions::ensure_rx_open(conn, &rx_id)?;
 
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
@@ -440,7 +468,68 @@ mod tests {
         prescriptions::close(&mut conn, &rx_id).unwrap();
 
         let err = take(&mut conn, &sample_pill(&rx_id)).unwrap_err();
-        assert!(err.to_string().contains("prescription_required"));
+        // Una prescription existente pero cerrada → prescription_closed
+        // (unificado con la guard de revise/discard).
+        assert!(err.to_string().contains("prescription_closed"));
+    }
+
+    #[test]
+    fn pill_revise_blocked_on_closed_prescription() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+
+        // Crear pill en rx abierta
+        let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+        let original_title = pill.title.clone();
+
+        // Cerrar la rx
+        prescriptions::close(&mut conn, &rx_id).unwrap();
+
+        // Intentar revisar
+        let err = revise(
+            &mut conn,
+            &pill.id,
+            &PillPatch {
+                title: Some("Nuevo título".into()),
+                content: None,
+                compound: None,
+            },
+        )
+        .unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        match typed {
+            PillboxError::PrescriptionClosed { prescription_id } => {
+                assert_eq!(prescription_id, &rx_id);
+            }
+            other => panic!("expected PrescriptionClosed, got {:?}", other),
+        }
+
+        // Verificar que la pill NO fue modificada
+        let still = read_any(&conn, &pill.id).unwrap().unwrap();
+        assert_eq!(still.title, original_title);
+    }
+
+    #[test]
+    fn pill_discard_blocked_on_closed_prescription() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+
+        let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
+
+        prescriptions::close(&mut conn, &rx_id).unwrap();
+
+        let err = discard(&mut conn, &pill.id).unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        match typed {
+            PillboxError::PrescriptionClosed { prescription_id } => {
+                assert_eq!(prescription_id, &rx_id);
+            }
+            other => panic!("expected PrescriptionClosed, got {:?}", other),
+        }
+
+        // Verificar que la pill NO fue descartada
+        let still = read(&conn, &pill.id).unwrap().unwrap();
+        assert!(still.deleted_at.is_none());
     }
 
     #[test]

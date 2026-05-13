@@ -84,6 +84,10 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
             "/bottles/:bottle_id/prescriptions/:rx_id/purge",
             delete(handlers::prescription_purge),
         )
+        .route(
+            "/bottles/:bottle_id/prescriptions/:rx_id/reopen",
+            post(handlers::prescription_reopen),
+        )
         // Pills (anidadas bajo prescription)
         .route(
             "/bottles/:bottle_id/prescriptions/:rx_id/pills",

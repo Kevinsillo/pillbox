@@ -4,9 +4,11 @@ const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api'
 
 export class ApiError extends Error {
     code: string
-    constructor(code: string, message: string) {
+    data: unknown
+    constructor(code: string, message: string, data?: unknown) {
         super(message)
         this.code = code
+        this.data = data
         this.name = 'ApiError'
     }
 }
@@ -24,7 +26,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         body: body ? JSON.stringify(body) : undefined,
     })
     const json = await res.json()
-    if (!json.ok) throw new ApiError(json.error ?? 'unknown', translateApiError(json.error ?? 'unknown'))
+    if (!json.ok) throw new ApiError(json.error ?? 'unknown', translateApiError(json.error ?? 'unknown'), json.data)
     return json.data as T
 }
 

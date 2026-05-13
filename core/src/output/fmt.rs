@@ -515,6 +515,15 @@ pub fn prescription_closed(_title: &str) {
     print_b(&t!("prescriptions.msg.closed"));
 }
 
+/// Confirma en pantalla la reapertura de una prescripción.
+pub fn prescription_reopened(id: &str, title: &str) {
+    let short_id = &display_id(&id);
+    print_a(
+        &t!("prescriptions.msg.reopened"),
+        &[("title", title), ("id", short_id)],
+    );
+}
+
 // ─── Bottle init ──────────────────────────────────────────────────────────────
 
 /// Informa al usuario del inicio del proceso de inicialización de un bottle.

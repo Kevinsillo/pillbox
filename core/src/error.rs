@@ -41,6 +41,17 @@ pub enum PillboxError {
     #[error("prescription_not_found: {id}")]
     PrescriptionNotFound { id: String },
 
+    #[error("prescription_closed: prescription '{prescription_id}' is closed; reopen it before editing pills")]
+    PrescriptionClosed { prescription_id: String },
+
+    #[error(
+        "prescription_collision: bottle '{bottle_id}' already has an open prescription (id={existing_id})"
+    )]
+    PrescriptionAlreadyOpenInBottle {
+        bottle_id: String,
+        existing_id: String,
+    },
+
     // ── Bottle ────────────────────────────────────────────────────────────────
     #[error("bottle_not_found: no bottle exists with id={bottle_id}")]
     BottleNotFound { bottle_id: String },
@@ -73,6 +84,8 @@ impl PillboxError {
             Self::PrescriptionAlreadyOpen { .. } => "prescription_already_open",
             Self::PrescriptionNotFoundOrClosed { .. } => "prescription_not_found_or_closed",
             Self::PrescriptionNotFound { .. } => "prescription_not_found",
+            Self::PrescriptionClosed { .. } => "prescription_closed",
+            Self::PrescriptionAlreadyOpenInBottle { .. } => "prescription_collision",
             Self::BottleNotFound { .. } => "bottle_not_found",
             Self::BottleAlreadyExists { .. } => "bottle_already_exists",
             Self::InvalidId { .. } => "invalid_id",
@@ -120,6 +133,21 @@ mod tests {
         assert_eq!(
             PillboxError::PrescriptionNotFound { id: "x".into() }.code(),
             "prescription_not_found"
+        );
+        assert_eq!(
+            PillboxError::PrescriptionClosed {
+                prescription_id: "x".into()
+            }
+            .code(),
+            "prescription_closed"
+        );
+        assert_eq!(
+            PillboxError::PrescriptionAlreadyOpenInBottle {
+                bottle_id: "b".into(),
+                existing_id: "rx".into(),
+            }
+            .code(),
+            "prescription_collision"
         );
         assert_eq!(
             PillboxError::BottleNotFound {

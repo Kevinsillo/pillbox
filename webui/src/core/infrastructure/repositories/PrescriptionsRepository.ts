@@ -8,6 +8,8 @@ export const prescriptionsApi = {
         api.post<Prescription>(`/bottles/${bottleId}/prescriptions`, body),
     close: (bottleId: string, rxId: string) =>
         api.patch<Prescription>(`/bottles/${bottleId}/prescriptions/${rxId}`),
+    reopen: (bottleId: string, rxId: string) =>
+        api.post<Prescription>(`/bottles/${bottleId}/prescriptions/${rxId}/reopen`, {}),
     delete: (bottleId: string, rxId: string) =>
         api.delete<{ discarded: boolean }>(`/bottles/${bottleId}/prescriptions/${rxId}`),
     purge: (bottleId: string, rxId: string) =>

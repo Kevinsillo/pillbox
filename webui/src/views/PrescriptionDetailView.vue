@@ -5,6 +5,8 @@ import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
 import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
+import { ApiError } from '@/core/infrastructure/managers/httpClient'
+import { shortId } from '@/core/utils/id'
 import type { Prescription, Pill } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
 import PillCard from '@/components/PillCard.vue'
@@ -47,6 +49,8 @@ watch(
 
 const isOpen = computed(() => rx.value?.ended_at === null && rx.value?.deleted_at === null)
 const isArchived = computed(() => !!rx.value?.deleted_at)
+const isClosed = computed(() => !!rx.value?.ended_at && !rx.value?.deleted_at)
+const reopenError = ref<string | null>(null)
 const authorDisplay = computed(() =>
     rx.value ? formatAuthor(rx.value.author_name, rx.value.author_email) : null
 )
@@ -64,6 +68,34 @@ async function closeRx() {
         const updated = await prescriptionsApi.close(props.bottle_id, props.rx_id)
         rx.value = updated
     } catch { /* cancelled */ }
+}
+
+async function reopenRx() {
+    reopenError.value = null
+    try {
+        await confirm(
+            t('confirm.reopen_prescription_msg'),
+            t('confirm.reopen_prescription_title'),
+            { confirmText: t('prescription_detail.reopen_btn'), cancelText: t('common.cancel'), waitSeconds: 3 }
+        )
+    } catch {
+        return /* cancelled */
+    }
+    try {
+        const updated = await prescriptionsApi.reopen(props.bottle_id, props.rx_id)
+        rx.value = updated
+        poll.restart()
+    } catch (e) {
+        if (e instanceof ApiError && e.code === 'prescription_collision') {
+            const data = e.data as { existing_id?: string } | null
+            const existing = data?.existing_id ? shortId(data.existing_id) : ''
+            reopenError.value = t('errors.prescription_collision', { existing_id: existing })
+        } else if (e instanceof ApiError) {
+            reopenError.value = e.message
+        } else {
+            reopenError.value = t('common.error')
+        }
+    }
 }
 
 async function archiveRx() {
@@ -129,6 +161,11 @@ async function purgeRx() {
                                 @click="closeRx">
                             {{ $t('prescription_detail.close_btn') }}
                         </button>
+                        <button v-if="isClosed"
+                                class="text-sm text-emerald-300 hover:text-emerald-200 border border-emerald-900/40 px-3 py-2 rounded-lg transition-colors"
+                                @click="reopenRx">
+                            {{ $t('prescription_detail.reopen_btn') }}
+                        </button>
                         <button
                             v-if="!isArchived"
                             class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
@@ -143,6 +180,12 @@ async function purgeRx() {
                             <ITrash2 class="w-3.5 h-3.5" />
                             {{ $t('common.delete_permanent') }}
                         </button>
+                    </div>
+                    <div v-if="reopenError" class="text-sm text-red-300 border border-red-900/40 bg-red-950/30 px-3 py-2 rounded-lg">
+                        {{ reopenError }}
+                    </div>
+                    <div v-if="isClosed" class="text-xs text-zinc-500 border border-(--border) bg-(--bg-surface) px-3 py-2 rounded-lg">
+                        {{ $t('prescription_detail.closed_hint') }}
                     </div>
                 </div>
 

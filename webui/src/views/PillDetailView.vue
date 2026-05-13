@@ -3,6 +3,8 @@ import CompoundBadge from "@/components/CompoundBadge.vue"
 import type { Pill } from "@/core/domain/types"
 import { formatAuthor } from "@/core/domain/author"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
+import { prescriptionsApi } from "@/core/infrastructure/repositories/PrescriptionsRepository"
+import type { Prescription } from "@/core/domain/types"
 import { shortId } from "@/core/utils/id"
 import { useConfirm } from "@/composables/useConfirm"
 import { useMarkdown } from "@/composables/useMarkdown"
@@ -20,14 +22,22 @@ const props = defineProps<{ bottle_id: string; rx_id: string; pill_id: string }>
 const router = useRouter()
 
 const pill = ref<Pill | null>(null)
+const rx = ref<Prescription | null>(null)
 
 const isArchived = computed(() => !!pill.value?.deleted_at)
+const rxClosed = computed(() => !!rx.value?.ended_at && !rx.value?.deleted_at)
+const canEdit = computed(() => !isArchived.value && !rxClosed.value)
 const authorDisplay = computed(() =>
     pill.value ? formatAuthor(pill.value.author_name, pill.value.author_email) : null
 )
 
 async function load() {
-    pill.value = await pillsApi.get(props.pill_id, props.bottle_id, props.rx_id)
+    const [p, r] = await Promise.all([
+        pillsApi.get(props.pill_id, props.bottle_id, props.rx_id),
+        prescriptionsApi.get(props.bottle_id, props.rx_id),
+    ])
+    pill.value = p
+    rx.value = r
 }
 
 const poll = usePoll(load, 5000)
@@ -103,7 +113,7 @@ watchEffect(async () => {
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <template v-if="!isArchived">
+                    <template v-if="canEdit">
                         <button
                             class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg transition-colors"
                             @click="router.push(`/bottles/${shortId(props.bottle_id)}/prescriptions/${shortId(props.rx_id)}/pills/${shortId(props.pill_id)}/edit`)"
@@ -126,6 +136,9 @@ watchEffect(async () => {
                         <ITrash2 class="w-3.5 h-3.5" />
                         {{ $t("common.delete_permanent") }}
                     </button>
+                </div>
+                <div v-if="rxClosed && !isArchived" class="text-xs text-zinc-500 border border-(--border) bg-(--bg-surface) px-3 py-2 rounded-lg">
+                    {{ $t('pill_detail.closed_rx_hint') }}
                 </div>
             </div>
 

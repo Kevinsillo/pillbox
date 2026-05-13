@@ -25,6 +25,7 @@ pub fn dispatch(conn: &mut Connection, tool: &str, input: Value) -> Response {
         "capsule_search" => handlers::capsules::search(conn, input),
         "prescription_open" => handlers::prescriptions::open(conn, input),
         "prescription_close" => handlers::prescriptions::close(conn, input),
+        "prescription_reopen" => handlers::prescriptions::reopen(conn, input),
         "prescription_read" => handlers::prescriptions::read(conn, input),
         "prescription_discard" => handlers::prescriptions::discard(conn, input),
         "bottle_create" => handlers::bottles::create(conn, input),

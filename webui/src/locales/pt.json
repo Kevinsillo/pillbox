@@ -50,6 +50,8 @@
     "purge_pill_msg": "A pill «<strong style=\"color: var(--chip-error-text)\">{title}</strong>» será excluída permanentemente. Esta ação não pode ser desfeita.",
     "close_prescription_title": "Fechar prescription",
     "close_prescription_msg": "A prescription será fechada e não será possível adicionar mais pills.",
+    "reopen_prescription_title": "Reabrir prescription",
+    "reopen_prescription_msg": "A prescription será reaberta. Você poderá adicionar e editar pills novamente.",
     "delete_bottle_title": "Excluir bottle",
     "delete_bottle_msg": "Esta ação excluirá permanentemente o bottle, todas as prescriptions e pills. Digite «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» para confirmar.",
     "delete_bottle_prompt": "Digite o slug do bottle para confirmar",
@@ -114,6 +116,8 @@
     "closed_at": "Fechada",
     "add_pill_btn": "Pill",
     "close_btn": "Fechar",
+    "reopen_btn": "Reabrir",
+    "closed_hint": "Esta prescription está fechada. As pills não podem ser criadas, editadas ou arquivadas até ser reaberta.",
     "pills_heading": "Pills",
     "empty": "Nenhuma pill ainda",
     "modal_edit_title": "Editar pill",
@@ -161,10 +165,12 @@
     "created_at": "Criada",
     "updated_at": "Atualizada",
     "archived_badge": "Arquivada",
-    "author": "Autor"
+    "author": "Autor",
+    "closed_rx_hint": "A prescription pai está fechada. Reabra-a para editar ou arquivar esta pill."
   },
   "pill_edit": {
-    "heading": "Editando pill"
+    "heading": "Editando pill",
+    "closed_rx_hint": "A prescription pai está fechada. Reabra-a para salvar alterações."
   },
   "pill_card": {
     "edit": "Editar",
@@ -177,7 +183,14 @@
     "prescription_not_found": "A prescription não existe ou foi excluída.",
     "capsule_not_found": "A capsule não existe ou foi excluída.",
     "prescription_already_open": "Já há uma prescription aberta. Feche-a antes de abrir uma nova.",
+    "prescription_closed": "A prescription está fechada. Reabra-a antes de editar suas pills.",
+    "prescription_collision": "A bottle já tem outra prescription aberta. Feche-a antes de reabrir esta.",
     "validation_error": "Os dados enviados não são válidos.",
     "unknown": "Ocorreu um erro inesperado."
+  },
+  "errors": {
+    "prescription_closed": "A prescription está fechada. Reabra-a antes de editar suas pills.",
+    "prescription_collision": "A bottle já tem outra prescription aberta (id={existing_id}). Feche-a antes de reabrir esta.",
+    "prescription_already_open": "Já há uma prescription aberta. Feche-a antes de abrir uma nova."
   }
 }

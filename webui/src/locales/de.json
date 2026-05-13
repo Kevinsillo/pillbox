@@ -50,6 +50,8 @@
     "purge_pill_msg": "Die Pill «<strong style=\"color: var(--chip-error-text)\">{title}</strong>» wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
     "close_prescription_title": "Prescription schließen",
     "close_prescription_msg": "Die Prescription wird geschlossen und es können keine weiteren Pills hinzugefügt werden.",
+    "reopen_prescription_title": "Prescription wieder öffnen",
+    "reopen_prescription_msg": "Die Prescription wird wieder geöffnet. Du kannst erneut Pills hinzufügen und bearbeiten.",
     "delete_bottle_title": "Bottle löschen",
     "delete_bottle_msg": "Dadurch werden das Bottle und alle Prescriptions und Pills dauerhaft gelöscht. Gib «<strong style=\"color: var(--chip-error-text)\">{name}</strong>» ein, um zu bestätigen.",
     "delete_bottle_prompt": "Gib den Bottle-Slug ein, um zu bestätigen",
@@ -114,6 +116,8 @@
     "closed_at": "Geschlossen",
     "add_pill_btn": "Pill",
     "close_btn": "Schließen",
+    "reopen_btn": "Wieder öffnen",
+    "closed_hint": "Diese Prescription ist geschlossen. Pills können nicht erstellt, bearbeitet oder archiviert werden, bis du sie wieder öffnest.",
     "pills_heading": "Pills",
     "empty": "Noch keine Pills",
     "modal_edit_title": "Pill bearbeiten",
@@ -161,10 +165,12 @@
     "created_at": "Erstellt",
     "updated_at": "Aktualisiert",
     "archived_badge": "Archiviert",
-    "author": "Autor"
+    "author": "Autor",
+    "closed_rx_hint": "Die übergeordnete Prescription ist geschlossen. Öffne sie wieder, um diese Pill zu bearbeiten oder zu archivieren."
   },
   "pill_edit": {
-    "heading": "Pill bearbeiten"
+    "heading": "Pill bearbeiten",
+    "closed_rx_hint": "Die übergeordnete Prescription ist geschlossen. Öffne sie wieder, um Änderungen zu speichern."
   },
   "pill_card": {
     "edit": "Bearbeiten",
@@ -177,7 +183,14 @@
     "prescription_not_found": "Die Prescription existiert nicht oder wurde gelöscht.",
     "capsule_not_found": "Die Capsule existiert nicht oder wurde gelöscht.",
     "prescription_already_open": "Es gibt bereits eine offene Prescription. Schließe sie, bevor du eine neue öffnest.",
+    "prescription_closed": "Die Prescription ist geschlossen. Öffne sie wieder, bevor du ihre Pills bearbeitest.",
+    "prescription_collision": "Die Bottle hat bereits eine andere offene Prescription. Schließe sie, bevor du diese wieder öffnest.",
     "validation_error": "Die übermittelten Daten sind ungültig.",
     "unknown": "Ein unerwarteter Fehler ist aufgetreten."
+  },
+  "errors": {
+    "prescription_closed": "Die Prescription ist geschlossen. Öffne sie wieder, bevor du ihre Pills bearbeitest.",
+    "prescription_collision": "Die Bottle hat bereits eine andere offene Prescription (id={existing_id}). Schließe sie, bevor du diese wieder öffnest.",
+    "prescription_already_open": "Es gibt bereits eine offene Prescription. Schließe sie, bevor du eine neue öffnest."
   }
 }

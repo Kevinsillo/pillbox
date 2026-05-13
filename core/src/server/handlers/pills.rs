@@ -17,8 +17,9 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, err_400_invalid_id, err_404_pill, err_404_prescription, err_409_ambiguous_id,
-    err_422, err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
+    conn_for_bottle, err_400_invalid_id, err_404_pill, err_404_prescription, err_409,
+    err_409_ambiguous_id, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse,
+    AppState,
 };
 
 /// Cuerpo JSON para crear una pill nueva via REST API.
@@ -62,7 +63,15 @@ pub async fn pill_create(
     };
     match store::pills::take(&mut conn, &new_pill) {
         Ok(r) => ok_created(r),
-        Err(e) => err_500(e),
+        Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::PrescriptionClosed { ref prescription_id }) => err_409(
+                "prescription_closed",
+                "prescription_closed",
+                json!({ "prescription_id": prescription_id }),
+            ),
+            Ok(other) => err_500(other.into()),
+            Err(e) => err_500(e),
+        },
     }
 }
 
@@ -107,6 +116,11 @@ pub async fn pill_patch(
         Ok(Some(p)) => ok(p),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::PrescriptionClosed { ref prescription_id }) => err_409(
+                "prescription_closed",
+                "prescription_closed",
+                json!({ "prescription_id": prescription_id }),
+            ),
             Ok(PillboxError::AmbiguousId {
                 ref id_prefix,
                 ref candidates,
@@ -131,6 +145,11 @@ pub async fn pill_delete(
         Ok(Some(r)) => ok(r),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => match e.downcast::<PillboxError>() {
+            Ok(PillboxError::PrescriptionClosed { ref prescription_id }) => err_409(
+                "prescription_closed",
+                "prescription_closed",
+                json!({ "prescription_id": prescription_id }),
+            ),
             Ok(PillboxError::AmbiguousId {
                 ref id_prefix,
                 ref candidates,
