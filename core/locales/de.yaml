@@ -182,10 +182,13 @@ prescriptions:
   msg:
     opened: "Prescription geöffnet"
     closed: "Prescription geschlossen"
+    reopened: "Prescription wieder geöffnet"
   error:
     already_open: "Eine Prescription ist bereits geöffnet: \"%{title}\" (%{pills} Pills, id=%{id}).\nSchließe sie mit 'pillbox prescription close' bevor du eine neue öffnest."
     none_open: "Keine offene Prescription für Bottle '%{name}'."
     not_found: "Prescription '%{id}' nicht gefunden."
+    reopen_already_open: "Die Prescription \"%{title}\" (id=%{id}) ist bereits geöffnet."
+    reopen_collision: "Das Bottle hat bereits eine andere offene Prescription (id=%{existing_id}). Schließe sie, bevor du diese wieder öffnest."
 
 prescription:
   show:
