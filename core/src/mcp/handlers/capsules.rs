@@ -2,11 +2,14 @@
 
 use pillbox::{
     db::store,
-    domain::capsule::{self, CapsulePatch, NewCapsule},
-    error::PillboxError,
+    domain::{
+        capsule::{self, CapsulePatch, NewCapsule},
+        search::SearchParams,
+    },
+    error::{ContentOp, PillboxError},
 };
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::mcp::response::{
     anyhow_to_response, check_content_size, from_pillbox, from_value, validate_input, Conn,
@@ -19,7 +22,7 @@ pub fn take(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    if let Err(r) = check_content_size(&req.content, capsule::CONTENT_MAX_CHARS) {
+    if let Err(r) = check_content_size(&req.content, capsule::CONTENT_MAX_CHARS, ContentOp::Create) {
         return r;
     }
     if let Err(r) = validate_input(&req) {
@@ -63,7 +66,7 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
     };
     let patch = CapsulePatch { title: req.title, content: req.content, compound: req.compound };
     if let Some(content) = patch.content.as_deref() {
-        if let Err(r) = check_content_size(content, capsule::CONTENT_MAX_CHARS) {
+        if let Err(r) = check_content_size(content, capsule::CONTENT_MAX_CHARS, ContentOp::Update) {
             return r;
         }
     }
@@ -101,13 +104,47 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
         query: String,
         compound: Option<String>,
         limit: Option<u32>,
+        #[serde(default)]
+        fuzzy: bool,
     }
     let req: In = match from_value(input) {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::search::capsule_find(conn, &req.query, req.compound.as_deref(), req.limit) {
+    let params = SearchParams {
+        query: req.query,
+        bottle_id: None,
+        compound: req.compound,
+        limit: req.limit,
+        fuzzy: req.fuzzy,
+    };
+    match store::search::capsule_find(conn, &params) {
         Ok(results) => Response::ok(results),
+        Err(e) => anyhow_to_response(e),
+    }
+}
+
+/// Lista de compounds distintos en capsules con su frecuencia.
+///
+/// Acepta `limit` opcional (default 50, capeado a 200). Las capsules son globales.
+pub fn compounds(conn: &mut Conn, input: Value) -> Response {
+    #[derive(Deserialize)]
+    struct In {
+        limit: Option<u32>,
+    }
+    let req: In = match from_value(input) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    let limit = req.limit.unwrap_or(50).min(200);
+    match store::capsules::distinct_compounds(conn, limit) {
+        Ok(rows) => {
+            let entries: Vec<_> = rows
+                .into_iter()
+                .map(|(compound, count)| json!({ "compound": compound, "count": count }))
+                .collect();
+            Response::ok(entries)
+        }
         Err(e) => anyhow_to_response(e),
     }
 }

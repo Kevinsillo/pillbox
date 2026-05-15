@@ -15,6 +15,11 @@ pub struct SearchParams {
 
     /// Número máximo de resultados. Default: 20.
     pub limit: Option<u32>,
+
+    /// Activa expansión fuzzy (Jaro-Winkler) sobre los términos de la query.
+    /// Default: false (prefix match estricto, sin tolerancia a typos).
+    #[serde(default)]
+    pub fuzzy: bool,
 }
 
 /// Resultado individual de una búsqueda.

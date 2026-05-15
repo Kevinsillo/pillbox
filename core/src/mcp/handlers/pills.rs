@@ -6,7 +6,7 @@ use pillbox::{
         pill::{self, NewPill, PillPatch},
         search::SearchParams,
     },
-    error::PillboxError,
+    error::{ContentOp, PillboxError},
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -26,7 +26,7 @@ pub fn take(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    if let Err(r) = check_content_size(&req.content, pill::CONTENT_MAX_CHARS) {
+    if let Err(r) = check_content_size(&req.content, pill::CONTENT_MAX_CHARS, ContentOp::Create) {
         return r;
     }
     if let Err(r) = validate_input(&req) {
@@ -78,7 +78,7 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
     };
     let patch = PillPatch { title: req.title, content: req.content, compound: req.compound };
     if let Some(content) = patch.content.as_deref() {
-        if let Err(r) = check_content_size(content, pill::CONTENT_MAX_CHARS) {
+        if let Err(r) = check_content_size(content, pill::CONTENT_MAX_CHARS, ContentOp::Update) {
             return r;
         }
     }
@@ -125,6 +125,37 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
     };
     match store::search::pill_find(conn, &params) {
         Ok(results) => Response::ok(results),
+        Err(e) => anyhow_to_response(e),
+    }
+}
+
+/// Lista de compounds distintos con su frecuencia.
+///
+/// Acepta `bottle_id` opcional para filtrar a un bottle concreto, y `limit`
+/// opcional (default 50, capeado a 200).
+///
+/// # Errors
+///
+/// Retorna error si la consulta a la base de datos falla.
+pub fn compounds(conn: &mut Conn, input: Value) -> Response {
+    #[derive(Deserialize)]
+    struct In {
+        bottle_id: Option<String>,
+        limit: Option<u32>,
+    }
+    let req: In = match from_value(input) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    let limit = req.limit.unwrap_or(50).min(200);
+    match store::pills::distinct_compounds(conn, req.bottle_id.as_deref(), limit) {
+        Ok(rows) => {
+            let entries: Vec<_> = rows
+                .into_iter()
+                .map(|(compound, count)| json!({ "compound": compound, "count": count }))
+                .collect();
+            Response::ok(entries)
+        }
         Err(e) => anyhow_to_response(e),
     }
 }

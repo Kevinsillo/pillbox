@@ -154,7 +154,14 @@
     "pills_heading": "Pills",
     "capsules_heading": "Capsules",
     "no_results": "Nessun risultato per \"{query}\"",
-    "hint": "Digita qualcosa per cercare in pills e capsules"
+    "hint": "Digita qualcosa per cercare in pills e capsules",
+    "fuzzy_banner": "Nessuna corrispondenza esatta; risultati approssimativi",
+    "compound_placeholder": "Filtra per compound...",
+    "scope": {
+      "all": "Tutto",
+      "pills": "Pills",
+      "capsules": "Capsules"
+    }
   },
   "not_found": {
     "code": "404",

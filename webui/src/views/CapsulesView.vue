@@ -3,7 +3,6 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
-import { ElInput, ElOption, ElSelect } from 'element-plus'
 import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesRepository'
 import { shortId } from '@/core/utils/id'
 import type { CapsuleSummary } from '@/core/domain/types'
@@ -16,11 +15,7 @@ import ITrash2 from '~icons/lucide/trash-2'
 const { t } = useI18n()
 const { confirm } = useConfirm()
 
-const CAPSULE_COMPOUNDS: string[] = ['convention', 'workflow', 'environment', 'context', 'goal', 'feedback', 'manual']
-
 const capsules = ref<CapsuleSummary[]>([])
-const filterCompound = ref('')
-const searchQuery = ref('')
 
 const activeCapsules = computed(() => capsules.value.filter(c => c.deleted_at === null))
 const archivedCapsules = computed(() => capsules.value.filter(c => c.deleted_at !== null))
@@ -29,32 +24,12 @@ let currentToken = 0
 
 async function load() {
     const token = ++currentToken
-    let next: CapsuleSummary[]
-    if (searchQuery.value.trim()) {
-        next = await capsulesApi.search({
-            query: searchQuery.value.trim(),
-            compound: filterCompound.value || undefined,
-        })
-    } else {
-        next = await capsulesApi.list({
-            compound: filterCompound.value || undefined,
-        })
-    }
+    const next = await capsulesApi.list({})
     if (token !== currentToken) return
     capsules.value = next
 }
 
 const poll = usePoll(load, 5000)
-
-let debounce: ReturnType<typeof setTimeout>
-function onSearch() {
-    clearTimeout(debounce)
-    debounce = setTimeout(() => poll.restart(), 300)
-}
-
-function onFilterChange() {
-    poll.restart()
-}
 
 async function archiveCapsule(c: CapsuleSummary) {
     try {
@@ -87,24 +62,6 @@ async function purgeCapsule(c: CapsuleSummary) {
             <h1 class="text-2xl font-bold text-(--text-h)">{{ $t('nav.capsules') }}</h1>
         </div>
 
-        <!-- Filtros -->
-        <div class="flex gap-3">
-            <div class="flex-1">
-                <el-input
-                    v-model="searchQuery"
-                    :placeholder="$t('capsules.search_placeholder')"
-                    class="w-full"
-                    @input="onSearch"
-                />
-            </div>
-            <div class="w-40">
-                <el-select v-model="filterCompound" class="w-full" :placeholder="$t('capsules.filter_all')" @change="onFilterChange">
-                    <el-option value="" :label="$t('capsules.filter_all')" />
-                    <el-option v-for="c in CAPSULE_COMPOUNDS" :key="c" :value="c" :label="c.charAt(0).toUpperCase() + c.slice(1)" />
-                </el-select>
-            </div>
-        </div>
-
         <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
 
         <template v-else>
@@ -113,7 +70,7 @@ async function purgeCapsule(c: CapsuleSummary) {
                 :class="poll.loaded.value ? 'opacity-100' : 'opacity-0'"
             >
                 <div v-show="capsules.length === 0" class="text-center py-16 text-zinc-500">
-                    {{ searchQuery ? $t('capsules.empty_search') : $t('capsules.empty') }}
+                    {{ $t('capsules.empty') }}
                 </div>
 
                 <!-- Active capsules (siempre en DOM con v-show para preservar TransitionGroup) -->

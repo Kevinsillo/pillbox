@@ -70,8 +70,32 @@ pub enum PillboxError {
     },
 
     // ── Content ───────────────────────────────────────────────────────────────
-    #[error("content_too_large: {actual} characters exceed the limit of {limit}")]
-    ContentTooLarge { actual: usize, limit: usize },
+    #[error("content_too_large: {actual} characters exceed the limit of {limit} on {operation}")]
+    ContentTooLarge {
+        actual: usize,
+        limit: usize,
+        operation: ContentOp,
+    },
+}
+
+/// Distinguishes whether a content-size violation happened on a create
+/// (`*_store`) or update (`*_revise`) operation. Lets clients pick the right
+/// remediation: `Create` can be split into multiple entries; `Update` modifies
+/// one row in place and can only be trimmed.
+#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ContentOp {
+    Create,
+    Update,
+}
+
+impl std::fmt::Display for ContentOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Create => f.write_str("create"),
+            Self::Update => f.write_str("update"),
+        }
+    }
 }
 
 impl PillboxError {
@@ -166,7 +190,7 @@ mod tests {
             "ambiguous_id"
         );
         assert_eq!(
-            PillboxError::ContentTooLarge { actual: 6000, limit: 5000 }.code(),
+            PillboxError::ContentTooLarge { actual: 6000, limit: 5000, operation: ContentOp::Create }.code(),
             "content_too_large"
         );
     }

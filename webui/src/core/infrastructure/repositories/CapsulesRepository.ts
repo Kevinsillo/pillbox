@@ -1,5 +1,5 @@
 import { api } from '@/core/infrastructure/managers/httpClient'
-import type { Capsule, CapsuleSummary, CapsuleSearchResult } from '@/core/domain/types'
+import type { Capsule, CapsuleSummary, CapsuleSearchResult, Compound } from '@/core/domain/types'
 
 export const capsulesApi = {
     list: (params?: { compound?: string; limit?: number }) => {
@@ -16,10 +16,17 @@ export const capsulesApi = {
         api.patch<Capsule>(`/capsules/${id}`, body),
     delete: (id: string) => api.delete<Capsule>(`/capsules/${id}`),
     purge: (id: string) => api.delete<{ purged: boolean }>(`/capsules/${id}/purge`),
-    search: (params: { query: string; compound?: string; limit?: number }) => {
+    search: (params: { query: string; compound?: string; limit?: number; fuzzy?: boolean }) => {
         const qs = new URLSearchParams({ query: params.query })
         if (params.compound) qs.set('compound', params.compound)
         if (params.limit) qs.set('limit', String(params.limit))
+        if (params.fuzzy !== undefined) qs.set('fuzzy', String(params.fuzzy))
         return api.get<CapsuleSearchResult[]>(`/capsules/search?${qs}`)
+    },
+    getCompounds: (limit?: number) => {
+        const q = new URLSearchParams()
+        if (limit) q.set('limit', String(limit))
+        const qs = q.toString()
+        return api.get<Compound[]>(`/capsules/compounds${qs ? '?' + qs : ''}`)
     },
 }

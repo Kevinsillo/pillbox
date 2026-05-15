@@ -237,6 +237,29 @@ pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<bool> {
     Ok(count > 0)
 }
 
+/// Compounds distintos usados en capsules, ordenados por frecuencia descendente.
+///
+/// Las capsules son globales (no pertenecen a ningún bottle), por lo que no
+/// admite filtro por bottle. Devuelve `(compound, count)` con count DESC y
+/// compound ASC como desempate estable.
+pub fn distinct_compounds(conn: &Connection, limit: u32) -> Result<Vec<(String, i64)>> {
+    let mut stmt = conn.prepare(
+        "SELECT compound, COUNT(*) as c
+         FROM capsules
+         WHERE deleted_at IS NULL
+         GROUP BY compound
+         ORDER BY c DESC, compound ASC
+         LIMIT ?1",
+    )?;
+    let rows = stmt
+        .query_map(params![limit], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("failed to load distinct capsule compounds")?;
+    Ok(rows)
+}
+
 /// Mapea una fila de SQLite al tipo [`Capsule`].
 fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
     Ok(Capsule {
@@ -563,6 +586,84 @@ mod tests {
         let err = read(&conn, "abc").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::InvalidId { .. }));
+    }
+
+    #[test]
+    fn distinct_compounds_orders_count_desc_compound_asc_excludes_deleted() {
+        let mut conn = open_in_memory().unwrap();
+
+        // 2x "convention", 1x "workflow", 1x "discovery" (será soft-deleted).
+        take(
+            &mut conn,
+            &NewCapsule {
+                title: "c1".into(),
+                content: "x".into(),
+                compound: "convention".into(),
+            },
+        )
+        .unwrap();
+        take(
+            &mut conn,
+            &NewCapsule {
+                title: "c2".into(),
+                content: "x".into(),
+                compound: "convention".into(),
+            },
+        )
+        .unwrap();
+        take(
+            &mut conn,
+            &NewCapsule {
+                title: "c3".into(),
+                content: "x".into(),
+                compound: "workflow".into(),
+            },
+        )
+        .unwrap();
+        let deleted = take(
+            &mut conn,
+            &NewCapsule {
+                title: "c4".into(),
+                content: "x".into(),
+                compound: "discovery".into(),
+            },
+        )
+        .unwrap();
+        discard(&mut conn, &deleted.id).unwrap();
+
+        let rows = distinct_compounds(&conn, 50).unwrap();
+        let convention = rows.iter().find(|(c, _)| c == "convention").unwrap();
+        let workflow = rows.iter().find(|(c, _)| c == "workflow").unwrap();
+        assert_eq!(convention.1, 2);
+        assert_eq!(workflow.1, 1);
+        assert!(
+            !rows.iter().any(|(c, _)| c == "discovery"),
+            "compound borrado no debe aparecer"
+        );
+
+        let i_convention = rows.iter().position(|(c, _)| c == "convention").unwrap();
+        let i_workflow = rows.iter().position(|(c, _)| c == "workflow").unwrap();
+        assert!(i_convention < i_workflow, "convention (2) antes que workflow (1)");
+    }
+
+    #[test]
+    fn distinct_compounds_tiebreak_alphabetical() {
+        let mut conn = open_in_memory().unwrap();
+        for compound in ["zeta", "alfa", "zeta", "alfa"] {
+            take(
+                &mut conn,
+                &NewCapsule {
+                    title: "t".into(),
+                    content: "c".into(),
+                    compound: compound.into(),
+                },
+            )
+            .unwrap();
+        }
+        let rows = distinct_compounds(&conn, 50).unwrap();
+        let i_alfa = rows.iter().position(|(c, _)| c == "alfa").unwrap();
+        let i_zeta = rows.iter().position(|(c, _)| c == "zeta").unwrap();
+        assert!(i_alfa < i_zeta);
     }
 
     #[test]

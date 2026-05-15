@@ -302,6 +302,36 @@ pub fn list_recent(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec
     Ok(pills)
 }
 
+/// Compounds distintos usados en pills, ordenados por frecuencia descendente.
+///
+/// Si `bottle_id` es `Some`, filtra a pills cuya prescription pertenece a ese
+/// bottle (acepta UUID exacto). Si es `None`, agrega sobre toda la DB.
+/// Devuelve `(compound, count)` ordenado por count DESC y compound ASC como
+/// desempate estable.
+pub fn distinct_compounds(
+    conn: &Connection,
+    bottle_id: Option<&str>,
+    limit: u32,
+) -> Result<Vec<(String, i64)>> {
+    let mut stmt = conn.prepare(
+        "SELECT p.compound, COUNT(*) as c
+         FROM pills p
+         JOIN prescriptions rx ON p.prescription_id = rx.id
+         WHERE p.deleted_at IS NULL
+           AND (?1 IS NULL OR rx.bottle_id = ?1)
+         GROUP BY p.compound
+         ORDER BY c DESC, p.compound ASC
+         LIMIT ?2",
+    )?;
+    let rows = stmt
+        .query_map(params![bottle_id, limit], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("failed to load distinct pill compounds")?;
+    Ok(rows)
+}
+
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
 /// Conteo de pills creadas en un día concreto.
@@ -800,6 +830,127 @@ mod tests {
         let err = read(&conn, "abc").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::InvalidId { .. }));
+    }
+
+    #[test]
+    fn distinct_compounds_orders_by_count_desc_then_compound_asc() {
+        let mut conn = open_in_memory().unwrap();
+        let (bottle_id_1, rx_id_1) = setup(&mut conn);
+
+        // bottle 1: 2x "alpha", 1x "beta"
+        for (title, compound) in [
+            ("p1", "alpha"),
+            ("p2", "alpha"),
+            ("p3", "beta"),
+        ] {
+            take(
+                &mut conn,
+                &NewPill {
+                    title: title.into(),
+                    content: "c".into(),
+                    compound: compound.into(),
+                    prescription_id: rx_id_1.clone(),
+                    author_name: None,
+                    author_email: None,
+                },
+            )
+            .unwrap();
+        }
+
+        // bottle 2: 1x "alpha", 1x "gamma" (gamma will be soft-deleted)
+        let bottle_2 = bottles::create(
+            &mut conn,
+            &NewBottle {
+                name: "other".into(),
+                display_name: "Other".into(),
+                directory: "/tmp/other".into(),
+                scope: BottleScope::Local,
+            },
+        )
+        .unwrap();
+        let rx_2 = prescriptions::open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_2.id.clone(),
+                title: "rx2".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        take(
+            &mut conn,
+            &NewPill {
+                title: "p4".into(),
+                content: "c".into(),
+                compound: "alpha".into(),
+                prescription_id: rx_2.id.clone(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        let gamma = take(
+            &mut conn,
+            &NewPill {
+                title: "p5".into(),
+                content: "c".into(),
+                compound: "gamma".into(),
+                prescription_id: rx_2.id.clone(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        discard(&mut conn, &gamma.id).unwrap(); // gamma excluded
+
+        // Sin filtro: alpha=3 (cross-bottle), beta=1. gamma ausente.
+        let rows = distinct_compounds(&conn, None, 50).unwrap();
+        let alpha = rows.iter().find(|(c, _)| c == "alpha").unwrap();
+        let beta = rows.iter().find(|(c, _)| c == "beta").unwrap();
+        assert_eq!(alpha.1, 3);
+        assert_eq!(beta.1, 1);
+        assert!(!rows.iter().any(|(c, _)| c == "gamma"));
+        // alpha (count 3) antes que beta (count 1)
+        let i_alpha = rows.iter().position(|(c, _)| c == "alpha").unwrap();
+        let i_beta = rows.iter().position(|(c, _)| c == "beta").unwrap();
+        assert!(i_alpha < i_beta);
+
+        // Filtro por bottle_id_1: alpha=2, beta=1 solamente.
+        let rows_b1 = distinct_compounds(&conn, Some(&bottle_id_1), 50).unwrap();
+        let alpha_b1 = rows_b1.iter().find(|(c, _)| c == "alpha").unwrap();
+        let beta_b1 = rows_b1.iter().find(|(c, _)| c == "beta").unwrap();
+        assert_eq!(alpha_b1.1, 2);
+        assert_eq!(beta_b1.1, 1);
+        // No incluye compounds del otro bottle (sólo alpha estaba allá, sumando 1)
+        assert_eq!(rows_b1.iter().map(|(_, n)| *n).sum::<i64>(), 3);
+    }
+
+    #[test]
+    fn distinct_compounds_tiebreak_alphabetical() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+
+        // Dos compounds con mismo count → alfabético ASC.
+        for compound in ["zebra", "apple", "zebra", "apple"] {
+            take(
+                &mut conn,
+                &NewPill {
+                    title: "t".into(),
+                    content: "c".into(),
+                    compound: compound.into(),
+                    prescription_id: rx_id.clone(),
+                    author_name: None,
+                    author_email: None,
+                },
+            )
+            .unwrap();
+        }
+
+        let rows = distinct_compounds(&conn, None, 50).unwrap();
+        let i_apple = rows.iter().position(|(c, _)| c == "apple").unwrap();
+        let i_zebra = rows.iter().position(|(c, _)| c == "zebra").unwrap();
+        assert!(i_apple < i_zebra, "apple debe ir antes que zebra en tiebreak ASC");
     }
 
     #[test]

@@ -6,10 +6,13 @@ use axum::{
 };
 use pillbox::{
     db::{store, store::ListFilter},
-    domain::capsule::{CapsulePatch, NewCapsule},
+    domain::{
+        capsule::{CapsulePatch, NewCapsule},
+        search::SearchParams,
+    },
     error::PillboxError,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
@@ -30,6 +33,21 @@ pub struct CapsuleSearchParams {
     pub query: String,
     pub compound: Option<String>,
     pub limit: Option<u32>,
+    #[serde(default)]
+    pub fuzzy: bool,
+}
+
+/// Parámetros de query para `GET /api/capsules/compounds`.
+#[derive(Deserialize)]
+pub struct CapsuleCompoundsQuery {
+    pub limit: Option<u32>,
+}
+
+/// Entrada de la respuesta de `capsule_compounds`: `{compound, count}`.
+#[derive(Serialize)]
+pub struct CapsuleCompoundEntry {
+    pub compound: String,
+    pub count: i64,
 }
 
 /// Handler `POST /api/capsules` — crea una capsule nueva en la DB global.
@@ -151,12 +169,14 @@ pub async fn capsule_search(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::search::capsule_find(
-        &conn,
-        &params.query,
-        params.compound.as_deref(),
-        params.limit,
-    ) {
+    let search_params = SearchParams {
+        query: params.query,
+        bottle_id: None,
+        compound: params.compound,
+        limit: params.limit,
+        fuzzy: params.fuzzy,
+    };
+    match store::search::capsule_find(&conn, &search_params) {
         Ok(results) => ok(results),
         Err(e) => err_500(e),
     }
@@ -173,6 +193,30 @@ pub async fn capsule_list(
     };
     match store::capsules::list(&conn, params.limit, params.compound.as_deref(), ListFilter::All) {
         Ok(capsules) => ok(capsules),
+        Err(e) => err_500(e),
+    }
+}
+
+/// Handler `GET /api/capsules/compounds` — devuelve los compounds distintos y su conteo.
+///
+/// `limit` por defecto 50, capeado a 200.
+pub async fn capsule_compounds(
+    State(s): State<AppState>,
+    Query(params): Query<CapsuleCompoundsQuery>,
+) -> ApiResponse {
+    let limit = params.limit.unwrap_or(50).min(200);
+    let conn = match open_global_conn(&s) {
+        Ok(c) => c,
+        Err(r) => return r,
+    };
+    match store::capsules::distinct_compounds(&conn, limit) {
+        Ok(rows) => {
+            let entries: Vec<CapsuleCompoundEntry> = rows
+                .into_iter()
+                .map(|(compound, count)| CapsuleCompoundEntry { compound, count })
+                .collect();
+            ok(entries)
+        }
         Err(e) => err_500(e),
     }
 }

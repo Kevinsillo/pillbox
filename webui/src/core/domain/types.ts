@@ -1,6 +1,11 @@
 export type PillCompound = string
 export type CapsuleCompound = string
 
+export interface Compound {
+    compound: string
+    count: number
+}
+
 export interface Bottle {
     id: string
     name: string

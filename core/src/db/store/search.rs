@@ -16,8 +16,11 @@ use crate::domain::search::{SearchParams, SearchResult};
 // ─── Constantes fuzzy ────────────────────────────────────────────────────────
 
 const FUZZY_MIN_LEN: usize = 4;
-const FUZZY_THRESHOLD_SHORT: f64 = 0.85; // 4–6 chars
-const FUZZY_THRESHOLD_LONG: f64 = 0.80; // 7+ chars
+/// Umbral uniforme Jaro-Winkler cuando `fuzzy=true`.
+/// Antes existía la distinción short (0.85) / long (0.80); el modo opt-in
+/// usa 0.80 uniforme para maximizar el recall que el usuario espera al
+/// activar el flag explícitamente.
+const FUZZY_THRESHOLD: f64 = 0.80;
 const FUZZY_MAX_LEN_DIFF: usize = 2;
 
 // ─── Pipeline de query FTS5 + fuzzy ─────────────────────────────────────────
@@ -65,11 +68,7 @@ fn fuzzy_expand<'a>(terms: &'a [String], vocab: &[String]) -> HashMap<&'a str, V
                 return (term_str, vec![]);
             }
 
-            let threshold = if term.len() <= 6 {
-                FUZZY_THRESHOLD_SHORT
-            } else {
-                FUZZY_THRESHOLD_LONG
-            };
+            let threshold = FUZZY_THRESHOLD;
 
             let matches: Vec<String> = vocab
                 .par_iter()
@@ -121,19 +120,74 @@ fn build_fts_query(terms: &[String], fuzzy_map: &HashMap<&str, Vec<String>>) -> 
         .join(" AND ")
 }
 
-// ─── Sanitización simple (para queries sin fuzzy) ────────────────────────────
+// ─── Sanitización simple (modo no-fuzzy: prefix-only AND-joined) ─────────────
 
-#[cfg(test)]
-fn sanitize_fts_query(query: &str) -> String {
-    let terms = extract_terms(query);
-    if terms.is_empty() {
-        return String::new();
-    }
+/// Construye una expresión FTS5 de prefix-match estricto a partir de los
+/// términos ya extraídos. Cada término se envuelve como `"term"*` y se
+/// unen con `AND` explícito.
+fn build_prefix_only_query(terms: &[String]) -> String {
     terms
         .iter()
         .map(|t| format!("\"{}\"*", t))
         .collect::<Vec<_>>()
-        .join(" ")
+        .join(" AND ")
+}
+
+// ─── Listado por compound (sin texto) ────────────────────────────────────────
+
+/// Lista pills filtradas solo por compound (sin FTS). Snippet = inicio del contenido.
+fn pill_list_by_compound(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
+    let limit = params_in.limit.unwrap_or(20).min(100) as i64;
+    let mut stmt = conn.prepare(
+        "SELECT p.id, p.compound, p.title,
+                substr(replace(replace(p.content, char(13)||char(10), ' '), char(10), ' '), 1, 200) AS snippet,
+                p.created_at, p.updated_at,
+                0.0 AS rank,
+                p.prescription_id,
+                rx.bottle_id
+         FROM pills p
+         LEFT JOIN prescriptions rx ON p.prescription_id = rx.id
+         WHERE p.deleted_at IS NULL
+           AND (?1 IS NULL OR rx.bottle_id = ?1)
+           AND p.compound = ?2
+         ORDER BY p.updated_at DESC
+         LIMIT ?3",
+    )?;
+
+    let results = stmt
+        .query_map(
+            params![params_in.bottle_id, params_in.compound, limit],
+            |row| row_to_search_result(row, true),
+        )?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("pill list by compound failed")?;
+
+    Ok(results)
+}
+
+/// Lista capsules filtradas solo por compound (sin FTS). Snippet = inicio del contenido.
+fn capsule_list_by_compound(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
+    let limit = params_in.limit.unwrap_or(20).min(100) as i64;
+    let mut stmt = conn.prepare(
+        "SELECT c.id, c.compound, c.title,
+                substr(replace(replace(c.content, char(13)||char(10), ' '), char(10), ' '), 1, 200) AS snippet,
+                c.created_at, c.updated_at,
+                0.0 AS rank
+         FROM capsules c
+         WHERE c.deleted_at IS NULL
+           AND c.compound = ?1
+         ORDER BY c.updated_at DESC
+         LIMIT ?2",
+    )?;
+
+    let results = stmt
+        .query_map(params![params_in.compound, limit], |row| {
+            row_to_search_result(row, false)
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("capsule list by compound failed")?;
+
+    Ok(results)
 }
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
@@ -145,12 +199,19 @@ fn sanitize_fts_query(query: &str) -> String {
 pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
     let terms = extract_terms(&params_in.query);
     if terms.is_empty() {
+        if params_in.compound.is_some() {
+            return pill_list_by_compound(conn, params_in);
+        }
         return Ok(vec![]);
     }
 
-    let vocab = fetch_vocab(conn, "pills_fts")?;
-    let fuzzy_map = fuzzy_expand(&terms, &vocab);
-    let fts_query = build_fts_query(&terms, &fuzzy_map);
+    let fts_query = if params_in.fuzzy {
+        let vocab = fetch_vocab(conn, "pills_fts")?;
+        let fuzzy_map = fuzzy_expand(&terms, &vocab);
+        build_fts_query(&terms, &fuzzy_map)
+    } else {
+        build_prefix_only_query(&terms)
+    };
 
     let limit = params_in.limit.unwrap_or(20).min(100) as i64;
 
@@ -188,25 +249,28 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
 
 // ─── Capsules ─────────────────────────────────────────────────────────────────
 
-/// Busca capsules mediante FTS5 con expansión fuzzy (Jaro-Winkler).
+/// Busca capsules mediante FTS5, con expansión fuzzy opcional.
 ///
-/// Aplica los mismos umbrales de similitud que [`pill_find`].
-pub fn capsule_find(
-    conn: &Connection,
-    query: &str,
-    compound: Option<&str>,
-    limit: Option<u32>,
-) -> Result<Vec<SearchResult>> {
-    let terms = extract_terms(query);
+/// Las capsules son globales (no pertenecen a ningún bottle), por lo que
+/// el campo `params_in.bottle_id` se ignora.
+pub fn capsule_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
+    let terms = extract_terms(&params_in.query);
     if terms.is_empty() {
+        if params_in.compound.is_some() {
+            return capsule_list_by_compound(conn, params_in);
+        }
         return Ok(vec![]);
     }
 
-    let vocab = fetch_vocab(conn, "capsules_fts")?;
-    let fuzzy_map = fuzzy_expand(&terms, &vocab);
-    let fts_query = build_fts_query(&terms, &fuzzy_map);
+    let fts_query = if params_in.fuzzy {
+        let vocab = fetch_vocab(conn, "capsules_fts")?;
+        let fuzzy_map = fuzzy_expand(&terms, &vocab);
+        build_fts_query(&terms, &fuzzy_map)
+    } else {
+        build_prefix_only_query(&terms)
+    };
 
-    let limit = limit.unwrap_or(20).min(100) as i64;
+    let limit = params_in.limit.unwrap_or(20).min(100) as i64;
 
     let mut stmt = conn.prepare(
         "SELECT c.id,
@@ -226,7 +290,7 @@ pub fn capsule_find(
     )?;
 
     let results = stmt
-        .query_map(params![fts_query, compound, limit], |row| {
+        .query_map(params![fts_query, params_in.compound, limit], |row| {
             row_to_search_result(row, false)
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
@@ -528,6 +592,7 @@ mod tests {
                 bottle_id: None,
                 compound: None,
                 limit: Some(10),
+                fuzzy: false,
             },
         )
         .unwrap();
@@ -549,6 +614,7 @@ mod tests {
                 bottle_id: None,
                 compound: None,
                 limit: Some(10),
+                fuzzy: false,
             },
         )
         .unwrap();
@@ -569,6 +635,7 @@ mod tests {
                 bottle_id: None,
                 compound: None,
                 limit: Some(10),
+                fuzzy: true,
             },
         )
         .unwrap();
@@ -591,6 +658,7 @@ mod tests {
                 bottle_id: None,
                 compound: Some("bugfix".into()),
                 limit: None,
+                fuzzy: false,
             },
         )
         .unwrap();
@@ -609,6 +677,7 @@ mod tests {
                 bottle_id: None,
                 compound: None,
                 limit: None,
+                fuzzy: false,
             },
         )
         .unwrap();
@@ -629,7 +698,17 @@ mod tests {
         )
         .unwrap();
 
-        let results = capsule_find(&conn, "snake_case", None, None).unwrap();
+        let results = capsule_find(
+            &conn,
+            &SearchParams {
+                query: "snake_case".into(),
+                bottle_id: None,
+                compound: None,
+                limit: None,
+                fuzzy: false,
+            },
+        )
+        .unwrap();
         assert!(!results.is_empty());
         assert!(results[0].title.contains("Snake_case"));
     }
@@ -781,16 +860,19 @@ mod tests {
     }
 
     #[test]
-    fn sanitize_fts_query_wraps_terms() {
+    fn build_prefix_only_query_wraps_terms() {
+        let terms = extract_terms("fix auth bug");
         assert_eq!(
-            sanitize_fts_query("fix auth bug"),
-            "\"fix\"* \"auth\"* \"bug\"*"
+            build_prefix_only_query(&terms),
+            "\"fix\"* AND \"auth\"* AND \"bug\"*"
         );
+        let terms = extract_terms("AND OR NOT");
         assert_eq!(
-            sanitize_fts_query("AND OR NOT"),
-            "\"AND\"* \"OR\"* \"NOT\"*"
+            build_prefix_only_query(&terms),
+            "\"AND\"* AND \"OR\"* AND \"NOT\"*"
         );
-        assert_eq!(sanitize_fts_query(""), "");
+        let terms: Vec<String> = extract_terms("");
+        assert_eq!(build_prefix_only_query(&terms), "");
     }
 
     #[test]
@@ -820,6 +902,7 @@ mod tests {
                 bottle_id: None,
                 compound: None,
                 limit: Some(10),
+                fuzzy: true,
             },
         );
 
@@ -846,6 +929,7 @@ mod tests {
                 bottle_id: None,
                 compound: None,
                 limit: Some(10),
+                fuzzy: true,
             },
         );
 
@@ -905,6 +989,7 @@ mod tests {
                 bottle_id: Some(bottle_a.clone()),
                 compound: None,
                 limit: Some(10),
+                fuzzy: false,
             },
         )
         .unwrap();
@@ -917,6 +1002,7 @@ mod tests {
                 bottle_id: Some(bottle_b.id.clone()),
                 compound: None,
                 limit: Some(10),
+                fuzzy: false,
             },
         )
         .unwrap();
@@ -956,7 +1042,17 @@ mod tests {
         )
         .unwrap();
 
-        let conventions = capsule_find(&conn, "snake_case", Some("convention"), None).unwrap();
+        let conventions = capsule_find(
+            &conn,
+            &SearchParams {
+                query: "snake_case".into(),
+                bottle_id: None,
+                compound: Some("convention".into()),
+                limit: None,
+                fuzzy: false,
+            },
+        )
+        .unwrap();
         assert_eq!(conventions.len(), 1);
         assert_eq!(conventions[0].compound, "convention");
     }
@@ -964,10 +1060,140 @@ mod tests {
     #[test]
     fn capsule_find_empty_query_returns_empty() {
         let conn = open_in_memory().unwrap();
-        let results = capsule_find(&conn, "", None, None).unwrap();
+        let results = capsule_find(
+            &conn,
+            &SearchParams {
+                query: "".into(),
+                bottle_id: None,
+                compound: None,
+                limit: None,
+                fuzzy: false,
+            },
+        )
+        .unwrap();
         assert!(results.is_empty());
     }
 
+
+    #[test]
+    fn pill_find_fuzzy_off_excludes_typo_pill() {
+        // fuzzy=false debe ser estricto: solo prefix match.
+        // fuzzy=true debe ampliar mediante Jaro-Winkler.
+        let mut conn = open_in_memory().unwrap();
+        let bottle = bottles::create(
+            &mut conn,
+            &NewBottle {
+                name: "fuzzy-branch".into(),
+                display_name: "fuzzy-branch".into(),
+                directory: "/tmp/fuzzy-branch".into(),
+                scope: BottleScope::Local,
+            },
+        )
+        .unwrap();
+        let rx = prescriptions::open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle.id.clone(),
+                title: "rx fuzzy".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        // Pill A: contiene "alphabet" (la forma canónica)
+        pills::take(
+            &mut conn,
+            &NewPill {
+                title: "Canonical".into(),
+                content: "Usamos alphabet como referencia.".into(),
+                compound: "decision".into(),
+                prescription_id: rx.id.clone(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        // Pill B: contiene SOLO "alfabet" (typo, sin alphabet)
+        pills::take(
+            &mut conn,
+            &NewPill {
+                title: "Typo".into(),
+                content: "La nota menciona alfabet sin la forma correcta.".into(),
+                compound: "discovery".into(),
+                prescription_id: rx.id.clone(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        let mk = |fuzzy: bool| SearchParams {
+            query: "alphabet".into(),
+            bottle_id: None,
+            compound: None,
+            limit: Some(20),
+            fuzzy,
+        };
+
+        let off = pill_find(&conn, &mk(false)).unwrap();
+        let on = pill_find(&conn, &mk(true)).unwrap();
+
+        // fuzzy=false: solo la pill canónica
+        assert!(off.iter().any(|r| r.title == "Canonical"));
+        assert!(
+            !off.iter().any(|r| r.title == "Typo"),
+            "fuzzy=false NO debe encontrar la pill con typo 'alfabet'"
+        );
+
+        // fuzzy=true: debe incluir la pill con typo via Jaro-Winkler
+        assert!(on.iter().any(|r| r.title == "Typo"), "fuzzy=true debe encontrar 'alfabet'");
+        // y obviamente >= en cantidad
+        assert!(on.len() >= off.len());
+    }
+
+    #[test]
+    fn capsule_find_fuzzy_off_excludes_typo_capsule() {
+        let mut conn = open_in_memory().unwrap();
+
+        capsules::take(
+            &mut conn,
+            &NewCapsule {
+                title: "Canonical cap".into(),
+                content: "Refiere a alphabet correcto.".into(),
+                compound: "convention".into(),
+            },
+        )
+        .unwrap();
+        capsules::take(
+            &mut conn,
+            &NewCapsule {
+                title: "Typo cap".into(),
+                content: "Solo aparece alfabet en este texto.".into(),
+                compound: "discovery".into(),
+            },
+        )
+        .unwrap();
+
+        let mk = |fuzzy: bool| SearchParams {
+            query: "alphabet".into(),
+            bottle_id: None,
+            compound: None,
+            limit: Some(20),
+            fuzzy,
+        };
+
+        let off = capsule_find(&conn, &mk(false)).unwrap();
+        let on = capsule_find(&conn, &mk(true)).unwrap();
+
+        assert!(off.iter().any(|r| r.title == "Canonical cap"));
+        assert!(
+            !off.iter().any(|r| r.title == "Typo cap"),
+            "fuzzy=false NO debe encontrar la capsule con 'alfabet'"
+        );
+        assert!(on.iter().any(|r| r.title == "Typo cap"));
+        assert!(on.len() >= off.len());
+    }
 
     #[test]
     fn recent_pills_returns_pills_for_bottle() {

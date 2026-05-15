@@ -12,7 +12,7 @@ use pillbox::{
     },
     error::PillboxError,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use validator::Validate;
 
@@ -21,6 +21,20 @@ use super::{
     err_409_ambiguous_id, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse,
     AppState,
 };
+
+/// Parámetros de query para `GET /api/pills/compounds`.
+#[derive(Deserialize)]
+pub struct CompoundsQuery {
+    pub bottle_id: Option<String>,
+    pub limit: Option<u32>,
+}
+
+/// Entrada de la respuesta de `compounds`: `{compound, count}`.
+#[derive(Serialize)]
+pub struct CompoundEntry {
+    pub compound: String,
+    pub count: i64,
+}
 
 /// Cuerpo JSON para crear una pill nueva via REST API.
 #[derive(Deserialize, Validate)]
@@ -227,5 +241,61 @@ pub async fn pill_search(
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
         ok(all_results)
+    }
+}
+
+/// Handler `GET /api/pills/compounds` — devuelve los compounds distintos y su conteo.
+///
+/// Si `bottle_id` está presente filtra por esa DB; si no, agrega todas las DBs
+/// registradas. `limit` por defecto 50, capeado a 200.
+pub async fn compounds(
+    State(s): State<AppState>,
+    Query(params): Query<CompoundsQuery>,
+) -> ApiResponse {
+    let limit = params.limit.unwrap_or(50).min(200);
+
+    if let Some(ref bottle_id) = params.bottle_id {
+        let conn = match conn_for_bottle(&s, bottle_id) {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match store::pills::distinct_compounds(&conn, Some(bottle_id.as_str()), limit) {
+            Ok(rows) => {
+                let entries: Vec<CompoundEntry> = rows
+                    .into_iter()
+                    .map(|(compound, count)| CompoundEntry { compound, count })
+                    .collect();
+                ok(entries)
+            }
+            Err(e) => err_500(e),
+        }
+    } else {
+        // Sin bottle_id: agrega resultados de todas las DBs registradas.
+        let global_conn = match open_global_conn(&s) {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        let registered = match registered_bottles::list(&global_conn).map_err(err_500) {
+            Ok(r) => r,
+            Err(r) => return r,
+        };
+        let mut agg: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+        for reg in &registered {
+            let path = std::path::Path::new(&reg.db_path);
+            if let Ok(conn) = db::connection::open_existing(path) {
+                if let Ok(rows) = store::pills::distinct_compounds(&conn, None, limit) {
+                    for (compound, count) in rows {
+                        *agg.entry(compound).or_insert(0) += count;
+                    }
+                }
+            }
+        }
+        let mut entries: Vec<CompoundEntry> = agg
+            .into_iter()
+            .map(|(compound, count)| CompoundEntry { compound, count })
+            .collect();
+        entries.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.compound.cmp(&b.compound)));
+        entries.truncate(limit as usize);
+        ok(entries)
     }
 }

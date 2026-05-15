@@ -1,6 +1,6 @@
 //! Tipos de respuesta MCP y helpers compartidos por todos los handlers.
 
-use pillbox::error::PillboxError;
+use pillbox::error::{ContentOp, PillboxError};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -71,10 +71,17 @@ pub fn validate_input<T: Validate>(v: &T) -> Result<(), Response> {
 
 /// Verifica que el contenido no supere el límite de caracteres.
 ///
+/// `op` distingue create (`*_store`) de update (`*_revise`) para que el
+/// cliente pueda recomendar la remediación correcta (split vs trim).
+///
 /// Devuelve [`Response`] con código `content_too_large` y datos estructurados
-/// (`actual`, `limit`) cuando el contenido excede el límite. El formatter
-/// del cliente decide cómo presentar la información al modelo.
-pub fn check_content_size(content: &str, limit: usize) -> Result<(), Response> {
+/// (`actual`, `limit`, `operation`) cuando el contenido excede el límite. El
+/// formatter del cliente decide cómo presentar la información al modelo.
+pub fn check_content_size(
+    content: &str,
+    limit: usize,
+    op: ContentOp,
+) -> Result<(), Response> {
     let actual = content.chars().count();
     if actual <= limit {
         return Ok(());
@@ -82,6 +89,7 @@ pub fn check_content_size(content: &str, limit: usize) -> Result<(), Response> {
     Err(from_pillbox(&PillboxError::ContentTooLarge {
         actual,
         limit,
+        operation: op,
     }))
 }
 
@@ -135,10 +143,10 @@ pub fn from_pillbox(pe: &PillboxError) -> Response {
             pe.to_string(),
             json!({ "id": id }),
         ),
-        PillboxError::ContentTooLarge { actual, limit } => Response::err_with_data(
+        PillboxError::ContentTooLarge { actual, limit, operation } => Response::err_with_data(
             pe.code(),
             pe.to_string(),
-            json!({ "actual": actual, "limit": limit }),
+            json!({ "actual": actual, "limit": limit, "operation": operation }),
         ),
         _ => Response::err(pe.code(), pe.to_string()),
     }
