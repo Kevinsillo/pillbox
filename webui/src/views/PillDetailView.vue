@@ -81,7 +81,7 @@ watchEffect(async () => {
 
 <template>
     <div class="p-6 max-w-4xl mx-auto space-y-5">
-        <button class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors" @click="router.back()">
+        <button class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300" @click="router.back()">
             <IArrowLeft class="w-3 h-3" /> {{ $t("common.back") }}
         </button>
 
@@ -115,13 +115,13 @@ watchEffect(async () => {
                 <div class="flex gap-2">
                     <template v-if="canEdit">
                         <button
-                            class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg transition-colors"
+                            class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-3 py-2 rounded-lg"
                             @click="router.push(`/bottles/${shortId(props.bottle_id)}/prescriptions/${shortId(props.rx_id)}/pills/${shortId(props.pill_id)}/edit`)"
                         >
                             {{ $t("common.edit") }}
                         </button>
                         <button
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
                             @click="archivePill"
                         >
                             <ITrash2 class="w-3.5 h-3.5" />
@@ -130,7 +130,7 @@ watchEffect(async () => {
                     </template>
                     <button
                         v-if="isArchived"
-                        class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                        class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
                         @click="purgePill"
                     >
                         <ITrash2 class="w-3.5 h-3.5" />

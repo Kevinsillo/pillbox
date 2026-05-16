@@ -79,12 +79,12 @@ async function deleteRegistration(b: Bottle) {
                     <RouterLink
                         v-if="b.linked"
                         :to="`/bottles/${shortId(b.id)}`"
-                        class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
+                        class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600"
                     >
                         <div class="flex items-center gap-3 min-w-0">
                             <div class="relative shrink-0">
                                 <div :class="b.id === activeBottleId ? 'bg-green-500/5 border border-green-500/50' : 'bg-(--accent-bg)'"
-                                     class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors">
+                                     class="w-9 h-9 rounded-lg flex items-center justify-center">
                                     <IBox :class="b.id === activeBottleId ? 'text-green-500' : 'text-zinc-400'" class="w-4 h-4" />
                                 </div>
                                 <span v-if="b.id === activeBottleId"
@@ -103,7 +103,7 @@ async function deleteRegistration(b: Bottle) {
                         </div>
                         <button
                             v-if="b.id !== activeBottleId"
-                            class="text-xs text-zinc-400 hover:text-(--text-h) transition-colors ml-4 shrink-0"
+                            class="text-xs text-zinc-400 hover:text-(--text-h) ml-4 shrink-0"
                             @click.prevent="activeBottleId = b.id">
                             {{ $t('bottles.activate_btn') }}
                         </button>
@@ -129,12 +129,12 @@ async function deleteRegistration(b: Bottle) {
                         </div>
                         <div class="flex items-center gap-3 ml-4 shrink-0">
                             <button
-                                class="border border-(--border) px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-(--text-h) transition-colors"
+                                class="border border-(--border) px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-(--text-h)"
                                 @click="updateRegistration(b)">
                                 {{ $t('bottles.update_registration_btn') }}
                             </button>
                             <button
-                                class="flex items-center gap-1 border border-red-900/40 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-300 transition-colors"
+                                class="flex items-center gap-1 border border-red-900/40 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-300"
                                 @click="deleteRegistration(b)">
                                 <ITrash2 class="w-3 h-3" />
                                 {{ $t('bottles.delete_registration_btn') }}

@@ -145,7 +145,7 @@ const displayRxCount = computed(() => Math.round(rxCountTween.value))
 
                     <!-- Rx abierta -->
                     <RouterLink v-if="openRx && activeBottleId" :to="`/bottles/${shortId(activeBottleId)}/prescriptions/${shortId(openRx.id)}`"
-                                class="block bg-(--bg-surface) border border-green-900/40 rounded-lg p-4 hover:border-green-700/60 transition-colors">
+                                class="block bg-(--bg-surface) border border-green-900/40 rounded-lg p-4 hover:border-green-700/60">
                         <p class="text-xs text-green-500 uppercase tracking-wider mb-1">{{ $t('dashboard.open_rx_label') }}</p>
                         <TruncatedTitle tag="p" :title="openRx.title" class="text-(--text-h) font-medium" />
                         <p class="text-xs text-zinc-500 mt-0.5">{{ new Date(openRx.started_at).toLocaleString() }}</p>

@@ -254,7 +254,7 @@ onMounted(() => {
                         v-for="c in capItems"
                         :key="c.id"
                         :to="`/capsules/${shortId(c.id)}`"
-                        class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
+                        class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600"
                     >
                         <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
                             <IPill class="w-4 h-4 text-zinc-400" />
@@ -285,7 +285,7 @@ onMounted(() => {
                         v-for="p in pillItems"
                         :key="p.id"
                         :to="p.bottle_id && p.prescription_id ? `/bottles/${shortId(p.bottle_id)}/prescriptions/${shortId(p.prescription_id)}/pills/${shortId(p.id)}` : undefined"
-                        class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
+                        class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600"
                     >
                         <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
                             <IFileText class="w-4 h-4 text-zinc-400" />

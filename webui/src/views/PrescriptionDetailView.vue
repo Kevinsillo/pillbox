@@ -142,7 +142,7 @@ async function purgeRx() {
 
 <template>
     <div class="p-6 max-w-4xl mx-auto space-y-5">
-        <button class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors" @click="router.back()">
+        <button class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300" @click="router.back()">
             <IArrowLeft class="w-3 h-3" /> {{ $t('common.back') }}
         </button>
 
@@ -174,25 +174,25 @@ async function purgeRx() {
                     </div>
                     <div class="flex gap-2">
                         <button v-if="isOpen"
-                                class="text-sm text-zinc-400 hover:text-(--text-h) border border-(--border) px-3 py-2 rounded-lg transition-colors"
+                                class="text-sm text-zinc-400 hover:text-(--text-h) border border-(--border) px-3 py-2 rounded-lg"
                                 @click="closeRx">
                             {{ $t('prescription_detail.close_btn') }}
                         </button>
                         <button v-if="isClosed"
-                                class="text-sm text-emerald-300 hover:text-emerald-200 border border-emerald-900/40 px-3 py-2 rounded-lg transition-colors"
+                                class="text-sm text-emerald-300 hover:text-emerald-200 border border-emerald-900/40 px-3 py-2 rounded-lg"
                                 @click="reopenRx">
                             {{ $t('prescription_detail.reopen_btn') }}
                         </button>
                         <button
                             v-if="!isArchived"
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
                             @click="archiveRx">
                             <ITrash2 class="w-3.5 h-3.5" />
                             {{ $t('common.archive') }}
                         </button>
                         <button
                             v-if="isArchived"
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
                             @click="purgeRx">
                             <ITrash2 class="w-3.5 h-3.5" />
                             {{ $t('common.delete_permanent') }}

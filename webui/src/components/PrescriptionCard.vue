@@ -26,7 +26,7 @@ const isOpen = computed(() =>
     <div :class="['relative', archived && 'opacity-50']">
         <RouterLink
             :to="`/bottles/${shortId(bottleId)}/prescriptions/${shortId(prescription.id)}`"
-            class="flex items-center gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
+            class="flex items-center gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600"
         >
             <div class="w-9 h-9 rounded-lg bg-(--accent-bg) flex items-center justify-center shrink-0">
                 <IClipboard class="w-4 h-4 text-zinc-400" />

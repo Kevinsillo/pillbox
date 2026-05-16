@@ -90,7 +90,7 @@ async function deleteBottle() {
 
 <template>
     <div class="p-6 max-w-4xl mx-auto space-y-5">
-        <RouterLink to="/bottles" class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"><IArrowLeft class="w-3 h-3" /> {{ $t('bottle_detail.back') }}</RouterLink>
+        <RouterLink to="/bottles" class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"><IArrowLeft class="w-3 h-3" /> {{ $t('bottle_detail.back') }}</RouterLink>
 
         <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
 
@@ -117,7 +117,7 @@ async function deleteBottle() {
                     <div class="flex gap-2">
                         <button
                             @click="deleteBottle"
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg transition-colors"
+                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
                         >
                             <ITrash2 class="w-3.5 h-3.5" />
                             {{ $t('common.delete') }}

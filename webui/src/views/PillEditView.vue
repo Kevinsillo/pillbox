@@ -63,7 +63,7 @@ async function save() {
 
 <template>
     <div class="p-6 max-w-4xl mx-auto space-y-5">
-        <button class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors" @click="router.back()">
+        <button class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300" @click="router.back()">
             <IArrowLeft class="w-3 h-3" /> {{ $t("common.back") }}
         </button>
 
@@ -104,14 +104,14 @@ async function save() {
                     <button
                         type="submit"
                         :disabled="saving || locked"
-                        class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h) text-sm px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {{ saving ? $t("common.saving") + "…" : $t("common.save") }}
                     </button>
                     <button
                         type="button"
                         @click="router.back()"
-                        class="text-sm text-zinc-400 hover:text-(--text-h) px-3 py-2 transition-colors"
+                        class="text-sm text-zinc-400 hover:text-(--text-h) px-3 py-2"
                     >
                         {{ $t("common.cancel") }}
                     </button>

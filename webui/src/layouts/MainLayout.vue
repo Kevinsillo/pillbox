@@ -104,7 +104,7 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                 <!-- Theme toggle -->
                 <button
                     @click="toggleTheme"
-                    class="flex items-center px-2 py-1 rounded-md hover:bg-(--accent-bg) transition-colors text-(--text)"
+                    class="flex items-center px-2 py-1 rounded-md hover:bg-(--accent-bg) text-(--text)"
                     :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
                 >
                     <ISun v-if="theme === 'dark'" class="w-4 h-4" />
@@ -113,7 +113,7 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
 
                 <!-- Language dropdown -->
                 <ElDropdown trigger="click" @command="setLocale">
-                    <button class="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-(--accent-bg) transition-colors">
+                    <button class="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-(--accent-bg)">
                         <component :is="currentFlag" class="w-5 h-3.5" />
                     </button>
                     <template #dropdown>
@@ -160,7 +160,7 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                         :key="item.path"
                         :to="item.path"
                         :class="[
-                            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
+                            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm',
                             isActive(item.path)
                                 ? 'bg-(--accent-bg) text-(--text-h)'
                                 : 'text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg)/50',

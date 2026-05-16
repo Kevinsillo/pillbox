@@ -108,7 +108,7 @@ const hasData = computed(() => props.stats !== null)
                     v-for="p in PERIODS"
                     :key="p.key"
                     :class="props.activePeriod === p.key ? 'bg-(--accent-bg) text-(--text-h)' : 'text-zinc-500 hover:text-(--text-h)'"
-                    class="px-2 py-0.5 rounded text-xs transition-colors"
+                    class="px-2 py-0.5 rounded text-xs"
                     @click="selectPeriod(p.key)"
                 >
                     {{ t(p.labelKey) }}

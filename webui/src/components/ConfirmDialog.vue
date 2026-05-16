@@ -118,13 +118,13 @@ function handleHard() {
                         <!-- Dual variant buttons -->
                         <div v-if="confirmState.variant === 'dual'" class="flex justify-end gap-2">
                             <button
-                                class="border border-(--border) px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-(--text-h) transition-colors"
+                                class="border border-(--border) px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-(--text-h)"
                                 @click="handleCancel"
                             >
                                 {{ confirmState.cancelText }}
                             </button>
                             <button
-                                class="border border-red-900/40 px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300 transition-colors"
+                                class="border border-red-900/40 px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300"
                                 @click="handleSoft"
                             >
                                 {{ confirmState.softText }}
@@ -136,7 +136,7 @@ function handleHard() {
                                         ? 'border border-(--border) text-zinc-600 cursor-not-allowed'
                                         : 'border border-red-900/40 text-red-400 hover:text-red-300'
                                 "
-                                class="px-3 py-2 rounded-lg text-sm transition-colors"
+                                class="px-3 py-2 rounded-lg text-sm"
                                 @click="handleHard"
                             >
                                 {{ confirmState.hardText }}{{ hardRemaining > 0 ? ` (${hardRemaining})` : "" }}
@@ -147,7 +147,7 @@ function handleHard() {
                         <div v-else class="flex justify-end gap-2">
                             <button
                                 v-if="confirmState.variant !== 'alert'"
-                                class="border border-(--border) px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-(--text-h) transition-colors"
+                                class="border border-(--border) px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-(--text-h)"
                                 @click="handleCancel"
                             >
                                 {{ confirmState.cancelText }}
@@ -161,7 +161,7 @@ function handleHard() {
                                           ? 'border border-red-900/40 text-red-400 hover:text-red-300'
                                           : 'bg-(--accent-bg) hover:bg-zinc-600 text-(--text-h)'
                                 "
-                                class="px-3 py-2 rounded-lg text-sm transition-colors"
+                                class="px-3 py-2 rounded-lg text-sm"
                                 @click="handleConfirm"
                             >
                                 {{ confirmState.confirmText }}{{ remaining > 0 ? ` (${remaining})` : "" }}
