@@ -3,7 +3,7 @@
 //! `PaginationParams` se deserializa desde query strings HTTP o argumentos MCP;
 //! `Paginated<T>` envuelve respuestas con metadatos (`total`, `page`, `page_size`).
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 fn default_page() -> u32 {
     1
@@ -13,15 +13,37 @@ fn default_page_size() -> u32 {
     20
 }
 
+/// Deserializa un `u32` aceptando tanto entero como string.
+///
+/// Necesario para `#[serde(flatten)]` con axum/serde_urlencoded, que entrega
+/// los valores de query string como strings y `flatten` desactiva la coerción
+/// automática.
+fn u32_from_str_or_int<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrInt<'a> {
+        String(&'a str),
+        Int(u32),
+    }
+    match StringOrInt::deserialize(deserializer)? {
+        StringOrInt::Int(n) => Ok(n),
+        StringOrInt::String(s) => s.parse::<u32>().map_err(D::Error::custom),
+    }
+}
+
 /// Parámetros de paginación 1-indexed.
 ///
 /// `page` arranca en 1. `page_size` está acotado a `1..=100` por `validate`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PaginationParams {
-    #[serde(default = "default_page")]
+    #[serde(default = "default_page", deserialize_with = "u32_from_str_or_int")]
     pub page: u32,
 
-    #[serde(default = "default_page_size")]
+    #[serde(default = "default_page_size", deserialize_with = "u32_from_str_or_int")]
     pub page_size: u32,
 }
 

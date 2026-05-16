@@ -1,6 +1,32 @@
 //! Tipos de dominio para búsqueda FTS5 en pills y capsules.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+/// Deserializa un `bool` aceptando tanto booleano como string ("true"/"false"/"1"/"0").
+///
+/// Necesario para `#[serde(flatten)]` con axum/serde_urlencoded, que entrega
+/// los valores de query string como strings y `flatten` desactiva la coerción
+/// automática.
+fn bool_from_str_or_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrBool<'a> {
+        Bool(bool),
+        String(&'a str),
+    }
+    match StringOrBool::deserialize(deserializer)? {
+        StringOrBool::Bool(b) => Ok(b),
+        StringOrBool::String(s) => match s {
+            "true" | "1" => Ok(true),
+            "false" | "0" => Ok(false),
+            other => Err(D::Error::custom(format!("invalid boolean: {other}"))),
+        },
+    }
+}
 
 /// Parámetros para búsqueda FTS5.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -15,7 +41,7 @@ pub struct SearchParams {
 
     /// Activa expansión fuzzy (Jaro-Winkler) sobre los términos de la query.
     /// Default: false (prefix match estricto, sin tolerancia a typos).
-    #[serde(default)]
+    #[serde(default, deserialize_with = "bool_from_str_or_bool")]
     pub fuzzy: bool,
 }
 

@@ -117,7 +117,11 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
         compound: req.compound,
         fuzzy: req.fuzzy,
     };
-    match store::search::capsule_find(conn, &params, &pillbox::domain::PaginationParams::default()) {
+    let pagination = pillbox::domain::PaginationParams {
+        page: 1,
+        page_size: req.limit.unwrap_or(20).min(100),
+    };
+    match store::search::capsule_find(conn, &params, &pagination) {
         Ok(page) => Response::ok(page.items),
         Err(e) => anyhow_to_response(e),
     }

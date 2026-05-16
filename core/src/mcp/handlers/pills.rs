@@ -119,11 +119,30 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
 ///
 /// Retorna error si la búsqueda en la base de datos falla.
 pub fn search(conn: &mut Conn, input: Value) -> Response {
-    let params: SearchParams = match from_value(input) {
+    #[derive(Deserialize)]
+    struct In {
+        query: String,
+        bottle_id: Option<String>,
+        compound: Option<String>,
+        limit: Option<u32>,
+        #[serde(default)]
+        fuzzy: bool,
+    }
+    let req: In = match from_value(input) {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::search::pill_find(conn, &params, &pillbox::domain::PaginationParams::default()) {
+    let params = SearchParams {
+        query: req.query,
+        bottle_id: req.bottle_id,
+        compound: req.compound,
+        fuzzy: req.fuzzy,
+    };
+    let pagination = pillbox::domain::PaginationParams {
+        page: 1,
+        page_size: req.limit.unwrap_or(20).min(100),
+    };
+    match store::search::pill_find(conn, &params, &pagination) {
         Ok(page) => Response::ok(page.items),
         Err(e) => anyhow_to_response(e),
     }
