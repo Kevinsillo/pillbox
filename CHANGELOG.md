@@ -1,3 +1,34 @@
+## [0.12.0] - 2026-05-16
+
+### 🚀 Features
+
+- Merge compounds-from-json → main (v0.11.0)
+- Añadir búsqueda por prefijo de ID al estilo git en stores, HTTP y WebUI
+- Reabrir prescriptions y bloquear edición de pills en rx cerradas
+- *(search)* Búsqueda configurable con fuzzy opcional y compounds discoverable
+- *(pagination)* Paginación reutilizable en listados (HTTP + WebUI)
+
+### 🐛 Bug Fixes
+
+- *(handlers)* Resolver UUID completo antes de usar como foreign key
+- *(ids)* Ampliar ID corto a 12 hex chars sin guiones
+- *(ids)* Ampliar shortId a 12 hex chars sin guiones en webui
+- *(ids)* Corregir resolución de prefijos en registered_bottles y search
+- *(search)* Deserialización de query string con campos flatten
+
+### 💼 Other
+
+- Traducir claves CLI reopen en de/fr/it/pt
+
+### 🚜 Refactor
+
+- *(mcp)* Reemplazar ContextResult formateado por structs estructurados
+- *(mcp)* Unificar errores tipados y mensajes en inglés por defecto
+
+### 🧪 Testing
+
+- *(ids)* Añadir cobertura de resolución por prefijo de 12 chars
+
 ## [0.11.0] - 2026-05-11
 
 ### 🚀 Features
@@ -35,6 +66,10 @@
 ### 🧪 Testing
 
 - Añadir test manual de integración MCP (fmcp_integration)
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.11.0
 
 ## [0.10.0] - 2026-05-03
 
