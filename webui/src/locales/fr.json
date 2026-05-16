@@ -14,6 +14,12 @@
   },
   "common": {
     "loading": "Chargement",
+    "copy_id": "Copier l'ID",
+    "copied": "Copié",
+    "coming_soon": "(bientôt disponible)",
+    "prompts_header": "Prompts pour agent IA",
+    "options": "Options",
+    "no_options": "Aucune option disponible",
     "cancel": "Annuler",
     "save": "Enregistrer",
     "saving": "Enregistrement",
@@ -202,5 +208,54 @@
   },
   "pagination": {
     "total": "Total : {total}"
+  },
+  "prompts": {
+    "bottle": {
+      "explain": {
+        "label": "Expliquer le bottle",
+        "text": "Lis le bottle `{bottle_id}` (utilise `bottle_context`). Résume en 5 lignes : but du projet, stack, ce qui est en cours, ce qui reste en attente et les décisions critiques encore en vigueur."
+      },
+      "next_session": {
+        "label": "Prochaine session recommandée"
+      }
+    },
+    "prescription": {
+      "explain": {
+        "label": "Expliquer la prescription",
+        "text": "Charge `prescription_context {rx_id}`. Explique chronologiquement ce qui a été décidé, ce qui a été construit et ce qui reste en attente. Cite les pills par ID."
+      },
+      "summary": {
+        "label": "Résumé",
+        "text": "Résume la prescription `{rx_id}` en 3 phrases : objectif, résultat, état."
+      },
+      "reopen": {
+        "label": "Rouvrir pour reprendre",
+        "text": "Rouvre la prescription `{rx_id}` avec `prescription_reopen` et lance `/sdd:continue` depuis la phase correspondante."
+      }
+    },
+    "pill": {
+      "explain": {
+        "label": "Expliquer la pill",
+        "text": "Lis la pill `{pill_id}`. Explique ce qu'elle dit, pourquoi cette décision a été prise (cherche les proposal/arch associés) et quelles pills la référencent."
+      },
+      "audit": {
+        "label": "Auditer contre le code",
+        "text": "Lis la pill `{pill_id}` et vérifie chaque affirmation par rapport au code réel. Rapporte : confirmé / contredit / introuvable, avec chemins et numéros de ligne. Si la pill est obsolète, propose `pill_revise` avec une version mise à jour ou `pill_discard` avec justification — demande confirmation avant d'appliquer."
+      },
+      "improve": {
+        "label": "Améliorer la pill",
+        "text": "Lis la pill `{pill_id}`. Réécris-la en suivant les règles de contenu (commence par `Purpose:`/`Decision:`/`Rule:`, ~400 caractères, pas de prose narrative, cite les IDs au lieu de redécrire). Applique via `pill_revise` après confirmation."
+      }
+    },
+    "capsule": {
+      "explain": {
+        "label": "Expliquer la capsule",
+        "text": "Lis la capsule `{capsule_id}`. Explique quelle préférence elle définit, quand elle s'applique et pourquoi elle a été enregistrée."
+      },
+      "apply": {
+        "label": "Appliquer maintenant",
+        "text": "Lis la capsule `{capsule_id}` et applique-la au travail en cours dans ce projet. Si elle entre en conflit avec quelque chose dans le bottle, avertis avant d'agir."
+      }
+    }
   }
 }

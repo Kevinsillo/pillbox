@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import CompoundBadge from "@/components/CompoundBadge.vue"
+import CopyableId from "@/components/CopyableId.vue"
+import HeaderMenu from "@/components/HeaderMenu.vue"
 import type { Pill } from "@/core/domain/types"
 import { formatAuthor } from "@/core/domain/author"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
@@ -14,6 +16,7 @@ import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
 import IFileText from "~icons/lucide/file-text"
+import ILock from "~icons/lucide/lock"
 import ITrash2 from "~icons/lucide/trash-2"
 
 const { t } = useI18n()
@@ -89,28 +92,34 @@ watchEffect(async () => {
 
         <template v-else-if="pill">
             <div class="space-y-3">
-                <div class="flex gap-3">
-                    <div
-                        class="min-h-full w-20 rounded-lg bg-(--bg-surface) border border-(--border) flex items-center justify-center shrink-0"
-                    >
-                        <IFileText class="size-8 text-zinc-400" />
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <CompoundBadge :compound="pill.compound" />
-                            <span v-if="pill.deleted_at" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('pill_detail.archived_badge') }}</span>
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex gap-3 min-w-0">
+                        <div
+                            class="min-h-full w-20 rounded-lg bg-(--bg-surface) border border-(--border) flex items-center justify-center shrink-0"
+                        >
+                            <IFileText class="size-8 text-zinc-400" />
                         </div>
-                        <h1 class="text-xl font-bold text-(--text-h) mt-2">{{ pill.title }}</h1>
-                        <p class="text-xs text-zinc-500 mt-0.5">
-                            {{ $t("pill_detail.created_at") }} {{ new Date(pill.created_at).toLocaleString() }}
-                            <span v-if="pill.updated_at !== pill.created_at">
-                                · {{ $t("pill_detail.updated_at") }} {{ new Date(pill.updated_at).toLocaleString() }}
-                            </span>
-                        </p>
-                        <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">
-                            {{ $t('pill_detail.author') }}: {{ authorDisplay }}
-                        </p>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <CompoundBadge :compound="pill.compound" />
+                                <span v-if="pill.deleted_at" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('pill_detail.archived_badge') }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <CopyableId :id="pill.id" />
+                                <h1 class="text-xl font-bold text-(--text-h)">{{ pill.title }}</h1>
+                            </div>
+                            <p class="text-xs text-zinc-500 mt-0.5">
+                                {{ $t("pill_detail.created_at") }} {{ new Date(pill.created_at).toLocaleString() }}
+                                <span v-if="pill.updated_at !== pill.created_at">
+                                    · {{ $t("pill_detail.updated_at") }} {{ new Date(pill.updated_at).toLocaleString() }}
+                                </span>
+                            </p>
+                            <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">
+                                {{ $t('pill_detail.author') }}: {{ authorDisplay }}
+                            </p>
+                        </div>
                     </div>
+                    <HeaderMenu entity="pill" :bottle-id="props.bottle_id" :rx-id="props.rx_id" :pill-id="props.pill_id" />
                 </div>
                 <div class="flex gap-2">
                     <template v-if="canEdit">
@@ -137,8 +146,9 @@ watchEffect(async () => {
                         {{ $t("common.delete_permanent") }}
                     </button>
                 </div>
-                <div v-if="rxClosed && !isArchived" class="text-xs text-zinc-500 border border-(--border) bg-(--bg-surface) px-3 py-2 rounded-lg">
-                    {{ $t('pill_detail.closed_rx_hint') }}
+                <div v-if="rxClosed && !isArchived" class="flex items-start gap-2 text-sm text-(--callout-warn-text) border border-(--callout-warn-border) bg-(--callout-warn-bg) px-3 py-2 rounded-lg">
+                    <ILock class="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{{ $t('pill_detail.closed_rx_hint') }}</span>
                 </div>
             </div>
 

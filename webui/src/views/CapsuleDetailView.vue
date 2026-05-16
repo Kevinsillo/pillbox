@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import CompoundBadge from "@/components/CompoundBadge.vue"
+import CopyableId from "@/components/CopyableId.vue"
+import HeaderMenu from "@/components/HeaderMenu.vue"
 import type { Capsule } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
 import { useConfirm } from "@/composables/useConfirm"
@@ -103,22 +105,28 @@ watchEffect(async () => {
             <!-- View mode -->
             <template v-if="!editing">
                 <div class="space-y-3">
-                    <div class="flex gap-3">
-                        <div
-                            class="min-h-full w-20 rounded-lg bg-(--bg-surface) border border-(--border) flex items-center justify-center shrink-0"
-                        >
-                            <IPill class="size-8 text-zinc-400" />
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <CompoundBadge :compound="capsule.compound" />
-                                <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('capsule_detail.archived_badge') }}</span>
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex gap-3 min-w-0">
+                            <div
+                                class="min-h-full w-20 rounded-lg bg-(--bg-surface) border border-(--border) flex items-center justify-center shrink-0"
+                            >
+                                <IPill class="size-8 text-zinc-400" />
                             </div>
-                            <h1 class="text-xl font-bold text-(--text-h) mt-2">{{ capsule.title }}</h1>
-                            <p class="text-xs text-zinc-500 mt-0.5">
-                                {{ $t("capsule_detail.updated_at") }} {{ new Date(capsule.updated_at).toLocaleString() }}
-                            </p>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <CompoundBadge :compound="capsule.compound" />
+                                    <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('capsule_detail.archived_badge') }}</span>
+                                </div>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <CopyableId :id="capsule.id" />
+                                    <h1 class="text-xl font-bold text-(--text-h)">{{ capsule.title }}</h1>
+                                </div>
+                                <p class="text-xs text-zinc-500 mt-0.5">
+                                    {{ $t("capsule_detail.updated_at") }} {{ new Date(capsule.updated_at).toLocaleString() }}
+                                </p>
+                            </div>
                         </div>
+                        <HeaderMenu entity="capsule" :capsule-id="props.id" />
                     </div>
                     <div class="flex gap-2">
                         <template v-if="!isArchived">

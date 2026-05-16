@@ -13,8 +13,11 @@ import { formatAuthor } from '@/core/domain/author'
 import PillCard from '@/components/PillCard.vue'
 import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 import Paginator from '@/components/Paginator.vue'
+import CopyableId from '@/components/CopyableId.vue'
+import HeaderMenu from '@/components/HeaderMenu.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
 import IClipboard from '~icons/lucide/clipboard'
+import ILock from '~icons/lucide/lock'
 import ITrash2 from '~icons/lucide/trash-2'
 
 const { t } = useI18n()
@@ -155,22 +158,28 @@ async function purgeRx() {
             >
                 <!-- Header -->
                 <div class="space-y-3">
-                    <div class="flex gap-3">
-                        <div class="min-h-full w-20 rounded-lg bg-(--bg-surface) border border-(--border) flex items-center justify-center shrink-0">
-                            <IClipboard class="size-8 text-zinc-400" />
-                        </div>
-                        <div>
-                            <div class="mb-1 flex items-center gap-2 flex-wrap">
-                                <PrescriptionStatusBadge :open="isOpen" />
-                                <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('prescription_detail.archived_badge') }}</span>
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex gap-3 min-w-0">
+                            <div class="min-h-full w-20 rounded-lg bg-(--bg-surface) border border-(--border) flex items-center justify-center shrink-0">
+                                <IClipboard class="size-8 text-zinc-400" />
                             </div>
-                            <h1 class="text-xl font-bold text-(--text-h)">{{ rx.title }}</h1>
-                            <p class="text-xs text-zinc-500 mt-0.5">
-                                {{ $t('prescription_detail.started_at') }} {{ new Date(rx.started_at).toLocaleString() }}
-                                <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ new Date(rx.ended_at).toLocaleString() }}</span>
-                            </p>
-                            <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">{{ authorDisplay }}</p>
+                            <div class="min-w-0">
+                                <div class="mb-1 flex items-center gap-2 flex-wrap">
+                                    <PrescriptionStatusBadge :open="isOpen" />
+                                    <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('prescription_detail.archived_badge') }}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <CopyableId :id="rx.id" />
+                                    <h1 class="text-xl font-bold text-(--text-h)">{{ rx.title }}</h1>
+                                </div>
+                                <p class="text-xs text-zinc-500 mt-0.5">
+                                    {{ $t('prescription_detail.started_at') }} {{ new Date(rx.started_at).toLocaleString() }}
+                                    <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ new Date(rx.ended_at).toLocaleString() }}</span>
+                                </p>
+                                <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">{{ authorDisplay }}</p>
+                            </div>
                         </div>
+                        <HeaderMenu entity="prescription" :bottle-id="props.bottle_id" :rx-id="props.rx_id" :rx-closed="isClosed" />
                     </div>
                     <div class="flex gap-2">
                         <button v-if="isOpen"
@@ -201,8 +210,9 @@ async function purgeRx() {
                     <div v-if="reopenError" class="text-sm text-red-300 border border-red-900/40 bg-red-950/30 px-3 py-2 rounded-lg">
                         {{ reopenError }}
                     </div>
-                    <div v-if="isClosed" class="text-xs text-zinc-500 border border-(--border) bg-(--bg-surface) px-3 py-2 rounded-lg">
-                        {{ $t('prescription_detail.closed_hint') }}
+                    <div v-if="isClosed" class="flex items-start gap-2 text-sm text-(--callout-warn-text) border border-(--callout-warn-border) bg-(--callout-warn-bg) px-3 py-2 rounded-lg">
+                        <ILock class="w-4 h-4 mt-0.5 shrink-0" />
+                        <span>{{ $t('prescription_detail.closed_hint') }}</span>
                     </div>
                 </div>
 

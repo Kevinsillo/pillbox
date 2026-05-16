@@ -14,6 +14,12 @@
   },
   "common": {
     "loading": "Loading",
+    "copy_id": "Copy ID",
+    "copied": "Copied",
+    "coming_soon": "(coming soon)",
+    "prompts_header": "AI agent prompts",
+    "options": "Options",
+    "no_options": "No options available",
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving",
@@ -202,5 +208,54 @@
   },
   "pagination": {
     "total": "Total: {total}"
+  },
+  "prompts": {
+    "bottle": {
+      "explain": {
+        "label": "Explain bottle",
+        "text": "Read bottle `{bottle_id}` (use `bottle_context`). Summarize in 5 lines: project purpose, stack, what's actively being worked on, what's pending, critical decisions still in force."
+      },
+      "next_session": {
+        "label": "Next recommended session"
+      }
+    },
+    "prescription": {
+      "explain": {
+        "label": "Explain prescription",
+        "text": "Load `prescription_context {rx_id}`. Explain chronologically what was decided, what was built, and what's pending. Cite pills by ID."
+      },
+      "summary": {
+        "label": "Summary",
+        "text": "Summarize prescription `{rx_id}` in 3 sentences: goal, result, status."
+      },
+      "reopen": {
+        "label": "Reopen to resume",
+        "text": "Reopen prescription `{rx_id}` with `prescription_reopen` and start `/sdd:continue` from the appropriate phase."
+      }
+    },
+    "pill": {
+      "explain": {
+        "label": "Explain pill",
+        "text": "Read pill `{pill_id}`. Explain what it says, why it was decided that way (search related proposal/architecture pills), and which pills reference it."
+      },
+      "audit": {
+        "label": "Audit against code",
+        "text": "Read pill `{pill_id}` and verify each claim against the real codebase. Report: confirmed / contradicted / not found, with paths and line numbers. If the pill is obsolete, propose `pill_revise` with an updated version or `pill_discard` with justification — ask for confirmation before applying."
+      },
+      "improve": {
+        "label": "Improve pill",
+        "text": "Read pill `{pill_id}`. Rewrite it following the content rules (lead with `Purpose:`/`Decision:`/`Rule:`, ~400 chars, no narrative prose, cite IDs instead of re-describing). Apply via `pill_revise` after confirmation."
+      }
+    },
+    "capsule": {
+      "explain": {
+        "label": "Explain capsule",
+        "text": "Read capsule `{capsule_id}`. Explain what preference it defines, when it applies, and why it was saved."
+      },
+      "apply": {
+        "label": "Apply now",
+        "text": "Read capsule `{capsule_id}` and apply it to the current work in this project. If it conflicts with anything in the bottle, warn before acting."
+      }
+    }
   }
 }

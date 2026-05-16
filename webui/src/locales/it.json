@@ -14,6 +14,12 @@
   },
   "common": {
     "loading": "Caricamento",
+    "copy_id": "Copia ID",
+    "copied": "Copiato",
+    "coming_soon": "(prossimamente)",
+    "prompts_header": "Prompt per agente IA",
+    "options": "Opzioni",
+    "no_options": "Nessuna opzione disponibile",
     "cancel": "Annulla",
     "save": "Salva",
     "saving": "Salvataggio",
@@ -202,5 +208,54 @@
   },
   "pagination": {
     "total": "Totale: {total}"
+  },
+  "prompts": {
+    "bottle": {
+      "explain": {
+        "label": "Spiega bottle",
+        "text": "Leggi il bottle `{bottle_id}` (usa `bottle_context`). Riassumi in 5 righe: scopo del progetto, stack, cosa è in lavorazione, cosa è rimasto in sospeso e le decisioni critiche ancora vigenti."
+      },
+      "next_session": {
+        "label": "Prossima sessione consigliata"
+      }
+    },
+    "prescription": {
+      "explain": {
+        "label": "Spiega prescription",
+        "text": "Carica `prescription_context {rx_id}`. Spiega in ordine cronologico cosa è stato deciso, cosa è stato costruito e cosa è in sospeso. Cita le pills per ID."
+      },
+      "summary": {
+        "label": "Riepilogo",
+        "text": "Riassumi la prescription `{rx_id}` in 3 frasi: obiettivo, risultato, stato."
+      },
+      "reopen": {
+        "label": "Riapri per riprendere",
+        "text": "Riapri la prescription `{rx_id}` con `prescription_reopen` e avvia `/sdd:continue` dalla fase appropriata."
+      }
+    },
+    "pill": {
+      "explain": {
+        "label": "Spiega pill",
+        "text": "Leggi la pill `{pill_id}`. Spiega cosa dice, perché è stata decisa così (cerca proposal/arch correlati) e quali pills la referenziano."
+      },
+      "audit": {
+        "label": "Verifica contro il codice",
+        "text": "Leggi la pill `{pill_id}` e verifica ogni affermazione rispetto al codice reale. Riporta: confermato / contraddetto / non trovato, con percorsi e numeri di riga. Se la pill è obsoleta, proponi `pill_revise` con la versione aggiornata o `pill_discard` con motivazione — chiedi conferma prima di applicare."
+      },
+      "improve": {
+        "label": "Migliora pill",
+        "text": "Leggi la pill `{pill_id}`. Riscrivila seguendo le regole di contenuto (inizia con `Purpose:`/`Decision:`/`Rule:`, ~400 caratteri, niente prosa narrativa, cita gli ID invece di ridescrivere). Applica con `pill_revise` dopo conferma."
+      }
+    },
+    "capsule": {
+      "explain": {
+        "label": "Spiega capsule",
+        "text": "Leggi la capsule `{capsule_id}`. Spiega quale preferenza definisce, quando si applica e perché è stata salvata."
+      },
+      "apply": {
+        "label": "Applica ora",
+        "text": "Leggi la capsule `{capsule_id}` e applicala al lavoro corrente in questo progetto. Se entra in conflitto con qualcosa del bottle, avvisa prima di agire."
+      }
+    }
   }
 }

@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, watch, toRef } from 'vue'
-import { useI18n } from 'vue-i18n'
+import CopyableId from '@/components/CopyableId.vue'
+import HeaderMenu from '@/components/HeaderMenu.vue'
+import Paginator from '@/components/Paginator.vue'
+import PrescriptionCard from '@/components/PrescriptionCard.vue'
+import { useActiveBottle } from '@/composables/useActiveBottle'
 import { useConfirm } from '@/composables/useConfirm'
-import { usePoll } from '@/composables/usePoll'
 import { usePaginatedList } from '@/composables/usePaginatedList'
-import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
+import { usePoll } from '@/composables/usePoll'
 import type { Bottle, Prescription } from '@/core/domain/types'
+import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
+import { computed, ref, toRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
 import IArrowLeft from '~icons/lucide/arrow-left'
 import ITrash2 from '~icons/lucide/trash-2'
 import IZap from '~icons/lucide/zap'
-import PrescriptionCard from '@/components/PrescriptionCard.vue'
-import Paginator from '@/components/Paginator.vue'
-import { useActiveBottle } from '@/composables/useActiveBottle'
 
 const { t } = useI18n()
 const { prompt, alert } = useConfirm()
@@ -100,19 +102,23 @@ async function deleteBottle() {
                 :class="poll.loaded.value ? 'opacity-100' : 'opacity-0'"
             >
                 <div class="space-y-3">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span v-if="bottle.id === activeBottleId"
-                                  class="inline-flex items-center justify-center p-1 rounded-md bg-green-500/10 border border-green-500/20">
-                                <IZap class="w-3 h-3 text-green-500" />
-                            </span>
-                            <h1 class="text-2xl font-bold text-(--text-h)">{{ bottle.display_name }}</h1>
-                            <span class="text-sm text-zinc-600 font-mono">{{ bottle.name }}</span>
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span v-if="bottle.id === activeBottleId"
+                                      class="inline-flex items-center justify-center size-7 p-1 rounded-md bg-green-500/10 border border-green-500/20">
+                                    <IZap class="w-3 h-3 text-green-500" />
+                                </span>
+                                <CopyableId :id="bottle.id" />
+                                <h1 class="text-2xl font-bold text-(--text-h)">{{ bottle.display_name }}</h1>
+                                <span class="text-sm text-zinc-600 font-mono">{{ bottle.name }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[11px] text-zinc-600 border border-(--border) px-1.5 py-0 rounded shrink-0">{{ bottle.scope }}</span>
+                                <span class="text-xs text-zinc-500 truncate">{{ bottle.directory }}</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-0.5">
-                            <span class="text-[11px] text-zinc-600 border border-(--border) px-1.5 py-0 rounded shrink-0">{{ bottle.scope }}</span>
-                            <span class="text-xs text-zinc-500 truncate">{{ bottle.directory }}</span>
-                        </div>
+                        <HeaderMenu entity="bottle" :bottle-id="props.bottle_id" />
                     </div>
                     <div class="flex gap-2">
                         <button
