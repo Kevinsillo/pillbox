@@ -74,7 +74,9 @@ export function useMarkdown() {
     const langs = extractLangs(content)
     await Promise.all(langs.map(loadLanguage))
     const html = marked.parse(content) as string
-    return html.replace(/<input([^>]*?) disabled=""([^>]*?)type="checkbox"/g, '<input$1$2type="checkbox"')
+    return html
+      .replace(/<input([^>]*?) disabled=""([^>]*?)type="checkbox"/g, '<input$1$2type="checkbox"')
+      .replace(/<table>([\s\S]*?)<\/table>/g, '<div class="table-wrap"><table>$1</table></div>')
   }
 
   return { parse }

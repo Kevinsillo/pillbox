@@ -48,6 +48,11 @@
   --icon-error-bg: #fee2e2;
   --text-error: #ef4444;
 
+  /* Callout warning (subtle amber) */
+  --callout-warn-bg: #fffbeb;
+  --callout-warn-text: #92400e;
+  --callout-warn-border: #fde68a;
+
   /* Syntax highlighting tokens (light — github) */
   --hljs-base: #24292f;
   --hljs-keyword: #cf222e;
@@ -110,6 +115,11 @@
   --chip-error-border: rgba(127, 29, 29, 0.4);
   --icon-error-bg: rgba(127, 29, 29, 0.4);
   --text-error: #7f1d1d;
+
+  /* Callout warning (subtle amber) */
+  --callout-warn-bg: rgba(120, 53, 15, 0.15);
+  --callout-warn-text: #d4a574;
+  --callout-warn-border: rgba(120, 53, 15, 0.35);
 
   /* Syntax highlighting tokens (dark — github-dark-dimmed) */
   --hljs-base: #adbac7;
@@ -258,10 +268,14 @@ button {
     color: var(--accent);
   }
 
+  .table-wrap {
+    overflow-x: auto;
+    margin-bottom: 0.75em;
+  }
+
   table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 0.75em;
     font-size: 0.875em;
   }
 
