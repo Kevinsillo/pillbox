@@ -1,17 +1,22 @@
 //! Handlers HTTP para la entidad Prescription.
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     Json,
 };
-use pillbox::{db::store, domain::prescription::NewPrescription, error::PillboxError};
+use pillbox::{
+    db::store,
+    domain::{prescription::NewPrescription, PaginationParams},
+    error::PillboxError,
+};
 use serde::Deserialize;
 use serde_json::json;
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, conn_for_bottle_with_id, err_400_invalid_id, err_404_prescription, err_409,
-    err_409_ambiguous_id, err_422, err_500, ok, ok_created, ApiResponse, AppState,
+    conn_for_bottle, conn_for_bottle_with_id, err_400_invalid_id, err_400_pagination,
+    err_404_prescription, err_409, err_409_ambiguous_id, err_422, err_500, ok, ok_created,
+    ApiResponse, AppState,
 };
 
 /// Cuerpo JSON para abrir una prescripción nueva via REST API.
@@ -214,10 +219,16 @@ pub async fn prescription_purge(
 }
 
 /// Handler `GET /api/.../prescriptions/:rx_id/pills` — lista las pills de una prescripción.
+///
+/// Acepta `?page=&page_size=`.
 pub async fn prescription_pills(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,
+    Query(pagination): Query<PaginationParams>,
 ) -> ApiResponse {
+    if let Err(e) = pagination.validate() {
+        return err_400_pagination(&e);
+    }
     let conn = match conn_for_bottle(&s, &bottle_id) {
         Ok(c) => c,
         Err(r) => return r,
@@ -227,8 +238,8 @@ pub async fn prescription_pills(
         Ok(None) => return err_404_prescription(&rx_id),
         Err(e) => return err_500(e),
     };
-    match store::pills::list_by_prescription(&conn, &rx.id) {
-        Ok(pills) => ok(pills),
+    match store::pills::list_by_prescription(&conn, &rx.id, &pagination) {
+        Ok(page) => ok(page),
         Err(e) => err_500(e),
     }
 }

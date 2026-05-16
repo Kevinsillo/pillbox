@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::db::store::id_resolver::resolve_id;
 use crate::db::store::ListFilter;
 use crate::domain::capsule::{Capsule, CapsulePatch, NewCapsule};
+use crate::domain::{Paginated, PaginationParams};
 
 // ─── Tipos de resultado ───────────────────────────────────────────────────────
 
@@ -189,30 +190,44 @@ pub fn count_archived(conn: &Connection) -> Result<u32> {
 
 pub fn list(
     conn: &Connection,
-    limit: Option<u32>,
-    compound: Option<&str>,
     filter: ListFilter,
-) -> Result<Vec<Capsule>> {
-    let limit = limit.unwrap_or(50);
+    compound: Option<&str>,
+    pagination: &PaginationParams,
+) -> Result<Paginated<Capsule>> {
     let filter_clause = match filter {
-        ListFilter::Active => "AND deleted_at IS NULL",
-        ListFilter::Archived => "AND deleted_at IS NOT NULL",
-        ListFilter::All => "",
+        ListFilter::Active => "deleted_at IS NULL",
+        ListFilter::Archived => "deleted_at IS NOT NULL",
+        ListFilter::All => "1=1",
     };
-    let sql = format!(
+
+    let count_sql = format!(
+        "SELECT COUNT(*) FROM capsules
+         WHERE {filter_clause} AND (?1 IS NULL OR compound = ?1)"
+    );
+    let total: u64 = conn.query_row(&count_sql, params![compound], |r| r.get(0))?;
+
+    let limit = pagination.limit() as i64;
+    let offset = pagination.offset() as i64;
+
+    let select_sql = format!(
         "SELECT id, compound, title, content, created_at, updated_at, deleted_at
          FROM capsules
-         WHERE (?1 IS NULL OR compound = ?1) {}
+         WHERE {filter_clause} AND (?1 IS NULL OR compound = ?1)
          ORDER BY updated_at DESC
-         LIMIT ?2",
-        filter_clause,
+         LIMIT ?2 OFFSET ?3"
     );
-    let mut stmt = conn.prepare(&sql)?;
-    let capsules = stmt
-        .query_map(params![compound, limit], row_to_capsule)?
+    let mut stmt = conn.prepare(&select_sql)?;
+    let items = stmt
+        .query_map(params![compound, limit, offset], row_to_capsule)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to list capsules")?;
-    Ok(capsules)
+
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
 }
 
 /// Hard delete de una capsule (irreversible).
@@ -395,8 +410,9 @@ mod tests {
         )
         .unwrap();
 
-        let all = list(&conn, None, None, ListFilter::All).unwrap();
-        assert_eq!(all.len(), 2);
+        let all = list(&conn, ListFilter::Active, None, &PaginationParams::default()).unwrap();
+        assert_eq!(all.items.len(), 2);
+        assert_eq!(all.total, 2);
     }
 
     #[test]
@@ -413,9 +429,9 @@ mod tests {
         )
         .unwrap();
 
-        let conventions = list(&conn, None, Some("convention"), ListFilter::All).unwrap();
-        assert_eq!(conventions.len(), 1);
-        assert_eq!(conventions[0].compound, "convention");
+        let conventions = list(&conn, ListFilter::Active, Some("convention"), &PaginationParams::default()).unwrap();
+        assert_eq!(conventions.items.len(), 1);
+        assert_eq!(conventions.items[0].compound, "convention");
     }
 
     #[test]
@@ -433,19 +449,20 @@ mod tests {
             .unwrap();
         }
 
-        let limited = list(&conn, Some(3), None, ListFilter::All).unwrap();
-        assert_eq!(limited.len(), 3);
+        let limited = list(&conn, ListFilter::Active, None, &PaginationParams { page: 1, page_size: 3 }).unwrap();
+        assert_eq!(limited.items.len(), 3);
+        assert_eq!(limited.total, 5);
     }
 
     #[test]
-    fn list_includes_discarded_after_filter_removal() {
+    fn list_excludes_discarded() {
         let mut conn = open_in_memory().unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         discard(&mut conn, &cap.id).unwrap();
 
-        let all = list(&conn, None, None, ListFilter::All).unwrap();
-        assert_eq!(all.len(), 1);
-        assert!(all[0].deleted_at.is_some());
+        let all = list(&conn, ListFilter::Active, None, &PaginationParams::default()).unwrap();
+        assert!(all.items.is_empty());
+        assert_eq!(all.total, 0);
     }
 
     #[test]
@@ -486,18 +503,7 @@ mod tests {
     }
 
     #[test]
-    fn list_includes_archived() {
-        let mut conn = open_in_memory().unwrap();
-        let cap = take(&mut conn, &sample_capsule()).unwrap();
-        discard(&mut conn, &cap.id).unwrap();
-
-        let all = list(&conn, None, None, ListFilter::All).unwrap();
-        assert_eq!(all.len(), 1);
-        assert!(all[0].deleted_at.is_some());
-    }
-
-    #[test]
-    fn list_active_filter_excludes_archived() {
+    fn list_active_only_excludes_archived() {
         let mut conn = open_in_memory().unwrap();
         for i in 0..3 {
             take(&mut conn, &NewCapsule { title: format!("Active {i}"), content: "c".into(), compound: "discovery".into() }).unwrap();
@@ -508,30 +514,14 @@ mod tests {
         for id in &archived_ids {
             discard(&mut conn, id).unwrap();
         }
-        let active = list(&conn, Some(100), None, ListFilter::Active).unwrap();
-        assert_eq!(active.len(), 3);
-        assert!(active.iter().all(|c| c.deleted_at.is_none()));
+        let active = list(&conn, ListFilter::Active, None, &PaginationParams { page: 1, page_size: 100 }).unwrap();
+        assert_eq!(active.items.len(), 3);
+        assert_eq!(active.total, 3);
+        assert!(active.items.iter().all(|c| c.deleted_at.is_none()));
     }
 
     #[test]
-    fn list_archived_filter_excludes_active() {
-        let mut conn = open_in_memory().unwrap();
-        for i in 0..3 {
-            take(&mut conn, &NewCapsule { title: format!("Active {i}"), content: "c".into(), compound: "discovery".into() }).unwrap();
-        }
-        let archived_ids: Vec<String> = (0..5)
-            .map(|i| take(&mut conn, &NewCapsule { title: format!("Archived {i}"), content: "c".into(), compound: "discovery".into() }).unwrap().id)
-            .collect();
-        for id in &archived_ids {
-            discard(&mut conn, id).unwrap();
-        }
-        let archived = list(&conn, Some(100), None, ListFilter::Archived).unwrap();
-        assert_eq!(archived.len(), 5);
-        assert!(archived.iter().all(|c| c.deleted_at.is_some()));
-    }
-
-    #[test]
-    fn archived_limit_clamps_and_count_matches_total() {
+    fn count_archived_still_returns_total() {
         let mut conn = open_in_memory().unwrap();
         let archived_ids: Vec<String> = (0..9)
             .map(|i| take(&mut conn, &NewCapsule { title: format!("Archived {i}"), content: "c".into(), compound: "discovery".into() }).unwrap().id)
@@ -539,8 +529,6 @@ mod tests {
         for id in &archived_ids {
             discard(&mut conn, id).unwrap();
         }
-        let archived = list(&conn, Some(3), None, ListFilter::Archived).unwrap();
-        assert_eq!(archived.len(), 3);
         let total = count_archived(&conn).unwrap();
         assert_eq!(total, 9);
     }

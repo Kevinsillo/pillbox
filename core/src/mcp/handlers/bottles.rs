@@ -106,7 +106,10 @@ pub fn list(_conn: &mut Conn, _input: Value) -> Response {
             Err(_) => continue,
         };
 
-        for mut bottle in store::bottles::list(&db_conn).unwrap_or_default() {
+        let bottles_in_db = store::bottles::list(&db_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 })
+            .map(|p| p.items)
+            .unwrap_or_default();
+        for mut bottle in bottles_in_db {
             bottle.reg_id = Some(reg.id);
             bottles.push(bottle);
         }
@@ -174,8 +177,8 @@ pub fn vinculate(_conn: &mut Conn, input: Value) -> Response {
         Err(e) => return anyhow_to_response(e),
     };
 
-    let bottle = match store::bottles::list(&local_conn) {
-        Ok(list) => match list.into_iter().next() {
+    let bottle = match store::bottles::list(&local_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 }) {
+        Ok(list) => match list.items.into_iter().next() {
             Some(b) => b,
             None => {
                 return Response::err(

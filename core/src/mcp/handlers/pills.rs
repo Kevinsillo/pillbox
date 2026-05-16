@@ -123,8 +123,8 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::search::pill_find(conn, &params) {
-        Ok(results) => Response::ok(results),
+    match store::search::pill_find(conn, &params, &pillbox::domain::PaginationParams::default()) {
+        Ok(page) => Response::ok(page.items),
         Err(e) => anyhow_to_response(e),
     }
 }

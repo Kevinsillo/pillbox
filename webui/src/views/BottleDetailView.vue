@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
+import { usePaginatedList } from '@/composables/usePaginatedList'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
 import type { Bottle, Prescription } from '@/core/domain/types'
 import { RouterLink, useRouter } from 'vue-router'
@@ -10,6 +11,7 @@ import IArrowLeft from '~icons/lucide/arrow-left'
 import ITrash2 from '~icons/lucide/trash-2'
 import IZap from '~icons/lucide/zap'
 import PrescriptionCard from '@/components/PrescriptionCard.vue'
+import Paginator from '@/components/Paginator.vue'
 import { useActiveBottle } from '@/composables/useActiveBottle'
 
 const { t } = useI18n()
@@ -19,7 +21,19 @@ const props = defineProps<{ bottle_id: string }>()
 const { activeBottleId } = useActiveBottle()
 
 const bottle = ref<Bottle | null>(null)
-const prescriptions = ref<Prescription[]>([])
+
+const bottleIdRef = toRef(props, 'bottle_id')
+
+const {
+    items: prescriptions,
+    total,
+    page,
+    pageSize,
+    refresh: refreshPrescriptions,
+} = usePaginatedList<Prescription>({
+    fetcher: (p) => bottlesApi.prescriptions(bottleIdRef.value, p),
+    resetOn: [bottleIdRef],
+})
 
 const activePrescriptions = computed(() => prescriptions.value.filter(rx => rx.deleted_at === null))
 const archivedPrescriptions = computed(() => prescriptions.value.filter(rx => rx.deleted_at !== null))
@@ -28,13 +42,12 @@ let currentToken = 0
 
 async function load() {
     const token = ++currentToken
-    const [b, rx] = await Promise.all([
+    const [b] = await Promise.all([
         bottlesApi.get(props.bottle_id),
-        bottlesApi.prescriptions(props.bottle_id),
+        refreshPrescriptions(),
     ])
     if (token !== currentToken) return
     bottle.value = b
-    prescriptions.value = rx
 }
 
 const poll = usePoll(load, 5000)
@@ -43,7 +56,6 @@ watch(
     () => props.bottle_id,
     () => {
         bottle.value = null
-        prescriptions.value = []
         poll.restart()
     },
 )
@@ -115,7 +127,7 @@ async function deleteBottle() {
 
                 <div>
                     <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                        {{ $t('bottle_detail.prescriptions_heading') }} ({{ activePrescriptions.length }})
+                        {{ $t('bottle_detail.prescriptions_heading') }} ({{ total }})
                     </h2>
                     <div v-if="prescriptions.length === 0" class="text-zinc-500 text-sm">{{ $t('bottle_detail.empty') }}</div>
                     <template v-else>
@@ -142,6 +154,10 @@ async function deleteBottle() {
                                 />
                             </TransitionGroup>
                         </template>
+
+                        <div class="pt-4 flex justify-center">
+                            <Paginator v-model:current-page="page" :total="total" :page-size="pageSize" />
+                        </div>
                     </template>
                 </div>
             </div>

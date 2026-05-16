@@ -5,6 +5,9 @@
 
 pub mod bottle;
 pub mod capsule;
+pub mod pagination;
 pub mod pill;
 pub mod prescription;
 pub mod search;
+
+pub use pagination::{Paginated, PaginationParams};

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, toRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
+import { usePaginatedList } from '@/composables/usePaginatedList'
 import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
 import { ApiError } from '@/core/infrastructure/managers/httpClient'
 import { shortId } from '@/core/utils/id'
@@ -11,6 +12,7 @@ import type { Prescription, Pill } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
 import PillCard from '@/components/PillCard.vue'
 import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
+import Paginator from '@/components/Paginator.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
 import IClipboard from '~icons/lucide/clipboard'
 import ITrash2 from '~icons/lucide/trash-2'
@@ -21,19 +23,35 @@ const props = defineProps<{ bottle_id: string; rx_id: string }>()
 const router = useRouter()
 
 const rx = ref<Prescription | null>(null)
-const pills = ref<Pill[]>([])
+
+const bottleIdRef = toRef(props, 'bottle_id')
+const rxIdRef = toRef(props, 'rx_id')
+
+const {
+    items: pills,
+    total,
+    page,
+    pageSize,
+    refresh: refreshPills,
+} = usePaginatedList<Pill>({
+    fetcher: (p) => prescriptionsApi.pills(bottleIdRef.value, rxIdRef.value, p),
+    resetOn: [bottleIdRef, rxIdRef],
+})
+
+const sortedPills = computed(() =>
+    [...pills.value].sort((a, b) => b.created_at.localeCompare(a.created_at))
+)
 
 let currentToken = 0
 
 async function load() {
     const token = ++currentToken
-    const [r, p] = await Promise.all([
+    const [r] = await Promise.all([
         prescriptionsApi.get(props.bottle_id, props.rx_id),
-        prescriptionsApi.pills(props.bottle_id, props.rx_id),
+        refreshPills(),
     ])
     if (token !== currentToken) return
     rx.value = r
-    pills.value = p.sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 
 const poll = usePoll(load, 5000)
@@ -42,7 +60,6 @@ watch(
     () => [props.bottle_id, props.rx_id] as const,
     () => {
         rx.value = null
-        pills.value = []
         poll.restart()
     },
 )
@@ -55,8 +72,8 @@ const authorDisplay = computed(() =>
     rx.value ? formatAuthor(rx.value.author_name, rx.value.author_email) : null
 )
 
-const activePills = computed(() => pills.value.filter(p => p.deleted_at === null))
-const archivedPills = computed(() => pills.value.filter(p => p.deleted_at !== null))
+const activePills = computed(() => sortedPills.value.filter(p => p.deleted_at === null))
+const archivedPills = computed(() => sortedPills.value.filter(p => p.deleted_at !== null))
 
 async function closeRx() {
     try {
@@ -192,7 +209,7 @@ async function purgeRx() {
                 <!-- Pills -->
                 <div>
                     <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                        {{ $t('prescription_detail.pills_heading') }} ({{ activePills.length }})
+                        {{ $t('prescription_detail.pills_heading') }} ({{ total }})
                     </h2>
                     <div v-if="pills.length === 0" class="text-zinc-500 text-sm">{{ $t('prescription_detail.empty') }}</div>
                     <template v-else>
@@ -219,6 +236,10 @@ async function purgeRx() {
                                 </div>
                             </TransitionGroup>
                         </template>
+
+                        <div class="pt-4 flex justify-center">
+                            <Paginator v-model:current-page="page" :total="total" :page-size="pageSize" />
+                        </div>
                     </template>
                 </div>
             </div>

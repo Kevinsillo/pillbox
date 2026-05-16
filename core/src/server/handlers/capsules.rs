@@ -5,10 +5,11 @@ use axum::{
     Json,
 };
 use pillbox::{
-    db::{store, store::ListFilter},
+    db::store,
     domain::{
         capsule::{CapsulePatch, NewCapsule},
         search::SearchParams,
+        PaginationParams,
     },
     error::PillboxError,
 };
@@ -16,15 +17,18 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
-    err_400_invalid_id, err_404_capsule, err_409_ambiguous_id, err_422, err_500, ok, ok_created,
-    open_global_conn, ApiResponse, AppState,
+    err_400_invalid_id, err_400_pagination, err_404_capsule, err_409_ambiguous_id, err_422,
+    err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
 };
 
 /// Parámetros de query para listar capsules con filtro opcional por compound.
+///
+/// Incluye `page`/`page_size` vía flatten sobre `PaginationParams`.
 #[derive(Deserialize)]
 pub struct CapsuleListParams {
     pub compound: Option<String>,
-    pub limit: Option<u32>,
+    #[serde(flatten)]
+    pub pagination: PaginationParams,
 }
 
 /// Parámetros de query para la búsqueda FTS5 de capsules.
@@ -32,9 +36,10 @@ pub struct CapsuleListParams {
 pub struct CapsuleSearchParams {
     pub query: String,
     pub compound: Option<String>,
-    pub limit: Option<u32>,
     #[serde(default)]
     pub fuzzy: bool,
+    #[serde(flatten)]
+    pub pagination: PaginationParams,
 }
 
 /// Parámetros de query para `GET /api/capsules/compounds`.
@@ -165,6 +170,9 @@ pub async fn capsule_search(
     State(s): State<AppState>,
     Query(params): Query<CapsuleSearchParams>,
 ) -> ApiResponse {
+    if let Err(e) = params.pagination.validate() {
+        return err_400_pagination(&e);
+    }
     let conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
@@ -173,11 +181,10 @@ pub async fn capsule_search(
         query: params.query,
         bottle_id: None,
         compound: params.compound,
-        limit: params.limit,
         fuzzy: params.fuzzy,
     };
-    match store::search::capsule_find(&conn, &search_params) {
-        Ok(results) => ok(results),
+    match store::search::capsule_find(&conn, &search_params, &params.pagination) {
+        Ok(page) => ok(page),
         Err(e) => err_500(e),
     }
 }
@@ -187,12 +194,15 @@ pub async fn capsule_list(
     State(s): State<AppState>,
     Query(params): Query<CapsuleListParams>,
 ) -> ApiResponse {
+    if let Err(e) = params.pagination.validate() {
+        return err_400_pagination(&e);
+    }
     let conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::capsules::list(&conn, params.limit, params.compound.as_deref(), ListFilter::All) {
-        Ok(capsules) => ok(capsules),
+    match store::capsules::list(&conn, store::ListFilter::Active, params.compound.as_deref(), &params.pagination) {
+        Ok(page) => ok(page),
         Err(e) => err_500(e),
     }
 }

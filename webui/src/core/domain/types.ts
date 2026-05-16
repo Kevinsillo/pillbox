@@ -107,3 +107,15 @@ export interface ApiError {
 }
 
 export type ApiResponse<T> = ApiOk<T> | ApiError
+
+export interface PaginationParams {
+    page: number
+    page_size: number
+}
+
+export interface Paginated<T> {
+    items: T[]
+    total: number
+    page: number
+    page_size: number
+}

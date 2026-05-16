@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CompoundBadge from "@/components/CompoundBadge.vue"
 import TruncatedTitle from "@/components/TruncatedTitle.vue"
+import Paginator from "@/components/Paginator.vue"
 import { useActiveBottle } from "@/composables/useActiveBottle"
 import type { CapsuleSearchResult, Compound, PillSearchResult } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
@@ -23,11 +24,18 @@ const query = ref("")
 const scope = ref<Scope>("all")
 const compound = ref<string>("")
 const compounds = ref<Compound[]>([])
-const pillResults = ref<PillSearchResult[]>([])
-const capsuleResults = ref<CapsuleSearchResult[]>([])
+const pillItems = ref<PillSearchResult[]>([])
+const pillsTotal = ref(0)
+const capItems = ref<CapsuleSearchResult[]>([])
+const capsTotal = ref(0)
 const loading = ref(false)
 const searched = ref(false)
 const isFuzzy = ref(false)
+
+const pillsPage = ref(1)
+const pillsPageSize = ref(20)
+const capsPage = ref(1)
+const capsPageSize = ref(20)
 
 let debounce: ReturnType<typeof setTimeout>
 let currentController: AbortController | null = null
@@ -60,8 +68,10 @@ async function runSearch() {
     isFuzzy.value = false
 
     if (!q && !compound.value) {
-        pillResults.value = []
-        capsuleResults.value = []
+        pillItems.value = []
+        pillsTotal.value = 0
+        capItems.value = []
+        capsTotal.value = 0
         searched.value = false
         return
     }
@@ -80,54 +90,58 @@ async function runSearch() {
             query: effectiveQuery,
             bottle_id: activeBottleId.value ?? undefined,
             compound: effectiveCompound,
-            limit: 20,
+            page: pillsPage.value,
+            page_size: pillsPageSize.value,
             fuzzy,
         })
     const runCaps = (fuzzy: boolean) =>
         capsulesApi.search({
             query: effectiveQuery,
             compound: effectiveCompound,
-            limit: 20,
+            page: capsPage.value,
+            page_size: capsPageSize.value,
             fuzzy,
         })
 
     try {
         // First pass: fuzzy=false
-        let pills: PillSearchResult[] = []
-        let caps: CapsuleSearchResult[] = []
+        let pillsRes: { items: PillSearchResult[]; total: number } = { items: [], total: 0 }
+        let capsRes: { items: CapsuleSearchResult[]; total: number } = { items: [], total: 0 }
         if (scope.value === "all") {
-            ;[pills, caps] = await Promise.all([runPills(false), runCaps(false)])
+            ;[pillsRes, capsRes] = await Promise.all([runPills(false), runCaps(false)])
         } else if (scope.value === "pills") {
-            pills = await runPills(false)
+            pillsRes = await runPills(false)
         } else {
-            caps = await runCaps(false)
+            capsRes = await runCaps(false)
         }
 
         let total = 0
-        if (scope.value === "all") total = pills.length + caps.length
-        else if (scope.value === "pills") total = pills.length
-        else total = caps.length
+        if (scope.value === "all") total = pillsRes.total + capsRes.total
+        else if (scope.value === "pills") total = pillsRes.total
+        else total = capsRes.total
 
         // Second pass: fuzzy=true if no results and query is long enough
         if (total === 0 && effectiveQuery.length > 4) {
             if (scope.value === "all") {
-                ;[pills, caps] = await Promise.all([runPills(true), runCaps(true)])
+                ;[pillsRes, capsRes] = await Promise.all([runPills(true), runCaps(true)])
             } else if (scope.value === "pills") {
-                pills = await runPills(true)
+                pillsRes = await runPills(true)
             } else {
-                caps = await runCaps(true)
+                capsRes = await runCaps(true)
             }
             const total2 =
                 scope.value === "all"
-                    ? pills.length + caps.length
+                    ? pillsRes.total + capsRes.total
                     : scope.value === "pills"
-                      ? pills.length
-                      : caps.length
+                      ? pillsRes.total
+                      : capsRes.total
             isFuzzy.value = total2 > 0
         }
 
-        pillResults.value = pills
-        capsuleResults.value = caps
+        pillItems.value = pillsRes.items
+        pillsTotal.value = pillsRes.total
+        capItems.value = capsRes.items
+        capsTotal.value = capsRes.total
     } finally {
         loading.value = false
     }
@@ -138,26 +152,43 @@ function triggerSearch() {
     debounce = setTimeout(runSearch, 150)
 }
 
+function resetPages() {
+    pillsPage.value = 1
+    capsPage.value = 1
+}
+
 function onInput() {
     isFuzzy.value = false
+    resetPages()
     triggerSearch()
 }
 
 function onScopeChange() {
     isFuzzy.value = false
     compound.value = ""
+    resetPages()
     loadCompounds()
     triggerSearch()
 }
 
 function onCompoundChange() {
     isFuzzy.value = false
+    resetPages()
     triggerSearch()
 }
 
 watch(activeBottleId, () => {
+    resetPages()
     loadCompounds()
     triggerSearch()
+})
+
+watch(pillsPage, () => {
+    runSearch()
+})
+
+watch(capsPage, () => {
+    runSearch()
 })
 
 onMounted(() => {
@@ -192,7 +223,7 @@ onMounted(() => {
                     :value="c.compound"
                 />
             </el-select>
-        
+
             <el-input
                 v-model="query"
                 :placeholder="$t('search.placeholder')"
@@ -214,13 +245,13 @@ onMounted(() => {
 
         <template v-else-if="searched">
             <!-- Capsules -->
-            <div v-if="(scope === 'all' || scope === 'capsules') && capsuleResults.length > 0">
+            <div v-if="(scope === 'all' || scope === 'capsules') && capItems.length > 0">
                 <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                    {{ $t("search.capsules_heading") }} ({{ capsuleResults.length }})
+                    {{ $t("search.capsules_heading") }} ({{ capsTotal }})
                 </h2>
                 <div class="space-y-2">
                     <RouterLink
-                        v-for="c in capsuleResults"
+                        v-for="c in capItems"
                         :key="c.id"
                         :to="`/capsules/${shortId(c.id)}`"
                         class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
@@ -238,17 +269,20 @@ onMounted(() => {
                         </div>
                     </RouterLink>
                 </div>
+                <div class="pt-3 flex justify-center">
+                    <Paginator v-model:current-page="capsPage" :total="capsTotal" :page-size="capsPageSize" />
+                </div>
             </div>
 
             <!-- Pills -->
-            <div v-if="(scope === 'all' || scope === 'pills') && pillResults.length > 0">
+            <div v-if="(scope === 'all' || scope === 'pills') && pillItems.length > 0">
                 <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                    {{ $t("search.pills_heading") }} ({{ pillResults.length }})
+                    {{ $t("search.pills_heading") }} ({{ pillsTotal }})
                 </h2>
                 <div class="space-y-2">
                     <component
                         :is="p.bottle_id && p.prescription_id ? RouterLink : 'div'"
-                        v-for="p in pillResults"
+                        v-for="p in pillItems"
                         :key="p.id"
                         :to="p.bottle_id && p.prescription_id ? `/bottles/${shortId(p.bottle_id)}/prescriptions/${shortId(p.prescription_id)}/pills/${shortId(p.id)}` : undefined"
                         class="flex items-start gap-3 bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600 transition-colors"
@@ -266,13 +300,16 @@ onMounted(() => {
                         </div>
                     </component>
                 </div>
+                <div class="pt-3 flex justify-center">
+                    <Paginator v-model:current-page="pillsPage" :total="pillsTotal" :page-size="pillsPageSize" />
+                </div>
             </div>
 
             <div
                 v-if="
-                    (scope === 'all' && pillResults.length === 0 && capsuleResults.length === 0) ||
-                    (scope === 'pills' && pillResults.length === 0) ||
-                    (scope === 'capsules' && capsuleResults.length === 0)
+                    (scope === 'all' && pillItems.length === 0 && capItems.length === 0) ||
+                    (scope === 'pills' && pillItems.length === 0) ||
+                    (scope === 'capsules' && capItems.length === 0)
                 "
                 class="text-center py-12 text-zinc-500"
             >

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
+import { usePaginatedList } from '@/composables/usePaginatedList'
 import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesRepository'
 import { shortId } from '@/core/utils/id'
 import type { CapsuleSummary } from '@/core/domain/types'
 import CompoundBadge from '@/components/CompoundBadge.vue'
 import TruncatedTitle from '@/components/TruncatedTitle.vue'
+import Paginator from '@/components/Paginator.vue'
 import { RouterLink } from 'vue-router'
 import IPill from '~icons/lucide/pill'
 import ITrash2 from '~icons/lucide/trash-2'
@@ -15,21 +17,14 @@ import ITrash2 from '~icons/lucide/trash-2'
 const { t } = useI18n()
 const { confirm } = useConfirm()
 
-const capsules = ref<CapsuleSummary[]>([])
+const { items, total, page, pageSize, refresh } = usePaginatedList<CapsuleSummary>({
+    fetcher: (p) => capsulesApi.list(p),
+})
 
-const activeCapsules = computed(() => capsules.value.filter(c => c.deleted_at === null))
-const archivedCapsules = computed(() => capsules.value.filter(c => c.deleted_at !== null))
+const activeCapsules = computed(() => items.value.filter(c => c.deleted_at === null))
+const archivedCapsules = computed(() => items.value.filter(c => c.deleted_at !== null))
 
-let currentToken = 0
-
-async function load() {
-    const token = ++currentToken
-    const next = await capsulesApi.list({})
-    if (token !== currentToken) return
-    capsules.value = next
-}
-
-const poll = usePoll(load, 5000)
+const poll = usePoll(refresh, 5000)
 
 async function archiveCapsule(c: CapsuleSummary) {
     try {
@@ -51,7 +46,7 @@ async function purgeCapsule(c: CapsuleSummary) {
             { confirmText: t('common.delete_permanent'), cancelText: t('common.cancel'), waitSeconds: 3 }
         )
         await capsulesApi.purge(c.id)
-        capsules.value = capsules.value.filter(x => x.id !== c.id)
+        await refresh()
     } catch { /* cancelled */ }
 }
 </script>
@@ -69,13 +64,13 @@ async function purgeCapsule(c: CapsuleSummary) {
                 class="transition-opacity duration-300"
                 :class="poll.loaded.value ? 'opacity-100' : 'opacity-0'"
             >
-                <div v-show="capsules.length === 0" class="text-center py-16 text-zinc-500">
+                <div v-show="items.length === 0" class="text-center py-16 text-zinc-500">
                     {{ $t('capsules.empty') }}
                 </div>
 
                 <!-- Active capsules (siempre en DOM con v-show para preservar TransitionGroup) -->
                 <TransitionGroup
-                    v-show="capsules.length > 0"
+                    v-show="items.length > 0"
                     name="list"
                     tag="div"
                     class="space-y-2 relative"
@@ -163,6 +158,10 @@ async function purgeCapsule(c: CapsuleSummary) {
                         </RouterLink>
                     </div>
                 </TransitionGroup>
+
+                <div v-if="items.length > 0" class="pt-4 flex justify-center">
+                    <Paginator v-model:current-page="page" :total="total" :page-size="pageSize" />
+                </div>
             </div>
         </template>
     </div>

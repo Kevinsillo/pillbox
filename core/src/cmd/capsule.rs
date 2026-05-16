@@ -35,6 +35,7 @@ pub fn cmd_capsule_show(id: &str) -> Result<()> {
 /// permite mostrar el trailer `... N más archivados` con el número exacto.
 pub fn cmd_capsule_list(limit: u32, archived_limit: u32) -> Result<()> {
     use pillbox::db::{connection, store::capsules, store::ListFilter};
+    use pillbox::domain::PaginationParams;
 
     let global_path = pillbox::config::global_db_path();
     if !global_path.exists() {
@@ -44,14 +45,11 @@ pub fn cmd_capsule_list(limit: u32, archived_limit: u32) -> Result<()> {
 
     let conn = connection::open(&global_path)?;
     let total = capsules::count(&conn)?;
-    let active = capsules::list(&conn, Some(limit), None, ListFilter::Active)?;
-    let (archived, archived_total) = if archived_limit == 0 {
-        (Vec::new(), 0)
-    } else {
-        let rows = capsules::list(&conn, Some(archived_limit), None, ListFilter::Archived)?;
-        let total_archived = capsules::count_archived(&conn)?;
-        (rows, total_archived)
-    };
+    let pagination = PaginationParams { page: 1, page_size: limit.max(1).min(100) };
+    let active = capsules::list(&conn, ListFilter::Active, None, &pagination)?.items;
+    let archived_pagination = PaginationParams { page: 1, page_size: archived_limit.max(1).min(100) };
+    let archived = capsules::list(&conn, ListFilter::Archived, None, &archived_pagination)?.items;
+    let archived_total = capsules::count_archived(&conn)?;
     output::fmt::capsules_list(&active, &archived, archived_limit, archived_total, total);
     Ok(())
 }

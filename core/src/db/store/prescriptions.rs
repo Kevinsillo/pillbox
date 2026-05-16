@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::db::store::id_resolver::resolve_id;
 use crate::db::store::ListFilter;
 use crate::domain::prescription::{NewPrescription, Prescription};
+use crate::domain::{Paginated, PaginationParams};
 use crate::error::PillboxError;
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -380,37 +381,67 @@ pub fn count_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
     Ok(n)
 }
 
-/// Lista prescriptions del bottle aplicando el filtro de estado indicado.
+/// Cuenta las prescriptions activas (no descartadas) de un bottle.
 ///
-/// El orden es siempre `started_at DESC` para que las más recientes aparezcan
-/// primero. El parámetro `filter` controla la inclusión de archivadas.
+/// Acepta el `bottle_id` resuelto (UUID completo) o el `bottle_pattern`
+/// LIKE — el caller debe pasar el id ya normalizado a través de
+/// `id_resolver::normalize_prefix` cuando esté trabajando con prefijos.
+pub fn count_active_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u64> {
+    let bottle_pattern = format!("{}%", bottle_id);
+    let n: u64 = conn.query_row(
+        "SELECT COUNT(*) FROM prescriptions
+         WHERE (bottle_id = ?1 OR bottle_id LIKE ?2)
+           AND deleted_at IS NULL",
+        params![bottle_id, bottle_pattern],
+        |r| r.get(0),
+    )?;
+    Ok(n)
+}
+
+/// Lista prescriptions del bottle (paginado, orden `started_at DESC`).
+///
+/// El filtro `ListFilter` decide si se devuelven activas, archivadas o todas.
 pub fn list_by_bottle(
     conn: &Connection,
     bottle_id: &str,
-    limit: u32,
     filter: ListFilter,
-) -> Result<Vec<Prescription>> {
+    pagination: &PaginationParams,
+) -> Result<Paginated<Prescription>> {
     let filter_clause = match filter {
-        ListFilter::Active => "AND deleted_at IS NULL",
-        ListFilter::Archived => "AND deleted_at IS NOT NULL",
-        ListFilter::All => "",
+        ListFilter::Active => "deleted_at IS NULL",
+        ListFilter::Archived => "deleted_at IS NOT NULL",
+        ListFilter::All => "1=1",
     };
-    let sql = format!(
+
+    let count_sql = format!(
+        "SELECT COUNT(*) FROM prescriptions
+         WHERE bottle_id = ?1 AND {filter_clause}"
+    );
+    let total: u64 = conn.query_row(&count_sql, params![bottle_id], |r| r.get(0))?;
+
+    let limit = pagination.limit() as i64;
+    let offset = pagination.offset() as i64;
+
+    let select_sql = format!(
         "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
          FROM prescriptions
-         WHERE bottle_id = ?1 {}
+         WHERE bottle_id = ?1 AND {filter_clause}
          ORDER BY started_at DESC
-         LIMIT ?2",
-        filter_clause,
+         LIMIT ?2 OFFSET ?3"
     );
-    let mut stmt = conn.prepare(&sql)?;
+    let mut stmt = conn.prepare(&select_sql)?;
 
-    let rows = stmt
-        .query_map(params![bottle_id, limit], row_to_prescription)?
+    let items = stmt
+        .query_map(params![bottle_id, limit, offset], row_to_prescription)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to list prescriptions")?;
 
-    Ok(rows)
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
 }
 
 /// Cuenta las pills archivadas de una prescription.
@@ -684,9 +715,9 @@ mod tests {
         )
         .unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, 10, ListFilter::All).unwrap();
-        assert_eq!(all.len(), 2);
-        let titles: Vec<&str> = all.iter().map(|r| r.title.as_str()).collect();
+        let all = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 10 }).unwrap();
+        assert_eq!(all.items.len(), 2);
+        let titles: Vec<&str> = all.items.iter().map(|r| r.title.as_str()).collect();
         assert!(titles.contains(&"Sesión 1"));
         assert!(titles.contains(&"Sesión 2"));
     }
@@ -710,8 +741,8 @@ mod tests {
             close(&mut conn, &rx.id).unwrap();
         }
 
-        let limited = list_by_bottle(&conn, &bottle_id, 3, ListFilter::All).unwrap();
-        assert_eq!(limited.len(), 3);
+        let limited = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 3 }).unwrap();
+        assert_eq!(limited.items.len(), 3);
     }
 
     #[test]
@@ -814,7 +845,7 @@ mod tests {
     }
 
     #[test]
-    fn list_by_bottle_includes_archived() {
+    fn list_by_bottle_excludes_archived() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = make_bottle(&mut conn, "archived-include");
 
@@ -830,13 +861,13 @@ mod tests {
         .unwrap();
         discard(&mut conn, &rx.id).unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, 10, ListFilter::All).unwrap();
-        assert_eq!(all.len(), 1);
-        assert!(all[0].deleted_at.is_some());
+        let all = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 10 }).unwrap();
+        assert!(all.items.is_empty());
+        assert_eq!(all.total, 0);
     }
 
     #[test]
-    fn list_by_bottle_active_and_archived_together() {
+    fn list_by_bottle_only_active() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = make_bottle(&mut conn, "active-and-archived");
 
@@ -853,7 +884,7 @@ mod tests {
         .unwrap();
         close(&mut conn, &rx_active.id).unwrap();
 
-        // Archived prescription (re-open then discard)
+        // Archived prescription
         let rx_to_archive = open(
             &mut conn,
             &NewPrescription {
@@ -866,13 +897,10 @@ mod tests {
         .unwrap();
         discard(&mut conn, &rx_to_archive.id).unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, 10, ListFilter::All).unwrap();
-        assert_eq!(all.len(), 2);
-
-        let active_count = all.iter().filter(|rx| rx.deleted_at.is_none()).count();
-        let archived_count = all.iter().filter(|rx| rx.deleted_at.is_some()).count();
-        assert_eq!(active_count, 1);
-        assert_eq!(archived_count, 1);
+        let all = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 10 }).unwrap();
+        assert_eq!(all.items.len(), 1);
+        assert_eq!(all.total, 1);
+        assert!(all.items.iter().all(|rx| rx.deleted_at.is_none()));
     }
 
     #[test]
@@ -939,13 +967,13 @@ mod tests {
         assert_eq!(found.author_name.as_deref(), Some("Kevin Illanas"));
         assert_eq!(found.author_email.as_deref(), Some("kevin@example.com"));
 
-        let listed = list_by_bottle(&conn, &rx.bottle_id, 10, ListFilter::All).unwrap();
-        assert_eq!(listed[0].author_name.as_deref(), Some("Kevin Illanas"));
-        assert_eq!(listed[0].author_email.as_deref(), Some("kevin@example.com"));
+        let listed = list_by_bottle(&conn, &rx.bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 10 }).unwrap();
+        assert_eq!(listed.items[0].author_name.as_deref(), Some("Kevin Illanas"));
+        assert_eq!(listed.items[0].author_email.as_deref(), Some("kevin@example.com"));
     }
 
     #[test]
-    fn list_active_filter_excludes_archived() {
+    fn list_paginates_active_only() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = make_bottle(&mut conn, "active-filter");
         for i in 0..3 {
@@ -956,26 +984,10 @@ mod tests {
             let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
             discard(&mut conn, &id).unwrap();
         }
-        let active = list_by_bottle(&conn, &bottle_id, 100, ListFilter::Active).unwrap();
-        assert_eq!(active.len(), 3);
-        assert!(active.iter().all(|rx| rx.deleted_at.is_none()));
-    }
-
-    #[test]
-    fn list_archived_filter_excludes_active() {
-        let mut conn = open_in_memory().unwrap();
-        let bottle_id = make_bottle(&mut conn, "archived-filter");
-        for i in 0..3 {
-            let id = make_rx(&mut conn, &bottle_id, &format!("Active {i}"));
-            close(&mut conn, &id).unwrap();
-        }
-        for i in 0..5 {
-            let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
-            discard(&mut conn, &id).unwrap();
-        }
-        let archived = list_by_bottle(&conn, &bottle_id, 100, ListFilter::Archived).unwrap();
-        assert_eq!(archived.len(), 5);
-        assert!(archived.iter().all(|rx| rx.deleted_at.is_some()));
+        let active = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 100 }).unwrap();
+        assert_eq!(active.items.len(), 3);
+        assert_eq!(active.total, 3);
+        assert!(active.items.iter().all(|rx| rx.deleted_at.is_none()));
     }
 
     #[test]
@@ -995,15 +1007,13 @@ mod tests {
     }
 
     #[test]
-    fn archived_limit_clamps_returned_rows() {
+    fn count_archived_by_bottle_clamps_independent() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = make_bottle(&mut conn, "limit-clamp");
         for i in 0..8 {
             let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
             discard(&mut conn, &id).unwrap();
         }
-        let archived = list_by_bottle(&conn, &bottle_id, 5, ListFilter::Archived).unwrap();
-        assert_eq!(archived.len(), 5);
         let total = count_archived_by_bottle(&conn, &bottle_id).unwrap();
         assert_eq!(total, 8);
     }

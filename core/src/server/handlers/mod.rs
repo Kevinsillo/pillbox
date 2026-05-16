@@ -151,6 +151,11 @@ pub(super) fn err_400_invalid_id(id: &str) -> ApiResponse {
     )
 }
 
+/// Respuesta 400 Bad Request por parámetros de paginación fuera de rango.
+pub(super) fn err_400_pagination(msg: &str) -> ApiResponse {
+    err(StatusCode::BAD_REQUEST, "invalid_pagination", msg)
+}
+
 /// Respuesta 409 para un prefijo de ID ambiguo (coincide con >1 registro).
 pub(super) fn err_409_ambiguous_id(prefix: &str, candidates: &[String]) -> ApiResponse {
     err_with_context(
@@ -207,11 +212,7 @@ pub(super) fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection,
     db::connection::open(&state.global_db_path).map_err(err_500)
 }
 
-/// Valor por defecto 30 para límites de paginación.
+/// Valor por defecto 30 para `BottleStatsParams.days`.
 pub(super) fn default_30() -> u32 {
     30
-}
-/// Valor por defecto 50 para límites de paginación.
-pub(super) fn default_50() -> u32 {
-    50
 }

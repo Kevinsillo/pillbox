@@ -6,7 +6,10 @@ use uuid::Uuid;
 
 use crate::{
     db::store::id_resolver::resolve_id,
-    domain::bottle::{Bottle, NewBottle},
+    domain::{
+        bottle::{Bottle, NewBottle},
+        Paginated, PaginationParams,
+    },
     error::PillboxError,
 };
 
@@ -50,19 +53,29 @@ pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
     Ok(bottle)
 }
 
-/// Lista todos los bottles ordenados por fecha de creación.
-pub fn list(conn: &Connection) -> Result<Vec<Bottle>> {
+/// Lista todos los bottles ordenados por fecha de creación (paginado).
+pub fn list(conn: &Connection, pagination: &PaginationParams) -> Result<Paginated<Bottle>> {
+    let total: u64 = conn.query_row("SELECT COUNT(*) FROM bottles", [], |r| r.get(0))?;
+    let limit = pagination.limit() as i64;
+    let offset = pagination.offset() as i64;
+
     let mut stmt = conn.prepare(
         "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
-         FROM bottles ORDER BY created_at DESC",
+         FROM bottles ORDER BY created_at DESC
+         LIMIT ?1 OFFSET ?2",
     )?;
 
-    let bottles = stmt
-        .query_map([], row_to_bottle)?
+    let items = stmt
+        .query_map(params![limit, offset], row_to_bottle)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to list bottles")?;
 
-    Ok(bottles)
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
 }
 
 /// Busca un bottle por su ID (UUID completo o prefijo ≥8 chars).
@@ -200,7 +213,9 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         create(&mut conn, &test_bottle("a", "/tmp/a")).unwrap();
         create(&mut conn, &test_bottle("b", "/tmp/b")).unwrap();
-        assert_eq!(list(&conn).unwrap().len(), 2);
+        let page = list(&conn, &PaginationParams::default()).unwrap();
+        assert_eq!(page.items.len(), 2);
+        assert_eq!(page.total, 2);
     }
 
     #[test]
@@ -229,7 +244,9 @@ mod tests {
     #[test]
     fn list_empty_returns_empty_vec() {
         let conn = open_in_memory().unwrap();
-        assert!(list(&conn).unwrap().is_empty());
+        let page = list(&conn, &PaginationParams::default()).unwrap();
+        assert!(page.items.is_empty());
+        assert_eq!(page.total, 0);
     }
 
     #[test]
@@ -267,6 +284,45 @@ mod tests {
         let err = find_by_id(&conn, "01234567aaaa").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::AmbiguousId { .. }));
+    }
+
+    #[test]
+    fn list_paginates_correctly() {
+        let mut conn = open_in_memory().unwrap();
+        for i in 0..25 {
+            create(
+                &mut conn,
+                &test_bottle(&format!("b{:02}", i), &format!("/tmp/b{:02}", i)),
+            )
+            .unwrap();
+        }
+
+        let p1 = list(
+            &conn,
+            &PaginationParams { page: 1, page_size: 20 },
+        )
+        .unwrap();
+        assert_eq!(p1.items.len(), 20);
+        assert_eq!(p1.total, 25);
+        assert_eq!(p1.page, 1);
+
+        let p2 = list(
+            &conn,
+            &PaginationParams { page: 2, page_size: 20 },
+        )
+        .unwrap();
+        assert_eq!(p2.items.len(), 5);
+        assert_eq!(p2.total, 25);
+        assert_eq!(p2.page, 2);
+
+        let p10 = list(
+            &conn,
+            &PaginationParams { page: 10, page_size: 20 },
+        )
+        .unwrap();
+        assert_eq!(p10.items.len(), 0);
+        assert_eq!(p10.total, 25);
+        assert_eq!(p10.page, 10);
     }
 
     #[test]

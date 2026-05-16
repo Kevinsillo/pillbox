@@ -199,5 +199,8 @@
     "prescription_closed": "A prescription está fechada. Reabra-a antes de editar suas pills.",
     "prescription_collision": "A bottle já tem outra prescription aberta (id={existing_id}). Feche-a antes de reabrir esta.",
     "prescription_already_open": "Já há uma prescription aberta. Feche-a antes de abrir uma nova."
+  },
+  "pagination": {
+    "total": "Total: {total}"
   }
 }

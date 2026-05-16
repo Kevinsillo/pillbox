@@ -1,5 +1,5 @@
 import { api } from '@/core/infrastructure/managers/httpClient'
-import type { Prescription, Pill } from '@/core/domain/types'
+import type { Paginated, PaginationParams, Pill, Prescription } from '@/core/domain/types'
 
 export const prescriptionsApi = {
     get: (bottleId: string, rxId: string) =>
@@ -14,6 +14,11 @@ export const prescriptionsApi = {
         api.delete<{ discarded: boolean }>(`/bottles/${bottleId}/prescriptions/${rxId}`),
     purge: (bottleId: string, rxId: string) =>
         api.delete<{ purged: boolean }>(`/bottles/${bottleId}/prescriptions/${rxId}/purge`),
-    pills: (bottleId: string, rxId: string) =>
-        api.get<Pill[]>(`/bottles/${bottleId}/prescriptions/${rxId}/pills`),
+    pills: (bottleId: string, rxId: string, pagination: PaginationParams) => {
+        const qs = new URLSearchParams({
+            page: String(pagination.page),
+            page_size: String(pagination.page_size),
+        })
+        return api.get<Paginated<Pill>>(`/bottles/${bottleId}/prescriptions/${rxId}/pills?${qs}`)
+    },
 }

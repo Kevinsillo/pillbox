@@ -199,5 +199,8 @@
     "prescription_closed": "The prescription is closed. Reopen it before editing its pills.",
     "prescription_collision": "The bottle already has another open prescription (id={existing_id}). Close it before reopening this one.",
     "prescription_already_open": "There is already an open prescription. Close it before opening a new one."
+  },
+  "pagination": {
+    "total": "Total: {total}"
   }
 }

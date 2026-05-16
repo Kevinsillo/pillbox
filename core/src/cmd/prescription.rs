@@ -59,23 +59,16 @@ pub fn cmd_prescription_open(title: String) -> Result<()> {
 /// permite mostrar el trailer `... N más archivados` con el número exacto.
 pub fn cmd_prescription_list(limit: u32, archived_limit: u32) -> Result<()> {
     use pillbox::db::store::{prescriptions, ListFilter};
+    use pillbox::domain::PaginationParams;
 
     let (conn, db_path) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
     let total = prescriptions::count_by_bottle(&conn, &bottle.id)?;
-    let active = prescriptions::list_by_bottle(&conn, &bottle.id, limit, ListFilter::Active)?;
-    let (archived, archived_total) = if archived_limit == 0 {
-        (Vec::new(), 0)
-    } else {
-        let rows = prescriptions::list_by_bottle(
-            &conn,
-            &bottle.id,
-            archived_limit,
-            ListFilter::Archived,
-        )?;
-        let total_archived = prescriptions::count_archived_by_bottle(&conn, &bottle.id)?;
-        (rows, total_archived)
-    };
+    let pagination = PaginationParams { page: 1, page_size: limit.max(1).min(100) };
+    let active = prescriptions::list_by_bottle(&conn, &bottle.id, ListFilter::Active, &pagination)?.items;
+    let archived_pagination = PaginationParams { page: 1, page_size: archived_limit.max(1).min(100) };
+    let archived = prescriptions::list_by_bottle(&conn, &bottle.id, ListFilter::Archived, &archived_pagination)?.items;
+    let archived_total = prescriptions::count_archived_by_bottle(&conn, &bottle.id)?;
 
     output::fmt::prescriptions_list(
         &bottle.name,
@@ -107,7 +100,12 @@ pub fn cmd_prescription_show(id: String, limit: u32, archived_limit: u32) -> Res
         }
     };
 
-    let pill_list = pills::list_by_prescription(&conn, &rx.id)?;
+    let pill_list = pills::list_by_prescription(
+        &conn,
+        &rx.id,
+        &pillbox::domain::PaginationParams { page: 1, page_size: 100 },
+    )?
+    .items;
     let archived_total = prescriptions::count_archived_pills(&conn, &rx.id)?;
     output::fmt::prescription_show(&rx, &pill_list, limit, archived_limit, archived_total);
     Ok(())

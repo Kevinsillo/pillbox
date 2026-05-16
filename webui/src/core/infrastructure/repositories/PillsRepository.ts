@@ -1,5 +1,5 @@
 import { api } from '@/core/infrastructure/managers/httpClient'
-import type { Pill, PillSearchResult, Compound } from '@/core/domain/types'
+import type { Compound, Paginated, Pill, PillSearchResult } from '@/core/domain/types'
 
 export const pillsApi = {
     get: (pillId: string, bottleId: string, rxId: string) =>
@@ -10,13 +10,16 @@ export const pillsApi = {
         api.delete<Pill>(`/bottles/${bottleId}/prescriptions/${rxId}/pills/${pillId}`),
     purge: (pillId: string, bottleId: string, rxId: string) =>
         api.delete<{ purged: boolean }>(`/bottles/${bottleId}/prescriptions/${rxId}/pills/${pillId}/purge`),
-    search: (params: { query: string; bottle_id?: string; compound?: string; limit?: number; fuzzy?: boolean }) => {
-        const q = new URLSearchParams({ query: params.query })
+    search: (params: { query: string; bottle_id?: string; compound?: string; fuzzy?: boolean; page: number; page_size: number }) => {
+        const q = new URLSearchParams({
+            query: params.query,
+            page: String(params.page),
+            page_size: String(params.page_size),
+        })
         if (params.bottle_id) q.set('bottle_id', params.bottle_id)
         if (params.compound) q.set('compound', params.compound)
-        if (params.limit) q.set('limit', String(params.limit))
         if (params.fuzzy !== undefined) q.set('fuzzy', String(params.fuzzy))
-        return api.get<PillSearchResult[]>(`/pills/search?${q}`)
+        return api.get<Paginated<PillSearchResult>>(`/pills/search?${q}`)
     },
     getCompounds: (bottleId?: string, limit?: number) => {
         const q = new URLSearchParams()

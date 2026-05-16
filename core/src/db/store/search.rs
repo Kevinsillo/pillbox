@@ -12,6 +12,7 @@ use rusqlite::{params, Connection};
 use crate::db::store::id_resolver::normalize_prefix;
 use crate::domain::pill::Pill;
 use crate::domain::search::{SearchParams, SearchResult};
+use crate::domain::{Paginated, PaginationParams};
 
 // ─── Constantes fuzzy ────────────────────────────────────────────────────────
 
@@ -135,9 +136,25 @@ fn build_prefix_only_query(terms: &[String]) -> String {
 
 // ─── Listado por compound (sin texto) ────────────────────────────────────────
 
-/// Lista pills filtradas solo por compound (sin FTS). Snippet = inicio del contenido.
-fn pill_list_by_compound(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
-    let limit = params_in.limit.unwrap_or(20).min(100) as i64;
+/// Lista pills filtradas solo por compound (sin FTS), paginado.
+fn pill_list_by_compound(
+    conn: &Connection,
+    params_in: &SearchParams,
+    pagination: &PaginationParams,
+) -> Result<Paginated<SearchResult>> {
+    let total: u64 = conn.query_row(
+        "SELECT COUNT(*) FROM pills p
+         LEFT JOIN prescriptions rx ON p.prescription_id = rx.id
+         WHERE p.deleted_at IS NULL
+           AND (?1 IS NULL OR rx.bottle_id = ?1)
+           AND p.compound = ?2",
+        params![params_in.bottle_id, params_in.compound],
+        |r| r.get(0),
+    )?;
+
+    let limit = pagination.limit() as i64;
+    let offset = pagination.offset() as i64;
+
     let mut stmt = conn.prepare(
         "SELECT p.id, p.compound, p.title,
                 substr(replace(replace(p.content, char(13)||char(10), ' '), char(10), ' '), 1, 200) AS snippet,
@@ -151,23 +168,42 @@ fn pill_list_by_compound(conn: &Connection, params_in: &SearchParams) -> Result<
            AND (?1 IS NULL OR rx.bottle_id = ?1)
            AND p.compound = ?2
          ORDER BY p.updated_at DESC
-         LIMIT ?3",
+         LIMIT ?3 OFFSET ?4",
     )?;
 
-    let results = stmt
+    let items = stmt
         .query_map(
-            params![params_in.bottle_id, params_in.compound, limit],
+            params![params_in.bottle_id, params_in.compound, limit, offset],
             |row| row_to_search_result(row, true),
         )?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("pill list by compound failed")?;
 
-    Ok(results)
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
 }
 
-/// Lista capsules filtradas solo por compound (sin FTS). Snippet = inicio del contenido.
-fn capsule_list_by_compound(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
-    let limit = params_in.limit.unwrap_or(20).min(100) as i64;
+/// Lista capsules filtradas solo por compound (sin FTS), paginado.
+fn capsule_list_by_compound(
+    conn: &Connection,
+    params_in: &SearchParams,
+    pagination: &PaginationParams,
+) -> Result<Paginated<SearchResult>> {
+    let total: u64 = conn.query_row(
+        "SELECT COUNT(*) FROM capsules c
+         WHERE c.deleted_at IS NULL
+           AND c.compound = ?1",
+        params![params_in.compound],
+        |r| r.get(0),
+    )?;
+
+    let limit = pagination.limit() as i64;
+    let offset = pagination.offset() as i64;
+
     let mut stmt = conn.prepare(
         "SELECT c.id, c.compound, c.title,
                 substr(replace(replace(c.content, char(13)||char(10), ' '), char(10), ' '), 1, 200) AS snippet,
@@ -177,17 +213,22 @@ fn capsule_list_by_compound(conn: &Connection, params_in: &SearchParams) -> Resu
          WHERE c.deleted_at IS NULL
            AND c.compound = ?1
          ORDER BY c.updated_at DESC
-         LIMIT ?2",
+         LIMIT ?2 OFFSET ?3",
     )?;
 
-    let results = stmt
-        .query_map(params![params_in.compound, limit], |row| {
+    let items = stmt
+        .query_map(params![params_in.compound, limit, offset], |row| {
             row_to_search_result(row, false)
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("capsule list by compound failed")?;
 
-    Ok(results)
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
 }
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
@@ -196,13 +237,22 @@ fn capsule_list_by_compound(conn: &Connection, params_in: &SearchParams) -> Resu
 ///
 /// Devuelve resultados ordenados por relevancia (rank FTS5 ascendente,
 /// más cercano a 0 = más relevante). Una query vacía devuelve `vec![]`.
-pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
+pub fn pill_find(
+    conn: &Connection,
+    params_in: &SearchParams,
+    pagination: &PaginationParams,
+) -> Result<Paginated<SearchResult>> {
     let terms = extract_terms(&params_in.query);
     if terms.is_empty() {
         if params_in.compound.is_some() {
-            return pill_list_by_compound(conn, params_in);
+            return pill_list_by_compound(conn, params_in, pagination);
         }
-        return Ok(vec![]);
+        return Ok(Paginated {
+            items: vec![],
+            total: 0,
+            page: pagination.page,
+            page_size: pagination.page_size,
+        });
     }
 
     let fts_query = if params_in.fuzzy {
@@ -213,7 +263,21 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
         build_prefix_only_query(&terms)
     };
 
-    let limit = params_in.limit.unwrap_or(20).min(100) as i64;
+    let total: u64 = conn.query_row(
+        "SELECT COUNT(*)
+         FROM pills_fts
+         JOIN pills p ON pills_fts.rowid = p.rowid
+         LEFT JOIN prescriptions rx ON p.prescription_id = rx.id
+         WHERE pills_fts MATCH ?1
+           AND p.deleted_at IS NULL
+           AND (?2 IS NULL OR rx.bottle_id = ?2)
+           AND (?3 IS NULL OR p.compound = ?3)",
+        params![fts_query, params_in.bottle_id, params_in.compound],
+        |r| r.get(0),
+    )?;
+
+    let limit = pagination.limit() as i64;
+    let offset = pagination.offset() as i64;
 
     let mut stmt = conn.prepare(
         "SELECT p.id,
@@ -233,18 +297,29 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
            AND (?2 IS NULL OR rx.bottle_id = ?2)
            AND (?3 IS NULL OR p.compound = ?3)
          ORDER BY pills_fts.rank
-         LIMIT ?4",
+         LIMIT ?4 OFFSET ?5",
     )?;
 
-    let results = stmt
+    let items = stmt
         .query_map(
-            params![fts_query, params_in.bottle_id, params_in.compound, limit],
+            params![
+                fts_query,
+                params_in.bottle_id,
+                params_in.compound,
+                limit,
+                offset
+            ],
             |row| row_to_search_result(row, true),
         )?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("FTS5 pill search failed")?;
 
-    Ok(results)
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
 }
 
 // ─── Capsules ─────────────────────────────────────────────────────────────────
@@ -253,13 +328,22 @@ pub fn pill_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<Sear
 ///
 /// Las capsules son globales (no pertenecen a ningún bottle), por lo que
 /// el campo `params_in.bottle_id` se ignora.
-pub fn capsule_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<SearchResult>> {
+pub fn capsule_find(
+    conn: &Connection,
+    params_in: &SearchParams,
+    pagination: &PaginationParams,
+) -> Result<Paginated<SearchResult>> {
     let terms = extract_terms(&params_in.query);
     if terms.is_empty() {
         if params_in.compound.is_some() {
-            return capsule_list_by_compound(conn, params_in);
+            return capsule_list_by_compound(conn, params_in, pagination);
         }
-        return Ok(vec![]);
+        return Ok(Paginated {
+            items: vec![],
+            total: 0,
+            page: pagination.page,
+            page_size: pagination.page_size,
+        });
     }
 
     let fts_query = if params_in.fuzzy {
@@ -270,7 +354,19 @@ pub fn capsule_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<S
         build_prefix_only_query(&terms)
     };
 
-    let limit = params_in.limit.unwrap_or(20).min(100) as i64;
+    let total: u64 = conn.query_row(
+        "SELECT COUNT(*)
+         FROM capsules_fts
+         JOIN capsules c ON capsules_fts.rowid = c.rowid
+         WHERE capsules_fts MATCH ?1
+           AND c.deleted_at IS NULL
+           AND (?2 IS NULL OR c.compound = ?2)",
+        params![fts_query, params_in.compound],
+        |r| r.get(0),
+    )?;
+
+    let limit = pagination.limit() as i64;
+    let offset = pagination.offset() as i64;
 
     let mut stmt = conn.prepare(
         "SELECT c.id,
@@ -286,17 +382,23 @@ pub fn capsule_find(conn: &Connection, params_in: &SearchParams) -> Result<Vec<S
            AND c.deleted_at IS NULL
            AND (?2 IS NULL OR c.compound = ?2)
          ORDER BY capsules_fts.rank
-         LIMIT ?3",
+         LIMIT ?3 OFFSET ?4",
     )?;
 
-    let results = stmt
-        .query_map(params![fts_query, params_in.compound, limit], |row| {
-            row_to_search_result(row, false)
-        })?
+    let items = stmt
+        .query_map(
+            params![fts_query, params_in.compound, limit, offset],
+            |row| row_to_search_result(row, false),
+        )?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("FTS5 capsule search failed")?;
 
-    Ok(results)
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -311,7 +413,8 @@ pub struct BottleRxEntry {
 
 pub struct BottleContextResult {
     pub prescriptions: Vec<BottleRxEntry>,
-    pub prescription_count: usize,
+    /// Total de prescriptions activas en el bottle (COUNT en DB, no `prescriptions.len()`).
+    pub prescription_count: u64,
 }
 
 pub struct PrescriptionPillEntry {
@@ -327,7 +430,8 @@ pub struct PrescriptionContextResult {
     pub started_at: String,
     pub ended_at: Option<String>,
     pub pills: Vec<PrescriptionPillEntry>,
-    pub pill_count: usize,
+    /// Total de pills activas en la prescription (COUNT en DB, no `pills.len()`).
+    pub pill_count: u64,
 }
 
 /// Índice navegable de prescriptions de un bottle.
@@ -367,7 +471,11 @@ pub fn bottle_context(
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to load prescriptions for bottle_context")?;
 
-    let prescription_count = prescriptions.len();
+    // Total real en DB — no `prescriptions.len()` (limitado por `limit`).
+    let prescription_count = crate::db::store::prescriptions::count_active_by_bottle(
+        conn,
+        &normalized_bottle,
+    )?;
     Ok(BottleContextResult { prescriptions, prescription_count })
 }
 
@@ -439,7 +547,8 @@ pub fn prescription_context(
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to load pills for prescription_context")?;
 
-    let pill_count = pills.len();
+    // Total real en DB — no `pills.len()` (limitado por `limit`).
+    let pill_count = crate::db::store::pills::count_active_by_prescription(conn, &rx_id)?;
     Ok(PrescriptionContextResult {
         id: Some(rx_id),
         title: rx_title,
@@ -522,6 +631,7 @@ mod tests {
     use crate::domain::pill::NewPill;
     use crate::domain::prescription::NewPrescription;
     use crate::domain::search::SearchParams;
+    use crate::domain::PaginationParams;
 
     fn setup_with_pills(conn: &mut Connection) -> String {
         let bottle = bottles::create(
@@ -591,14 +701,14 @@ mod tests {
                 query: "JWT".into(),
                 bottle_id: None,
                 compound: None,
-                limit: Some(10),
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
 
-        assert!(!results.is_empty());
-        assert!(results[0].title.contains("JWT"));
+        assert!(!results.items.is_empty());
+        assert!(results.items[0].title.contains("JWT"));
     }
 
     #[test]
@@ -613,13 +723,13 @@ mod tests {
                 query: "tok".into(),
                 bottle_id: None,
                 compound: None,
-                limit: Some(10),
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
 
-        assert!(!results.is_empty());
+        assert!(!results.items.is_empty());
     }
 
     #[test]
@@ -634,14 +744,14 @@ mod tests {
                 query: "tokenizr".into(),
                 bottle_id: None,
                 compound: None,
-                limit: Some(10),
                 fuzzy: true,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
 
         assert!(
-            !results.is_empty(),
+            !results.items.is_empty(),
             "fuzzy debe encontrar 'tokenizer' desde 'tokenizr'"
         );
     }
@@ -657,14 +767,14 @@ mod tests {
                 query: "BEGIN".into(),
                 bottle_id: None,
                 compound: Some("bugfix".into()),
-                limit: None,
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
 
-        assert!(!results.is_empty());
-        assert_eq!(results[0].compound, "bugfix");
+        assert!(!results.items.is_empty());
+        assert_eq!(results.items[0].compound, "bugfix");
     }
 
     #[test]
@@ -676,12 +786,12 @@ mod tests {
                 query: "".into(),
                 bottle_id: None,
                 compound: None,
-                limit: None,
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
-        assert!(results.is_empty());
+        assert!(results.items.is_empty());
     }
 
     #[test]
@@ -704,13 +814,13 @@ mod tests {
                 query: "snake_case".into(),
                 bottle_id: None,
                 compound: None,
-                limit: None,
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
-        assert!(!results.is_empty());
-        assert!(results[0].title.contains("Snake_case"));
+        assert!(!results.items.is_empty());
+        assert!(results.items[0].title.contains("Snake_case"));
     }
 
     #[test]
@@ -901,9 +1011,9 @@ mod tests {
                 query: "jwt tokenizr".into(),
                 bottle_id: None,
                 compound: None,
-                limit: Some(10),
                 fuzzy: true,
             },
+            &PaginationParams::default(),
         );
 
         // No debe producir error de sintaxis FTS5
@@ -928,9 +1038,9 @@ mod tests {
                 query: "tokenizr concurente".into(),
                 bottle_id: None,
                 compound: None,
-                limit: Some(10),
                 fuzzy: true,
             },
+            &PaginationParams::default(),
         );
 
         assert!(
@@ -988,9 +1098,9 @@ mod tests {
                 query: "JWT".into(),
                 bottle_id: Some(bottle_a.clone()),
                 compound: None,
-                limit: Some(10),
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
 
@@ -1001,19 +1111,19 @@ mod tests {
                 query: "JWT".into(),
                 bottle_id: Some(bottle_b.id.clone()),
                 compound: None,
-                limit: Some(10),
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
 
-        assert!(!results_a.is_empty());
-        assert!(!results_b.is_empty());
+        assert!(!results_a.items.is_empty());
+        assert!(!results_b.items.is_empty());
         // Cada búsqueda devuelve pills de su propio bottle
-        for r in &results_a {
+        for r in &results_a.items {
             assert_eq!(r.bottle_id, Some(bottle_a.clone()));
         }
-        for r in &results_b {
+        for r in &results_b.items {
             assert_eq!(r.bottle_id, Some(bottle_b.id.clone()));
         }
     }
@@ -1048,13 +1158,13 @@ mod tests {
                 query: "snake_case".into(),
                 bottle_id: None,
                 compound: Some("convention".into()),
-                limit: None,
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
-        assert_eq!(conventions.len(), 1);
-        assert_eq!(conventions[0].compound, "convention");
+        assert_eq!(conventions.items.len(), 1);
+        assert_eq!(conventions.items[0].compound, "convention");
     }
 
     #[test]
@@ -1066,12 +1176,12 @@ mod tests {
                 query: "".into(),
                 bottle_id: None,
                 compound: None,
-                limit: None,
                 fuzzy: false,
             },
+            &PaginationParams::default(),
         )
         .unwrap();
-        assert!(results.is_empty());
+        assert!(results.items.is_empty());
     }
 
 
@@ -1132,24 +1242,23 @@ mod tests {
             query: "alphabet".into(),
             bottle_id: None,
             compound: None,
-            limit: Some(20),
             fuzzy,
         };
 
-        let off = pill_find(&conn, &mk(false)).unwrap();
-        let on = pill_find(&conn, &mk(true)).unwrap();
+        let off = pill_find(&conn, &mk(false), &PaginationParams::default()).unwrap();
+        let on = pill_find(&conn, &mk(true), &PaginationParams::default()).unwrap();
 
         // fuzzy=false: solo la pill canónica
-        assert!(off.iter().any(|r| r.title == "Canonical"));
+        assert!(off.items.iter().any(|r| r.title == "Canonical"));
         assert!(
-            !off.iter().any(|r| r.title == "Typo"),
+            !off.items.iter().any(|r| r.title == "Typo"),
             "fuzzy=false NO debe encontrar la pill con typo 'alfabet'"
         );
 
         // fuzzy=true: debe incluir la pill con typo via Jaro-Winkler
-        assert!(on.iter().any(|r| r.title == "Typo"), "fuzzy=true debe encontrar 'alfabet'");
+        assert!(on.items.iter().any(|r| r.title == "Typo"), "fuzzy=true debe encontrar 'alfabet'");
         // y obviamente >= en cantidad
-        assert!(on.len() >= off.len());
+        assert!(on.items.len() >= off.items.len());
     }
 
     #[test]
@@ -1179,20 +1288,85 @@ mod tests {
             query: "alphabet".into(),
             bottle_id: None,
             compound: None,
-            limit: Some(20),
             fuzzy,
         };
 
-        let off = capsule_find(&conn, &mk(false)).unwrap();
-        let on = capsule_find(&conn, &mk(true)).unwrap();
+        let off = capsule_find(&conn, &mk(false), &PaginationParams::default()).unwrap();
+        let on = capsule_find(&conn, &mk(true), &PaginationParams::default()).unwrap();
 
-        assert!(off.iter().any(|r| r.title == "Canonical cap"));
+        assert!(off.items.iter().any(|r| r.title == "Canonical cap"));
         assert!(
-            !off.iter().any(|r| r.title == "Typo cap"),
+            !off.items.iter().any(|r| r.title == "Typo cap"),
             "fuzzy=false NO debe encontrar la capsule con 'alfabet'"
         );
-        assert!(on.iter().any(|r| r.title == "Typo cap"));
-        assert!(on.len() >= off.len());
+        assert!(on.items.iter().any(|r| r.title == "Typo cap"));
+        assert!(on.items.len() >= off.items.len());
+    }
+
+    #[test]
+    fn pill_find_paginates_correctly() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = setup_with_pills(&mut conn);
+
+        // Reuse the existing prescription in that bottle
+        let rx_id: String = conn
+            .query_row(
+                "SELECT id FROM prescriptions WHERE bottle_id = ?1 LIMIT 1",
+                params![bottle_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+
+        // Add more pills containing a common term so we have >= 5 matching pills
+        for i in 0..5 {
+            pills::take(
+                &mut conn,
+                &NewPill {
+                    title: format!("Pill paginacion {}", i),
+                    content: "Contenido con commonterm para paginacion".into(),
+                    compound: "discovery".into(),
+                    prescription_id: rx_id.clone(),
+                    author_name: None,
+                    author_email: None,
+                },
+            )
+            .unwrap();
+        }
+
+        let page1 = pill_find(
+            &conn,
+            &SearchParams {
+                query: "commonterm".into(),
+                bottle_id: None,
+                compound: None,
+                fuzzy: false,
+            },
+            &PaginationParams { page: 1, page_size: 2 },
+        )
+        .unwrap();
+        assert_eq!(page1.items.len(), 2);
+        assert!(page1.total >= 5, "esperaba >=5, total={}", page1.total);
+        assert_eq!(page1.page, 1);
+
+        let total = page1.total;
+
+        let page3 = pill_find(
+            &conn,
+            &SearchParams {
+                query: "commonterm".into(),
+                bottle_id: None,
+                compound: None,
+                fuzzy: false,
+            },
+            &PaginationParams { page: 3, page_size: 2 },
+        )
+        .unwrap();
+        // Page 3 with page_size=2 returns items at offset 4 → 1 item if total==5
+        let expected_remaining = (total as i64) - 4;
+        let expected = expected_remaining.max(0) as usize;
+        assert_eq!(page3.items.len(), expected.min(2));
+        assert_eq!(page3.total, total);
+        assert_eq!(page3.page, 3);
     }
 
     #[test]

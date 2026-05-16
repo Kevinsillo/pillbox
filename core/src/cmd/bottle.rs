@@ -48,7 +48,10 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
             Ok(c) => c,
             Err(_) => continue,
         };
-        for bottle in bottles::list(&db_conn).unwrap_or_default() {
+        let bottles_in_db = bottles::list(&db_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 })
+            .map(|p| p.items)
+            .unwrap_or_default();
+        for bottle in bottles_in_db {
             let is_active = current
                 .as_ref()
                 .map(|c| c.starts_with(&bottle.directory))
@@ -407,7 +410,7 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
     }
 
     let local_conn = connection::open(&db_path_canon)?;
-    let bottle = match bottles::list(&local_conn)?.into_iter().next() {
+    let bottle = match bottles::list(&local_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 })?.items.into_iter().next() {
         Some(b) => b,
         None => {
             eprintln!(

@@ -13,9 +13,6 @@ pub struct SearchParams {
     /// Filtrar por compound (opcional).
     pub compound: Option<String>,
 
-    /// Número máximo de resultados. Default: 20.
-    pub limit: Option<u32>,
-
     /// Activa expansión fuzzy (Jaro-Winkler) sobre los términos de la query.
     /// Default: false (prefix match estricto, sin tolerancia a typos).
     #[serde(default)]

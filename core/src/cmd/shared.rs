@@ -41,7 +41,10 @@ pub fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
     let mut best: Option<(usize, pillbox::domain::bottle::Bottle)> = None;
 
     // Global-scope bottles: stored directly in the global DB bottles table
-    for bottle in bottles::list(&global_conn).unwrap_or_default() {
+    let bottles_page = bottles::list(&global_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 })
+        .map(|p| p.items)
+        .unwrap_or_default();
+    for bottle in bottles_page {
         if current.starts_with(&bottle.directory) {
             let len = bottle.directory.len();
             if best.as_ref().map_or(true, |(l, _)| len > *l) {

@@ -115,11 +115,10 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
         query: req.query,
         bottle_id: None,
         compound: req.compound,
-        limit: req.limit,
         fuzzy: req.fuzzy,
     };
-    match store::search::capsule_find(conn, &params) {
-        Ok(results) => Response::ok(results),
+    match store::search::capsule_find(conn, &params, &pillbox::domain::PaginationParams::default()) {
+        Ok(page) => Response::ok(page.items),
         Err(e) => anyhow_to_response(e),
     }
 }

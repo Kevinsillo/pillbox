@@ -36,7 +36,8 @@ const linkedBottles = computed(() => bottles.value.filter(b => b.linked))
 
 onMounted(async () => {
     try {
-        bottles.value = await bottlesApi.list()
+        const result = await bottlesApi.list({ page: 1, page_size: 100 })
+        bottles.value = result.items
         // Si el bottle activo ya no existe entre los vinculados, limpiar localStorage
         if (activeBottleId.value !== null && !linkedBottles.value.find(b => b.id === activeBottleId.value)) {
             activeBottleId.value = null

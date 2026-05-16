@@ -42,13 +42,13 @@ async function load() {
         const [c, b, rx, s] = await Promise.all([
             contextApi.get(id, { pill_limit: 8 }),
             bottlesApi.get(id),
-            bottlesApi.prescriptions(id, 5),
+            bottlesApi.prescriptions(id, { page: 1, page_size: 5 }),
             bottlesApi.stats(id, periodDays.value),
         ])
         if (token !== currentToken) return
         ctx.value = c
         bottle.value = b
-        prescriptions.value = rx
+        prescriptions.value = rx.items
         stats.value = s
     } catch (e: unknown) {
         if (token !== currentToken) return

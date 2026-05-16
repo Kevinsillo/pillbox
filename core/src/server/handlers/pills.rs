@@ -9,6 +9,7 @@ use pillbox::{
     domain::{
         pill::{NewPill, PillPatch},
         search::SearchParams,
+        Paginated, PaginationParams,
     },
     error::PillboxError,
 };
@@ -17,10 +18,19 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, err_400_invalid_id, err_404_pill, err_404_prescription, err_409,
-    err_409_ambiguous_id, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse,
-    AppState,
+    conn_for_bottle, err_400_invalid_id, err_400_pagination, err_404_pill, err_404_prescription,
+    err_409, err_409_ambiguous_id, err_422, err_500, ok, ok_created, open_global_conn,
+    ApiResponse, AppState,
 };
+
+/// Parámetros de query para `GET /api/pills/search` — combina `SearchParams` con paginación.
+#[derive(Deserialize)]
+pub struct PillSearchQuery {
+    #[serde(flatten)]
+    pub search: SearchParams,
+    #[serde(flatten)]
+    pub pagination: PaginationParams,
+}
 
 /// Parámetros de query para `GET /api/pills/compounds`.
 #[derive(Deserialize)]
@@ -205,19 +215,31 @@ pub async fn pill_purge(
 /// las DBs registradas y los ordena por relevancia.
 pub async fn pill_search(
     State(s): State<AppState>,
-    Query(params): Query<SearchParams>,
+    Query(q): Query<PillSearchQuery>,
 ) -> ApiResponse {
+    if let Err(e) = q.pagination.validate() {
+        return err_400_pagination(&e);
+    }
+    let PillSearchQuery { search: params, pagination } = q;
+
     if let Some(ref bottle_id) = params.bottle_id {
         let conn = match conn_for_bottle(&s, bottle_id) {
             Ok(c) => c,
             Err(r) => return r,
         };
-        match store::search::pill_find(&conn, &params) {
-            Ok(results) => ok(results),
+        match store::search::pill_find(&conn, &params, &pagination) {
+            Ok(page) => ok(page),
             Err(e) => err_500(e),
         }
     } else {
-        // Sin bottle_id: agrega resultados de todas las DBs registradas
+        // Sin bottle_id: agregamos resultados de todas las DBs registradas.
+        //
+        // Limitación conocida: como cada DB pagina de forma independiente, no
+        // podemos obtener "la página N" globalmente sin sobre-fetchear. Por
+        // simplicidad y para mantener consistencia con el comportamiento
+        // anterior, pedimos a cada DB un window grande (page=1, page_size=100)
+        // y aplicamos slicing en memoria sobre el resultado combinado.
+        // `total` es la suma de los totales reportados por cada DB.
         let global_conn = match open_global_conn(&s) {
             Ok(c) => c,
             Err(r) => return r,
@@ -226,12 +248,15 @@ pub async fn pill_search(
             Ok(r) => r,
             Err(r) => return r,
         };
+        let wide = PaginationParams { page: 1, page_size: 100 };
         let mut all_results = vec![];
+        let mut total: u64 = 0;
         for reg in &registered {
             let path = std::path::Path::new(&reg.db_path);
             if let Ok(conn) = db::connection::open_existing(path) {
-                if let Ok(mut results) = store::search::pill_find(&conn, &params) {
-                    all_results.append(&mut results);
+                if let Ok(page) = store::search::pill_find(&conn, &params, &wide) {
+                    total = total.saturating_add(page.total);
+                    all_results.extend(page.items);
                 }
             }
         }
@@ -240,7 +265,15 @@ pub async fn pill_search(
                 .partial_cmp(&b.rank)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        ok(all_results)
+        let offset = pagination.offset() as usize;
+        let limit = pagination.limit() as usize;
+        let items = all_results.into_iter().skip(offset).take(limit).collect();
+        ok(Paginated {
+            items,
+            total,
+            page: pagination.page,
+            page_size: pagination.page_size,
+        })
     }
 }
 

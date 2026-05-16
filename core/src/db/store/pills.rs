@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::db::store::id_resolver::resolve_id;
 use crate::db::store::prescriptions;
 use crate::domain::pill::{NewPill, Pill, PillPatch};
+use crate::domain::{Paginated, PaginationParams};
 use crate::error::PillboxError;
 
 // ─── Tipos de resultado ───────────────────────────────────────────────────────
@@ -256,20 +257,54 @@ pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<Option<String>> {
     Ok(Some(id.to_string()))
 }
 
-/// Lista todas las pills de una prescription, ordenadas por fecha de creación.
-pub fn list_by_prescription(conn: &Connection, prescription_id: &str) -> Result<Vec<Pill>> {
+/// Lista pills activas de una prescription (paginado, orden `created_at ASC`).
+pub fn list_by_prescription(
+    conn: &Connection,
+    prescription_id: &str,
+    pagination: &PaginationParams,
+) -> Result<Paginated<Pill>> {
+    let total: u64 = conn.query_row(
+        "SELECT COUNT(*) FROM pills
+         WHERE prescription_id = ?1 AND deleted_at IS NULL",
+        params![prescription_id],
+        |r| r.get(0),
+    )?;
+
+    let limit = pagination.limit() as i64;
+    let offset = pagination.offset() as i64;
+
     let mut stmt = conn.prepare(
         "SELECT id, compound, title, content, prescription_id,
                 author_name, author_email, created_at, updated_at, deleted_at
          FROM pills
-         WHERE prescription_id = ?1
-         ORDER BY created_at ASC, id ASC",
+         WHERE prescription_id = ?1 AND deleted_at IS NULL
+         ORDER BY created_at ASC, id ASC
+         LIMIT ?2 OFFSET ?3",
     )?;
-    let pills = stmt
-        .query_map(params![prescription_id], row_to_pill)?
+    let items = stmt
+        .query_map(params![prescription_id, limit, offset], row_to_pill)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to list pills for prescription")?;
-    Ok(pills)
+
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
+}
+
+/// Cuenta las pills activas (no descartadas) de una prescription.
+///
+/// El caller debe pasar el `prescription_id` ya resuelto (UUID completo).
+pub fn count_active_by_prescription(conn: &Connection, prescription_id: &str) -> Result<u64> {
+    let n: u64 = conn.query_row(
+        "SELECT COUNT(*) FROM pills
+         WHERE prescription_id = ?1 AND deleted_at IS NULL",
+        params![prescription_id],
+        |r| r.get(0),
+    )?;
+    Ok(n)
 }
 
 /// Cuenta el total de pills activas en un bottle (todas sus prescriptions).
@@ -670,17 +705,18 @@ mod tests {
         )
         .unwrap();
 
-        let pills = list_by_prescription(&conn, &rx_id).unwrap();
-        assert_eq!(pills.len(), 2);
-        assert_eq!(pills[0].title, "Decisión de diseño");
-        assert_eq!(pills[1].title, "Segunda pill");
+        let pills = list_by_prescription(&conn, &rx_id, &PaginationParams::default()).unwrap();
+        assert_eq!(pills.items.len(), 2);
+        assert_eq!(pills.items[0].title, "Decisión de diseño");
+        assert_eq!(pills.items[1].title, "Segunda pill");
     }
 
     #[test]
     fn list_by_prescription_empty_for_unknown() {
         let conn = open_in_memory().unwrap();
-        let pills = list_by_prescription(&conn, "rx-inexistente").unwrap();
-        assert!(pills.is_empty());
+        let pills = list_by_prescription(&conn, "rx-inexistente", &PaginationParams::default()).unwrap();
+        assert!(pills.items.is_empty());
+        assert_eq!(pills.total, 0);
     }
 
     #[test]
@@ -720,20 +756,19 @@ mod tests {
     }
 
     #[test]
-    fn list_by_prescription_includes_discarded() {
+    fn list_by_prescription_excludes_discarded() {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, &pill.id).unwrap();
 
-        // list_by_prescription() should now include discarded pills
-        let pills = list_by_prescription(&conn, &rx_id).unwrap();
-        assert_eq!(pills.len(), 1);
-        assert!(pills[0].deleted_at.is_some());
+        let pills = list_by_prescription(&conn, &rx_id, &PaginationParams::default()).unwrap();
+        assert!(pills.items.is_empty());
+        assert_eq!(pills.total, 0);
     }
 
     #[test]
-    fn list_by_prescription_active_and_archived_together() {
+    fn list_by_prescription_only_active() {
         let mut conn = open_in_memory().unwrap();
         let (_, rx_id) = setup(&mut conn);
 
@@ -755,13 +790,10 @@ mod tests {
         .unwrap();
         discard(&mut conn, &pill2.id).unwrap();
 
-        let pills = list_by_prescription(&conn, &rx_id).unwrap();
-        assert_eq!(pills.len(), 2);
-
-        let active_count = pills.iter().filter(|p| p.deleted_at.is_none()).count();
-        let archived_count = pills.iter().filter(|p| p.deleted_at.is_some()).count();
-        assert_eq!(active_count, 1);
-        assert_eq!(archived_count, 1);
+        let pills = list_by_prescription(&conn, &rx_id, &PaginationParams::default()).unwrap();
+        assert_eq!(pills.items.len(), 1);
+        assert_eq!(pills.total, 1);
+        assert!(pills.items.iter().all(|p| p.deleted_at.is_none()));
     }
 
     #[test]

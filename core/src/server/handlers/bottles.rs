@@ -5,25 +5,21 @@ use axum::{
     Json,
 };
 use pillbox::{
-    db::{self, store, store::registered_bottles, store::ListFilter},
-    domain::bottle::{Bottle, NewBottle},
+    db::{self, store, store::registered_bottles},
+    domain::{
+        bottle::{Bottle, NewBottle},
+        PaginationParams,
+    },
     error::PillboxError,
 };
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, conn_for_bottle_with_id, default_30, default_50, err_400_invalid_id,
-    err_404_bottle, err_404_registered_bottle, err_409_ambiguous_id, err_422, err_500, ok,
-    ok_created, open_global_conn, ApiResponse, AppState,
+    conn_for_bottle, conn_for_bottle_with_id, default_30, err_400_invalid_id,
+    err_400_pagination, err_404_bottle, err_404_registered_bottle, err_409_ambiguous_id, err_422,
+    err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
 };
-
-/// Parámetros de query para listar prescripciones de un bottle.
-#[derive(Deserialize)]
-pub struct BottlePrescriptionsParams {
-    #[serde(default = "default_50")]
-    pub limit: u32,
-}
 
 /// Handler `GET /api/bottles/:id` — devuelve un bottle por su UUID.
 pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
@@ -47,7 +43,17 @@ pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<String>) -> Ap
 }
 
 /// Handler `GET /api/bottles` — lista todos los bottles registrados en la DB global.
-pub async fn bottle_list(State(s): State<AppState>) -> ApiResponse {
+///
+/// Acepta `?page=&page_size=`. Como agregamos bottles de múltiples DBs locales,
+/// recolectamos todo, ordenamos por display_name y aplicamos slicing en memoria
+/// para devolver la página solicitada con el `total` real.
+pub async fn bottle_list(
+    State(s): State<AppState>,
+    Query(pagination): Query<PaginationParams>,
+) -> ApiResponse {
+    if let Err(e) = pagination.validate() {
+        return err_400_pagination(&e);
+    }
     let global_conn = match open_global_conn(&s) {
         Ok(c) => c,
         Err(r) => return r,
@@ -86,8 +92,8 @@ pub async fn bottle_list(State(s): State<AppState>) -> ApiResponse {
             Ok(c) => c,
             Err(_) => continue,
         };
-        let bottles = match store::bottles::list(&db_conn) {
-            Ok(b) => b,
+        let bottles = match store::bottles::list(&db_conn, &PaginationParams { page: 1, page_size: 100 }) {
+            Ok(b) => b.items,
             Err(_) => continue,
         };
         for mut bottle in bottles {
@@ -97,7 +103,16 @@ pub async fn bottle_list(State(s): State<AppState>) -> ApiResponse {
     }
 
     all_bottles.sort_by(|a, b| a.display_name.cmp(&b.display_name));
-    ok(all_bottles)
+    let total = all_bottles.len() as u64;
+    let offset = pagination.offset() as usize;
+    let limit = pagination.limit() as usize;
+    let items: Vec<Bottle> = all_bottles.into_iter().skip(offset).take(limit).collect();
+    ok(pillbox::domain::Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+    })
 }
 
 /// Handler `POST /api/bottles` — crea un bottle nuevo y lo registra en la DB global.
@@ -250,17 +265,22 @@ pub async fn bottle_stats(
 }
 
 /// Handler `GET /api/bottles/:id/prescriptions` — lista las prescripciones del bottle.
+///
+/// Acepta `?page=&page_size=`. Sólo devuelve prescripciones activas.
 pub async fn bottle_prescriptions(
     State(s): State<AppState>,
     Path(id): Path<String>,
-    Query(params): Query<BottlePrescriptionsParams>,
+    Query(pagination): Query<PaginationParams>,
 ) -> ApiResponse {
+    if let Err(e) = pagination.validate() {
+        return err_400_pagination(&e);
+    }
     let (conn, full_id) = match conn_for_bottle_with_id(&s, &id) {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::prescriptions::list_by_bottle(&conn, &full_id, params.limit, ListFilter::All) {
-        Ok(rxs) => ok(rxs),
+    match store::prescriptions::list_by_bottle(&conn, &full_id, store::ListFilter::Active, &pagination) {
+        Ok(page) => ok(page),
         Err(e) => err_500(e),
     }
 }
