@@ -15,7 +15,7 @@ Verificar que el modelo usa correctamente todas las herramientas MCP de Pillbox 
 
 1. Abre una sesión nueva de Claude con contexto limpio (sin historial previo).
 2. Asegúrate de que el servidor MCP de Pillbox está corriendo (`pillbox serve` o el MCP configurado en Claude Code).
-3. Copia el contenido de `02_prompt.md` entre las marcas `--- INICIO ---` y `--- FIN ---` y pégalo en el chat.
+3. Copia el contenido de `02_prompt.md` y pégalo en el chat.
 4. Deja que el modelo ejecute todos los pasos sin interrumpirlo, salvo que cometa un error grave.
 5. Al terminar, usa `03_esperado.md` para revisar el resultado con supervisión humana.
 
