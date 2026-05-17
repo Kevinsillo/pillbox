@@ -1,41 +1,76 @@
 //! Servidor HTTP para `pillbox serve`.
 //!
 //! Expone la misma lógica que `pillbox exec` como una REST API en localhost:4242.
-//! Cada request abre una conexión SQLite nueva — WAL mode lo soporta sin pool.
+//! Mantiene un pool r2d2 por DB para reutilizar conexiones entre requests y
+//! evitar bloqueos por exclusión de WAL bajo concurrencia.
 
 mod assets;
 mod handlers;
 
-use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{
+    net::SocketAddr,
+    num::NonZeroUsize,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::Result;
 use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+use lru::LruCache;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use tower_http::cors::{Any, CorsLayer};
 
+use crate::db::{
+    connection::{build_pool, MAX_BOTTLE_POOLS},
+    DbScope,
+};
+
 /// Estado compartido entre todos los handlers.
+///
+/// El pool global se construye eagerly en startup (`serve` siempre necesita
+/// hablar con la DB global para resolver `registered_bottles`). Los pools
+/// por-bottle se construyen lazy en el primer acceso (`lookup-or-create`)
+/// y se mantienen en un LRU con cap `MAX_BOTTLE_POOLS`. Cuando un pool es
+/// desalojado por uno nuevo, r2d2 lo Dropea y cierra sus conexiones; las
+/// queries en vuelo siguen vivas porque sus `PooledConnection` mantienen
+/// el Arc interno del pool.
 #[derive(Clone)]
 pub struct AppState {
     pub db_path: Arc<PathBuf>,
     pub global_db_path: Arc<PathBuf>,
+    pub global_pool: Pool<SqliteConnectionManager>,
+    pub bottle_pools: Arc<Mutex<LruCache<PathBuf, Pool<SqliteConnectionManager>>>>,
 }
 
-/// Arranca el servidor HTTP en `127.0.0.1:<port>`.
-///
-/// Cada request abre su propia conexión SQLite al `db_path` indicado; WAL mode
-/// permite concurrencia sin pool. Se detiene gracefully al recibir CTRL+C o SIGTERM.
-///
-/// # Errors
-///
-/// Retorna error si el bind del puerto falla o si axum no puede servir conexiones.
-pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result<()> {
-    let state = AppState {
-        db_path: Arc::new(db_path),
-        global_db_path: Arc::new(global_db_path),
-    };
+impl AppState {
+    /// Construye un `AppState` listo para servir: pool global eager + LRU vacío
+    /// para los pools por-bottle.
+    ///
+    /// # Errors
+    ///
+    /// Retorna error si la DB global no puede abrirse/migrarse.
+    pub fn build(db_path: PathBuf, global_db_path: PathBuf) -> Result<Self> {
+        let global_pool = build_pool(&global_db_path, DbScope::Global)?;
+        Ok(Self {
+            db_path: Arc::new(db_path),
+            global_db_path: Arc::new(global_db_path),
+            global_pool,
+            bottle_pools: Arc::new(Mutex::new(LruCache::new(
+                NonZeroUsize::new(MAX_BOTTLE_POOLS).expect("MAX_BOTTLE_POOLS must be > 0"),
+            ))),
+        })
+    }
+}
 
+/// Construye el `Router` axum completo (WebUI + API) sobre el `state` dado.
+///
+/// Lo expone como helper público para que `run`, `run_with_listener` y los
+/// tests integration in-process compartan el mismo wiring sin duplicar rutas.
+pub fn build_router(state: AppState) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -128,24 +163,49 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
         .route("/info", get(handlers::info_get))
         .with_state(state.clone());
 
-    let app = Router::new()
+    Router::new()
         .route("/", get(assets::serve_root))
         .nest("/api", api)
         // WebUI — catch-all para SPA routing (debe ir al final)
         .route("/*path", get(assets::serve))
         .layer(cors)
-        .with_state(state);
+        .with_state(state)
+}
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-
-    println!("pillbox serve en http://localhost:{}", port);
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+/// Sirve el router axum sobre un `TcpListener` ya bindeado, con shutdown
+/// graceful por CTRL+C / SIGTERM.
+///
+/// Permite que los tests integration construyan el server in-process bindeando
+/// `127.0.0.1:0` y leyendo el puerto efímero antes de spawnear el future, sin
+/// necesidad de levantar un subproceso `pillbox serve run`.
+///
+/// # Errors
+///
+/// Retorna error si `axum::serve` falla.
+pub async fn run_with_listener(listener: tokio::net::TcpListener, state: AppState) -> Result<()> {
+    let app = build_router(state);
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
-
     Ok(())
+}
+
+/// Arranca el servidor HTTP en `127.0.0.1:<port>`.
+///
+/// Cada request abre su propia conexión SQLite al `db_path` indicado; WAL mode
+/// permite concurrencia sin pool. Se detiene gracefully al recibir CTRL+C o SIGTERM.
+///
+/// # Errors
+///
+/// Retorna error si el bind del puerto falla o si axum no puede servir conexiones.
+pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result<()> {
+    let state = AppState::build(db_path, global_db_path)?;
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    println!("pillbox serve en http://localhost:{}", port);
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    run_with_listener(listener, state).await
 }
 
 /// Señal de apagado graceful: espera CTRL+C o SIGTERM (en Unix).

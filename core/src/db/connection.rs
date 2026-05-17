@@ -1,9 +1,82 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
 
 use crate::db::{migrations, DbScope};
+
+/// Tamaño máximo del pool por DB (servir/HTTP/MCP). Suficiente para los
+/// handlers axum corrientes — los hot-paths van por `spawn_blocking`, así
+/// que el pool sirve picos de concurrencia, no carga sostenida.
+pub const POOL_MAX_SIZE: u32 = 8;
+
+/// Cap del LRU `AppState.bottle_pools` (en `pillbox serve`).
+///
+/// Cada bottle local accedido por HTTP crea un pool r2d2 de hasta
+/// `POOL_MAX_SIZE` conexiones SQLite. Sin cap, una sola sesión `serve` que
+/// itere el registry (e.g. `bottle_list`) acumula pools de N bottles
+/// indefinidamente.
+///
+/// 16 = 2× el flow típico (2-4 agentes MCP activos + WebUI sobre 1-2
+/// bottles + slack). Cuando un pool se desaloja, r2d2 lo Dropea y cierra
+/// sus conexiones; las queries en vuelo mantienen vivo el Arc interno a
+/// través de su `PooledConnection`.
+pub const MAX_BOTTLE_POOLS: usize = 16;
+
+/// Closure de inicialización aplicada a cada nueva conexión del pool.
+///
+/// Centraliza los PRAGMA en un sólo sitio (DRY frente a `configure`) y
+/// permite que `SqliteConnectionManager::with_init` los aplique.
+fn pragma_init(conn: &mut Connection) -> rusqlite::Result<()> {
+    conn.execute_batch(
+        "PRAGMA journal_mode  = WAL;
+         PRAGMA busy_timeout  = 5000;
+         PRAGMA synchronous   = NORMAL;
+         PRAGMA foreign_keys  = ON;
+         PRAGMA auto_vacuum   = INCREMENTAL;
+         PRAGMA cache_size    = -32768;",
+    )
+}
+
+/// Construye un pool r2d2 sobre la DB en `path` y ejecuta las migraciones
+/// del `scope` indicado **una vez**.
+///
+/// Cada conexión del pool aplica los mismos PRAGMA que `configure`
+/// (WAL, busy_timeout=5000, synchronous=NORMAL, foreign_keys=ON,
+/// auto_vacuum=INCREMENTAL, cache_size=-32768). La migración corre sobre la primera
+/// conexión adquirida; gracias a `migrations::run` con `BEGIN IMMEDIATE`
+/// es segura ante concurrencia multi-proceso, así que aunque la abramos
+/// también en otros procesos serializa correctamente.
+///
+/// # Errors
+///
+/// Retorna error si no puede crearse el directorio padre, si el pool no
+/// puede construirse, o si la migración inicial falla.
+pub fn build_pool(path: &Path, scope: DbScope) -> Result<Pool<SqliteConnectionManager>> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create directory {:?}", parent))?;
+        }
+    }
+
+    let manager = SqliteConnectionManager::file(path).with_init(pragma_init);
+    let pool = Pool::builder()
+        .max_size(POOL_MAX_SIZE)
+        .build(manager)
+        .with_context(|| format!("failed to build pool for {:?}", path))?;
+
+    {
+        let conn = pool
+            .get()
+            .with_context(|| format!("failed to acquire pool conn for migrations {:?}", path))?;
+        migrations::run(&conn, scope)?;
+    }
+
+    Ok(pool)
+}
 
 /// Abre una conexión SQLite y aplica las migraciones pendientes para el `scope` indicado.
 ///
@@ -61,7 +134,8 @@ fn configure(conn: &Connection) -> Result<()> {
          PRAGMA busy_timeout  = 5000;
          PRAGMA synchronous   = NORMAL;
          PRAGMA foreign_keys  = ON;
-         PRAGMA auto_vacuum   = INCREMENTAL;",
+         PRAGMA auto_vacuum   = INCREMENTAL;
+         PRAGMA cache_size    = -32768;",
     )
     .context("failed to configure SQLite PRAGMAs")?;
     Ok(())

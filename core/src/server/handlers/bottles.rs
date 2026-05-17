@@ -1,45 +1,53 @@
 //! Handlers HTTP para la entidad Bottle y registered_bottles.
+//!
+//! Toda interacción con rusqlite va envuelta en `tokio::task::spawn_blocking`
+//! para no bloquear el runtime de axum (los workers async son escasos y las
+//! queries de SQLite son síncronas — ver cutover Fase 2, riesgo r2).
 
-use axum::{
-    extract::{Path, Query, State},
-    Json,
-};
-use pillbox::{
-    db::{self, store, store::registered_bottles, DbScope},
+use crate::{
+    db::{store, store::registered_bottles, DbScope},
     domain::{
         bottle::{Bottle, NewBottle},
         PaginationParams,
     },
     error::PillboxError,
 };
+use axum::{
+    extract::{Path, Query, State},
+    Json,
+};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, conn_for_bottle_with_id, default_30, err_400_invalid_id, err_400_pagination,
-    err_404_bottle, err_404_registered_bottle, err_409_ambiguous_id, err_422, err_500, ok,
-    ok_created, open_global_conn, ApiResponse, AppState,
+    blocking, bottle_pool_for, conn_for_bottle, conn_for_bottle_with_id, default_30,
+    err_400_invalid_id, err_400_pagination, err_404_bottle, err_404_registered_bottle,
+    err_409_ambiguous_id, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse,
+    AppState,
 };
 
 /// Handler `GET /api/bottles/:id` — devuelve un bottle por su UUID.
 pub async fn bottle_get(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
-    let conn = match conn_for_bottle(&s, &id) {
-        Ok(c) => c,
-        Err(r) => return r,
-    };
-    match store::bottles::find_by_id(&conn, &id) {
-        Ok(Some(b)) => ok(b),
-        Ok(None) => err_404_bottle(&id),
-        Err(e) => match e.downcast::<PillboxError>() {
-            Ok(PillboxError::AmbiguousId {
-                ref id_prefix,
-                ref candidates,
-            }) => err_409_ambiguous_id(id_prefix, candidates),
-            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
-            Ok(other) => err_500(other.into()),
-            Err(e) => err_500(e),
-        },
-    }
+    blocking(move || {
+        let conn = match conn_for_bottle(&s, &id) {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match store::bottles::find_by_id(&conn, &id) {
+            Ok(Some(b)) => ok(b),
+            Ok(None) => err_404_bottle(&id),
+            Err(e) => match e.downcast::<PillboxError>() {
+                Ok(PillboxError::AmbiguousId {
+                    ref id_prefix,
+                    ref candidates,
+                }) => err_409_ambiguous_id(id_prefix, candidates),
+                Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+                Ok(other) => err_500(other.into()),
+                Err(e) => err_500(e),
+            },
+        }
+    })
+    .await
 }
 
 /// Handler `GET /api/bottles` — lista todos los bottles registrados en la DB global.
@@ -54,103 +62,139 @@ pub async fn bottle_list(
     if let Err(e) = pagination.validate() {
         return err_400_pagination(&e);
     }
-    let global_conn = match open_global_conn(&s) {
-        Ok(c) => c,
-        Err(r) => return r,
-    };
-
-    // registered_bottles es la única fuente de verdad (cubre locales y globales).
-    let registered = match registered_bottles::list(&global_conn) {
-        Ok(r) => r,
-        Err(e) => return err_500(e),
-    };
-
-    let mut all_bottles: Vec<Bottle> = Vec::new();
-
-    for reg in registered {
-        let reg_db_path = std::path::Path::new(&reg.db_path);
-        if !reg_db_path.exists() {
-            let directory = reg_db_path
-                .parent()
-                .and_then(|p| p.parent())
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|| reg.db_path.clone());
-            all_bottles.push(Bottle {
-                id: String::new(),
-                name: reg.name,
-                display_name: reg.display_name,
-                directory,
-                scope: "local".to_string(),
-                created_at: reg.registered_at,
-                last_seen_at: reg.last_seen_at,
-                linked: false,
-                reg_id: Some(reg.id),
-                views: 0,
-            });
-            continue;
-        }
-        let db_conn = match db::connection::open_existing(reg_db_path, DbScope::Local) {
+    blocking(move || {
+        let global_conn = match open_global_conn(&s) {
             Ok(c) => c,
-            Err(_) => continue,
+            Err(r) => return r,
         };
-        let bottles = match store::bottles::list(
-            &db_conn,
-            &PaginationParams {
-                page: 1,
-                page_size: 100,
-            },
-        ) {
-            Ok(b) => b.items,
-            Err(_) => continue,
-        };
-        for mut bottle in bottles {
-            bottle.reg_id = Some(reg.id);
-            all_bottles.push(bottle);
-        }
-    }
 
-    all_bottles.sort_by(|a, b| a.display_name.cmp(&b.display_name));
-    let total = all_bottles.len() as u64;
-    let offset = pagination.offset() as usize;
-    let limit = pagination.limit() as usize;
-    let items: Vec<Bottle> = all_bottles.into_iter().skip(offset).take(limit).collect();
-    ok(pillbox::domain::Paginated {
-        items,
-        total,
-        page: pagination.page,
-        page_size: pagination.page_size,
+        // registered_bottles es la única fuente de verdad (cubre locales y globales).
+        let registered = match registered_bottles::list(&global_conn) {
+            Ok(r) => r,
+            Err(e) => return err_500(e),
+        };
+        drop(global_conn);
+
+        let mut all_bottles: Vec<Bottle> = Vec::new();
+
+        for reg in registered {
+            let reg_db_path = std::path::PathBuf::from(&reg.db_path);
+            if !reg_db_path.exists() {
+                let directory = reg_db_path
+                    .parent()
+                    .and_then(|p| p.parent())
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| reg.db_path.clone());
+                all_bottles.push(Bottle {
+                    id: String::new(),
+                    name: reg.name,
+                    display_name: reg.display_name,
+                    directory,
+                    scope: "local".to_string(),
+                    created_at: reg.registered_at,
+                    last_seen_at: reg.last_seen_at,
+                    linked: false,
+                    reg_id: Some(reg.id),
+                    views: 0,
+                });
+                continue;
+            }
+            // Lookup-or-create del pool del bottle. Si build_pool falla
+            // (DB corrupta, permisos), skipeamos esa entrada igual que
+            // hacía el `open_existing` anterior.
+            let pool = match bottle_pool_for(&s, &reg_db_path) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+            let db_conn = match pool.get() {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            let bottles = match store::bottles::list(
+                &db_conn,
+                &PaginationParams {
+                    page: 1,
+                    page_size: 100,
+                },
+            ) {
+                Ok(b) => b.items,
+                Err(_) => continue,
+            };
+            for mut bottle in bottles {
+                bottle.reg_id = Some(reg.id);
+                all_bottles.push(bottle);
+            }
+        }
+
+        all_bottles.sort_by(|a, b| a.display_name.cmp(&b.display_name));
+        let total = all_bottles.len() as u64;
+        let offset = pagination.offset() as usize;
+        let limit = pagination.limit() as usize;
+        let items: Vec<Bottle> = all_bottles.into_iter().skip(offset).take(limit).collect();
+        ok(crate::domain::Paginated {
+            items,
+            total,
+            page: pagination.page,
+            page_size: pagination.page_size,
+        })
     })
+    .await
 }
 
 /// Handler `POST /api/bottles` — crea un bottle nuevo y lo registra en la DB global.
+///
+/// Política Fase 2: el bottle se materializa en `state.db_path` (cwd del binario
+/// al arrancar `pillbox serve`). HTTP no transporta cwd-por-request; cuando Fase 3
+/// introduzca cwd en el protocolo MCP, los clientes que creen bottles vía MCP
+/// deberán pasar su cwd y este handler tendrá que recibirlo como override.
 pub async fn bottle_create(State(s): State<AppState>, Json(input): Json<NewBottle>) -> ApiResponse {
     if let Err(e) = input.validate() {
         return err_422(e);
     }
-    let scope_for_db = if *s.db_path == *s.global_db_path {
-        DbScope::Global
-    } else {
-        DbScope::Local
-    };
-    let mut conn = match db::connection::open(&s.db_path, scope_for_db).map_err(err_500) {
-        Ok(c) => c,
-        Err(r) => return r,
-    };
-    let bottle = match store::bottles::create(&mut conn, &input) {
-        Ok(b) => b,
-        Err(e) => return err_500(e),
-    };
-    // Registrar en la DB global para que conn_for_bottle pueda resolverlo.
-    if let Ok(global_conn) = open_global_conn(&s) {
-        let _ = registered_bottles::register(
-            &global_conn,
-            &bottle.id,
-            &bottle.name,
-            &bottle.display_name,
-            &s.db_path.to_string_lossy(),
-        );
-    }
-    ok_created(bottle)
+    blocking(move || {
+        let scope_for_db = if *s.db_path == *s.global_db_path {
+            DbScope::Global
+        } else {
+            DbScope::Local
+        };
+        // En el nuevo modelo: si la DB de destino es la global, reusamos el
+        // pool global; si es local, vamos por la caché de pools por path.
+        let bottle = if matches!(scope_for_db, DbScope::Global) {
+            let mut conn = match open_global_conn(&s) {
+                Ok(c) => c,
+                Err(r) => return r,
+            };
+            match store::bottles::create(&mut conn, &input) {
+                Ok(b) => b,
+                Err(e) => return err_500(e),
+            }
+        } else {
+            let pool = match bottle_pool_for(&s, &s.db_path) {
+                Ok(p) => p,
+                Err(r) => return r,
+            };
+            let mut conn = match pool.get() {
+                Ok(c) => c,
+                Err(e) => return err_500(anyhow::anyhow!(e)),
+            };
+            match store::bottles::create(&mut conn, &input) {
+                Ok(b) => b,
+                Err(e) => return err_500(e),
+            }
+        };
+        // Registrar en la DB global para que conn_for_bottle pueda resolverlo.
+        if let Ok(global_conn) = open_global_conn(&s) {
+            let _ = registered_bottles::register(
+                &global_conn,
+                &bottle.id,
+                &bottle.name,
+                &bottle.display_name,
+                &s.db_path.to_string_lossy(),
+            );
+        }
+        ok_created(bottle)
+    })
+    .await
 }
 
 /// Cuerpo JSON para actualizar la ruta de un registered_bottle.
@@ -177,15 +221,18 @@ pub async fn registered_bottle_patch(
         Ok(n) => n,
         Err(_) => return err_404_registered_bottle(&id),
     };
-    let global_conn = match open_global_conn(&s) {
-        Ok(c) => c,
-        Err(r) => return r,
-    };
-    match registered_bottles::update_db_path(&global_conn, reg_id, &body.db_path) {
-        Ok(true) => ok(serde_json::Value::Null),
-        Ok(false) => err_404_registered_bottle(&id),
-        Err(e) => err_500(e),
-    }
+    blocking(move || {
+        let global_conn = match open_global_conn(&s) {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match registered_bottles::update_db_path(&global_conn, reg_id, &body.db_path) {
+            Ok(true) => ok(serde_json::Value::Null),
+            Ok(false) => err_404_registered_bottle(&id),
+            Err(e) => err_500(e),
+        }
+    })
+    .await
 }
 
 /// Handler `DELETE /api/registered_bottles/:id` — elimina un registro de la DB global.
@@ -197,43 +244,51 @@ pub async fn registered_bottle_delete(
         Ok(n) => n,
         Err(_) => return err_404_registered_bottle(&id),
     };
-    let global_conn = match open_global_conn(&s) {
-        Ok(c) => c,
-        Err(r) => return r,
-    };
-    match registered_bottles::unregister(&global_conn, reg_id) {
-        Ok(true) => ok(serde_json::Value::Null),
-        Ok(false) => err_404_registered_bottle(&id),
-        Err(e) => err_500(e),
-    }
+    blocking(move || {
+        let global_conn = match open_global_conn(&s) {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match registered_bottles::unregister(&global_conn, reg_id) {
+            Ok(true) => ok(serde_json::Value::Null),
+            Ok(false) => err_404_registered_bottle(&id),
+            Err(e) => err_500(e),
+        }
+    })
+    .await
 }
 
 /// Handler `DELETE /api/bottles/:id` — elimina un bottle y lo desregistra de la DB global.
 pub async fn bottle_delete(State(s): State<AppState>, Path(id): Path<String>) -> ApiResponse {
-    let mut conn = match conn_for_bottle(&s, &id) {
-        Ok(c) => c,
-        Err(r) => return r,
-    };
-    match store::bottles::delete(&mut conn, &id) {
-        Ok(true) => {
-            if let Ok(global_conn) = open_global_conn(&s) {
-                if let Ok(Some(reg)) = registered_bottles::find_by_bottle_id(&global_conn, &id) {
-                    let _ = registered_bottles::unregister(&global_conn, reg.id);
+    blocking(move || {
+        let mut conn = match conn_for_bottle(&s, &id) {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        match store::bottles::delete(&mut conn, &id) {
+            Ok(true) => {
+                drop(conn);
+                if let Ok(global_conn) = open_global_conn(&s) {
+                    if let Ok(Some(reg)) = registered_bottles::find_by_bottle_id(&global_conn, &id)
+                    {
+                        let _ = registered_bottles::unregister(&global_conn, reg.id);
+                    }
                 }
+                ok(serde_json::Value::Null)
             }
-            ok(serde_json::Value::Null)
+            Ok(false) => err_404_bottle(&id),
+            Err(e) => match e.downcast::<PillboxError>() {
+                Ok(PillboxError::AmbiguousId {
+                    ref id_prefix,
+                    ref candidates,
+                }) => err_409_ambiguous_id(id_prefix, candidates),
+                Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
+                Ok(other) => err_500(other.into()),
+                Err(e) => err_500(e),
+            },
         }
-        Ok(false) => err_404_bottle(&id),
-        Err(e) => match e.downcast::<PillboxError>() {
-            Ok(PillboxError::AmbiguousId {
-                ref id_prefix,
-                ref candidates,
-            }) => err_409_ambiguous_id(id_prefix, candidates),
-            Ok(PillboxError::InvalidId { ref id }) => err_400_invalid_id(id),
-            Ok(other) => err_500(other.into()),
-            Err(e) => err_500(e),
-        },
-    }
+    })
+    .await
 }
 
 /// Parámetros de query para las estadísticas de un bottle.
@@ -249,31 +304,34 @@ pub async fn bottle_stats(
     Path(id): Path<String>,
     Query(params): Query<BottleStatsParams>,
 ) -> ApiResponse {
-    let conn = match conn_for_bottle(&s, &id) {
-        Ok(c) => c,
-        Err(r) => return r,
-    };
-    let open_rx_pill_count = match store::pills::open_rx_pill_count(&conn) {
-        Ok(n) => n,
-        Err(e) => return err_500(e),
-    };
-    let closed_rx_count: i64 = match conn.query_row(
-        "SELECT COUNT(*) FROM prescriptions WHERE ended_at IS NOT NULL AND deleted_at IS NULL",
-        [],
-        |row| row.get(0),
-    ) {
-        Ok(n) => n,
-        Err(e) => return err_500(anyhow::anyhow!(e)),
-    };
-    let pills_per_day = match store::pills::activity_by_day(&conn, params.days) {
-        Ok(v) => v,
-        Err(e) => return err_500(e),
-    };
-    ok(serde_json::json!({
-        "open_rx_pill_count": open_rx_pill_count,
-        "closed_rx_count": closed_rx_count,
-        "pills_per_day": pills_per_day,
-    }))
+    blocking(move || {
+        let conn = match conn_for_bottle(&s, &id) {
+            Ok(c) => c,
+            Err(r) => return r,
+        };
+        let open_rx_pill_count = match store::pills::open_rx_pill_count(&conn) {
+            Ok(n) => n,
+            Err(e) => return err_500(e),
+        };
+        let closed_rx_count: i64 = match conn.query_row(
+            "SELECT COUNT(*) FROM prescriptions WHERE ended_at IS NOT NULL AND deleted_at IS NULL",
+            [],
+            |row| row.get(0),
+        ) {
+            Ok(n) => n,
+            Err(e) => return err_500(anyhow::anyhow!(e)),
+        };
+        let pills_per_day = match store::pills::activity_by_day(&conn, params.days) {
+            Ok(v) => v,
+            Err(e) => return err_500(e),
+        };
+        ok(serde_json::json!({
+            "open_rx_pill_count": open_rx_pill_count,
+            "closed_rx_count": closed_rx_count,
+            "pills_per_day": pills_per_day,
+        }))
+    })
+    .await
 }
 
 /// Handler `GET /api/bottles/:id/prescriptions` — lista las prescripciones del bottle.
@@ -287,17 +345,20 @@ pub async fn bottle_prescriptions(
     if let Err(e) = pagination.validate() {
         return err_400_pagination(&e);
     }
-    let (conn, full_id) = match conn_for_bottle_with_id(&s, &id) {
-        Ok(v) => v,
-        Err(r) => return r,
-    };
-    match store::prescriptions::list_by_bottle(
-        &conn,
-        &full_id,
-        store::ListFilter::All,
-        &pagination,
-    ) {
-        Ok(page) => ok(page),
-        Err(e) => err_500(e),
-    }
+    blocking(move || {
+        let (conn, full_id) = match conn_for_bottle_with_id(&s, &id) {
+            Ok(v) => v,
+            Err(r) => return r,
+        };
+        match store::prescriptions::list_by_bottle(
+            &conn,
+            &full_id,
+            store::ListFilter::All,
+            &pagination,
+        ) {
+            Ok(page) => ok(page),
+            Err(e) => err_500(e),
+        }
+    })
+    .await
 }

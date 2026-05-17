@@ -20,12 +20,40 @@ use axum::{
 use serde::Serialize;
 use serde_json::json;
 
-use pillbox::db;
-use pillbox::db::store::registered_bottles;
-use pillbox::db::DbScope;
-use pillbox::error::PillboxError;
+use std::path::PathBuf;
+
+use r2d2::{Pool, PooledConnection};
+use r2d2_sqlite::SqliteConnectionManager;
+
+use crate::db::connection::build_pool;
+use crate::db::store::registered_bottles;
+use crate::db::DbScope;
+use crate::error::PillboxError;
 
 use super::AppState;
+
+/// Envuelve un bloque síncrono de DB en `spawn_blocking` y mapea el
+/// `JoinError` a `err_500`. Todos los handlers que tocan rusqlite deben
+/// ejecutarse a través de este helper para no bloquear el runtime axum
+/// (queries síncronas + lock de WAL + busy_timeout=5s pueden congelar
+/// workers async durante segundos — ver cutover Fase 2, riesgo r2).
+pub(super) async fn blocking<F>(f: F) -> ApiResponse
+where
+    F: FnOnce() -> ApiResponse + Send + 'static,
+{
+    match tokio::task::spawn_blocking(f).await {
+        Ok(r) => r,
+        Err(e) => err_500(anyhow::anyhow!("join error: {}", e)),
+    }
+}
+
+/// Alias del tipo de conexión que entregan los pools al resto de handlers.
+///
+/// Implementa `Deref<Target = rusqlite::Connection>`, así que las firmas que
+/// antes recibían `&Connection` siguen funcionando. Para callers que necesitan
+/// `&mut Connection` (e.g. `Connection::transaction`), `PooledConnection` también
+/// expone `DerefMut`.
+pub(super) type PooledConn = PooledConnection<SqliteConnectionManager>;
 
 // ─── Tipo de respuesta uniforme ───────────────────────────────────────────────
 
@@ -171,13 +199,33 @@ pub(super) fn err_409_ambiguous_id(prefix: &str, candidates: &[String]) -> ApiRe
     )
 }
 
-/// Abre la DB local del bottle identificado por UUID.
-/// Busca la ruta en registered_bottles de la DB global.
-pub(super) fn conn_for_bottle(
+/// Devuelve (o construye) el pool r2d2 asociado al `path` de un bottle local.
+///
+/// Mantiene un LRU compartido `state.bottle_pools` (Mutex<LruCache>) con cap
+/// `MAX_BOTTLE_POOLS`. Crea un nuevo pool la primera vez que se ve cada path;
+/// cada `get` promociona la entrada al frente del LRU. Cuando se inserta uno
+/// nuevo y el cap está lleno, el menos recientemente usado se Dropea (r2d2
+/// cierra sus conexiones libres; las en uso siguen vivas por el Arc interno).
+pub(super) fn bottle_pool_for(
     s: &AppState,
-    bottle_id: &str,
-) -> Result<rusqlite::Connection, ApiResponse> {
-    let global = db::connection::open(&s.global_db_path, DbScope::Global).map_err(err_500)?;
+    path: &std::path::Path,
+) -> Result<Pool<SqliteConnectionManager>, ApiResponse> {
+    let mut cache = s
+        .bottle_pools
+        .lock()
+        .map_err(|e| err_500(anyhow::anyhow!("bottle_pools mutex poisoned: {}", e)))?;
+    if let Some(p) = cache.get(path) {
+        return Ok(p.clone());
+    }
+    let pool = build_pool(path, DbScope::Local).map_err(err_500)?;
+    cache.put(path.to_path_buf(), pool.clone());
+    Ok(pool)
+}
+
+/// Abre la DB local del bottle identificado por UUID.
+/// Busca la ruta en `registered_bottles` (DB global) y obtiene/crea su pool.
+pub(super) fn conn_for_bottle(s: &AppState, bottle_id: &str) -> Result<PooledConn, ApiResponse> {
+    let global = open_global_conn(s)?;
     let reg = registered_bottles::find_by_bottle_id(&global, bottle_id)
         .map_err(|e| match e.downcast::<PillboxError>() {
             Ok(PillboxError::AmbiguousId {
@@ -189,8 +237,10 @@ pub(super) fn conn_for_bottle(
             Err(e) => err_500(e),
         })?
         .ok_or_else(|| err_404_bottle(bottle_id))?;
-    db::connection::open_existing(std::path::Path::new(&reg.db_path), DbScope::Local)
-        .map_err(err_500)
+    drop(global);
+    let path = PathBuf::from(&reg.db_path);
+    let pool = bottle_pool_for(s, &path)?;
+    pool.get().map_err(|e| err_500(anyhow::anyhow!(e)))
 }
 
 /// Abre la DB del bottle y devuelve la conexión junto con el UUID completo del bottle.
@@ -200,8 +250,8 @@ pub(super) fn conn_for_bottle(
 pub(super) fn conn_for_bottle_with_id(
     s: &AppState,
     bottle_id: &str,
-) -> Result<(rusqlite::Connection, String), ApiResponse> {
-    use pillbox::db::store;
+) -> Result<(PooledConn, String), ApiResponse> {
+    use crate::db::store;
     let conn = conn_for_bottle(s, bottle_id)?;
     match store::bottles::find_by_id(&conn, bottle_id) {
         Ok(Some(b)) => Ok((conn, b.id)),
@@ -210,13 +260,16 @@ pub(super) fn conn_for_bottle_with_id(
     }
 }
 
-/// Abre una conexión a la DB global del sistema.
+/// Devuelve una conexión a la DB global del pool eager construido en startup.
 ///
 /// # Errors
 ///
-/// Retorna `err_500` si la apertura de la conexión falla.
-pub(super) fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {
-    db::connection::open(&state.global_db_path, DbScope::Global).map_err(err_500)
+/// Retorna `err_500` si el pool no puede entregar conexión en `busy_timeout`.
+pub(super) fn open_global_conn(state: &AppState) -> Result<PooledConn, ApiResponse> {
+    state
+        .global_pool
+        .get()
+        .map_err(|e| err_500(anyhow::anyhow!(e)))
 }
 
 /// Valor por defecto 30 para `BottleStatsParams.days`.
