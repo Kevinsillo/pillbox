@@ -116,7 +116,9 @@
     "field_title_placeholder": "Implementar feature X",
     "archived_heading": "Archivadas",
     "archived_badge": "Archivada",
-    "author": "Autor"
+    "author": "Autor",
+    "created_at": "Creado",
+    "last_seen_at": "Visto"
   },
   "prescription_detail": {
     "status_open": "abierta",

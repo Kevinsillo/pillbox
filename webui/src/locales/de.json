@@ -116,7 +116,9 @@
     "field_title_placeholder": "Feature X implementieren",
     "archived_heading": "Archiviert",
     "archived_badge": "Archiviert",
-    "author": "Autor"
+    "author": "Autor",
+    "created_at": "Erstellt",
+    "last_seen_at": "Gesehen"
   },
   "prescription_detail": {
     "status_open": "offen",

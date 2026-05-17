@@ -116,7 +116,9 @@
     "field_title_placeholder": "Implement feature X",
     "archived_heading": "Archived",
     "archived_badge": "Archived",
-    "author": "Author"
+    "author": "Author",
+    "created_at": "Created",
+    "last_seen_at": "Last seen"
   },
   "prescription_detail": {
     "status_open": "open",

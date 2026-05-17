@@ -116,7 +116,9 @@
     "field_title_placeholder": "Implémenter la fonctionnalité X",
     "archived_heading": "Archivées",
     "archived_badge": "Archivée",
-    "author": "Auteur"
+    "author": "Auteur",
+    "created_at": "Créé",
+    "last_seen_at": "Vu"
   },
   "prescription_detail": {
     "status_open": "ouverte",

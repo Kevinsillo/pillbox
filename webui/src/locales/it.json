@@ -116,7 +116,9 @@
     "field_title_placeholder": "Implementare feature X",
     "archived_heading": "Archiviate",
     "archived_badge": "Archiviata",
-    "author": "Autore"
+    "author": "Autore",
+    "created_at": "Creato",
+    "last_seen_at": "Visto"
   },
   "prescription_detail": {
     "status_open": "aperta",
