@@ -112,7 +112,8 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
 pub fn search(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
-        query: String,
+        #[serde(default)]
+        query: Option<String>,
         compound: Option<String>,
         limit: Option<u32>,
         #[serde(default)]
@@ -123,7 +124,7 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
         Err(r) => return r,
     };
     let params = SearchParams {
-        query: req.query,
+        query: req.query.unwrap_or_default(),
         bottle_id: None,
         compound: req.compound,
         fuzzy: req.fuzzy,

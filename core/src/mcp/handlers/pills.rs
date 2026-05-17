@@ -135,7 +135,8 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
 pub fn search(conn: &mut Conn, input: Value) -> Response {
     #[derive(Deserialize)]
     struct In {
-        query: String,
+        #[serde(default)]
+        query: Option<String>,
         bottle_id: Option<String>,
         compound: Option<String>,
         limit: Option<u32>,
@@ -147,7 +148,7 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
         Err(r) => return r,
     };
     let params = SearchParams {
-        query: req.query,
+        query: req.query.unwrap_or_default(),
         bottle_id: req.bottle_id,
         compound: req.compound,
         fuzzy: req.fuzzy,
@@ -560,5 +561,16 @@ mod tests {
         assert!(resp.ok, "expected ok, got {:?}", resp.error);
         // Independientemente del resultado, no debe haberse incrementado.
         assert_eq!(db_views(&conn, "pills", &pill_id), 0);
+    }
+
+    /// `pill_search` debe aceptar `compound` sin `query` (lista por compound).
+    #[test]
+    fn pill_search_accepts_compound_without_query() {
+        let mut conn = open_in_memory().unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let _ = make_pill(&mut conn, &rx_id);
+
+        let resp = super::search(&mut conn, json!({ "compound": "decision" }));
+        assert!(resp.ok, "expected ok, got {:?}", resp.error);
     }
 }

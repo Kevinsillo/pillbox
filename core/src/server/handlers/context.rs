@@ -7,8 +7,8 @@ use pillbox::error::PillboxError;
 use serde::Deserialize;
 
 use super::{
-    conn_for_bottle_with_id, err_400_invalid_id, err_404_bottle, err_409_ambiguous_id, err_500,
-    ok, open_global_conn, ApiResponse, AppState,
+    conn_for_bottle_with_id, err_400_invalid_id, err_404_bottle, err_409_ambiguous_id, err_500, ok,
+    open_global_conn, ApiResponse, AppState,
 };
 
 fn default_8() -> u32 {
@@ -31,7 +31,9 @@ pub async fn context_get(
     // Resolve registered bottle to obtain the on-disk DB path for size metadata.
     let db_size_bytes: u64 = match open_global_conn(&s) {
         Ok(global) => match registered_bottles::find_by_bottle_id(&global, &bottle_id) {
-            Ok(Some(reg)) => std::fs::metadata(&reg.db_path).map(|m| m.len()).unwrap_or(0),
+            Ok(Some(reg)) => std::fs::metadata(&reg.db_path)
+                .map(|m| m.len())
+                .unwrap_or(0),
             Ok(None) => return err_404_bottle(&bottle_id),
             Err(e) => match e.downcast::<PillboxError>() {
                 Ok(PillboxError::AmbiguousId {
