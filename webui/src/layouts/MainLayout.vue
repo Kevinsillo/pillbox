@@ -5,12 +5,13 @@ import { useLocale } from "@/composables/useLocale"
 import { useTheme } from "@/composables/useTheme"
 import type { Bottle } from "@/core/domain/types"
 import { bottlesApi } from "@/core/infrastructure/repositories/BottlesRepository"
-import { metaApi } from "@/core/infrastructure/repositories/MetaRepository"
+import { metaApi, type AppInfo } from "@/core/infrastructure/repositories/MetaRepository"
 import { ElDropdown, ElDropdownItem, ElDropdownMenu, ElOption, ElSelect } from "element-plus"
 import { computed, onMounted, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router"
 import IBox from "~icons/lucide/box"
+import IBug from "~icons/lucide/bug"
 import ILayoutDashboard from "~icons/lucide/layout-dashboard"
 import IMoon from "~icons/lucide/moon"
 import IPill from "~icons/lucide/pill"
@@ -30,7 +31,7 @@ const onBottleChange = () => {
 }
 
 const bottles = ref<Bottle[]>([])
-const appVersion = ref<string>("")
+const info = ref<AppInfo | null>(null)
 
 const linkedBottles = computed(() => bottles.value.filter(b => b.linked))
 
@@ -47,10 +48,27 @@ onMounted(async () => {
         }
     } catch {}
     try {
-        const data = await metaApi.version()
-        appVersion.value = `v${data.version}`
+        info.value = await metaApi.info()
     } catch {}
 })
+
+const handleReportBug = () => {
+    if (!info.value) return
+    const { version, os, arch, family } = info.value
+    const params = new URLSearchParams({
+        template: "bug_report.yml",
+        version: `v${version}`,
+        platform: `${os}/${arch} (${family})`,
+        browser: navigator.userAgent,
+        page: route.fullPath,
+        surface: "WebUI",
+    })
+    window.open(
+        `https://github.com/kevinsillo/pillbox/issues/new?${params.toString()}`,
+        "_blank",
+        "noopener",
+    )
+}
 
 const navItems = [
     { path: "/search", label: "nav.search", icon: ISearch },
@@ -171,8 +189,18 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                     </RouterLink>
                 </nav>
 
-                <div class="px-4 py-3 border-t border-(--border)">
-                    <span class="text-xs text-zinc-600">{{ appVersion }}</span>
+                <div class="flex items-center justify-between px-4 py-3 border-t border-(--border)">
+                    <span class="text-xs text-zinc-600">{{ info ? `v${info.version}` : "" }}</span>
+                    <button
+                        type="button"
+                        :aria-label="t('sidebar.report_bug')"
+                        :title="t('sidebar.report_bug')"
+                        :disabled="!info"
+                        @click="handleReportBug"
+                        class="flex items-center p-1 rounded-md text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    >
+                        <IBug class="w-4 h-4" />
+                    </button>
                 </div>
             </aside>
 

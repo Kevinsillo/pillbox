@@ -7,7 +7,8 @@
   },
   "sidebar": {
     "active_bottle_label": "Aktive Bottle",
-    "no_bottles": "Keine Bottles"
+    "no_bottles": "Keine Bottles",
+    "report_bug": "Fehler melden"
   },
   "locale": {
     "de": "Deutsch"

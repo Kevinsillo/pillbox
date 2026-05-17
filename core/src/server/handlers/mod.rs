@@ -47,9 +47,14 @@ pub(super) fn ok_created(data: impl Serialize) -> ApiResponse {
     ApiResponse(StatusCode::CREATED, json!({ "ok": true, "data": data }))
 }
 
-/// Handler `GET /api/version` — devuelve la versión del binario.
-pub(super) async fn version_get() -> ApiResponse {
-    ok(json!({ "version": env!("CARGO_PKG_VERSION") }))
+/// Handler `GET /api/info` — devuelve versión del binario y datos del entorno (os/arch/family).
+pub(super) async fn info_get() -> ApiResponse {
+    ok(json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "os": std::env::consts::OS,
+        "arch": std::env::consts::ARCH,
+        "family": std::env::consts::FAMILY,
+    }))
 }
 
 /// Construye una respuesta de error con `status`, código `error` y mensaje legible.
@@ -215,4 +220,21 @@ pub(super) fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection,
 /// Valor por defecto 30 para `BottleStatsParams.days`.
 pub(super) fn default_30() -> u32 {
     30
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn info_get_returns_all_fields() {
+        let resp = info_get().await;
+        let body = resp.1;
+        let data = body.get("data").expect("data field present");
+        for key in ["version", "os", "arch", "family"] {
+            let v = data.get(key).unwrap_or_else(|| panic!("missing {key}"));
+            let s = v.as_str().unwrap_or_else(|| panic!("{key} not a string"));
+            assert!(!s.is_empty(), "{key} is empty");
+        }
+    }
 }

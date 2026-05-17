@@ -1,0 +1,95 @@
+name: Bug report
+description: Report a bug in Pillbox
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in the fields below so we can reproduce and fix it quickly.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Fill in each section. Leave a section empty if it does not apply.
+      value: |
+        ## Steps to reproduce
+
+        1.
+        2.
+        3.
+
+        ## Expected behaviour
+
+        ## Actual behaviour
+
+        ## Logs (sanitized)
+
+        ```
+        ```
+
+        ## Additional context
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Drag and drop a screenshot here if applicable.
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Pillbox version
+      placeholder: v0.12.0
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform (server)
+      description: OS, architecture and family where the Pillbox binary runs.
+      placeholder: linux/x86_64 (unix)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      description: Which Pillbox surface triggered the bug.
+      options:
+        - WebUI
+        - CLI
+        - MCP
+        - HTTP API
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Browser user-agent where the WebUI is open. Leave empty for CLI/MCP-only bugs.
+      placeholder: Mozilla/5.0 ...
+
+  - type: input
+    id: page
+    attributes:
+      label: Page URL
+      description: WebUI route where the bug occurred. Leave empty for CLI/MCP-only bugs.
+      placeholder: /bottles/019xxxx

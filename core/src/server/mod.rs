@@ -125,7 +125,7 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
             delete(handlers::registered_bottle_delete),
         )
         // Meta
-        .route("/version", get(handlers::version_get))
+        .route("/info", get(handlers::info_get))
         .with_state(state.clone());
 
     let app = Router::new()
