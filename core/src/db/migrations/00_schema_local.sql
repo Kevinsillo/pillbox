@@ -12,7 +12,7 @@ PRAGMA auto_vacuum   = INCREMENTAL;
 
 -- ─── ENTIDADES PRINCIPALES ───────────────────────────────────────────────────
 
-CREATE TABLE bottles (
+CREATE TABLE IF NOT EXISTS bottles (
     id           TEXT PRIMARY KEY,              -- UUID v7, generado en Rust antes del INSERT
     -- Slug generado automáticamente del nombre de carpeta (lowercase, normalizado).
     -- Inmutable: identidad técnica del bottle. No lo elige el usuario.
@@ -29,7 +29,7 @@ CREATE TABLE bottles (
     views        INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE prescriptions (
+CREATE TABLE IF NOT EXISTS prescriptions (
     id         TEXT PRIMARY KEY,
     bottle_id  TEXT NOT NULL,
     -- Título de la tarea/funcionalidad/bug. Obligatorio: el agente DEBE llamar
@@ -53,13 +53,13 @@ CREATE TABLE prescriptions (
     FOREIGN KEY (bottle_id) REFERENCES bottles(id)
 );
 
-CREATE INDEX idx_rx_bottle  ON prescriptions(bottle_id);
-CREATE INDEX idx_rx_started ON prescriptions(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_rx_bottle  ON prescriptions(bottle_id);
+CREATE INDEX IF NOT EXISTS idx_rx_started ON prescriptions(started_at DESC);
 -- Garantiza que solo puede haber una prescripción abierta (no cerrada ni descartada) por bottle.
-CREATE UNIQUE INDEX idx_rx_open ON prescriptions(bottle_id)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rx_open ON prescriptions(bottle_id)
     WHERE ended_at IS NULL AND deleted_at IS NULL;
 
-CREATE TABLE pills (
+CREATE TABLE IF NOT EXISTS pills (
     id              TEXT PRIMARY KEY,              -- UUID v7, generado en Rust antes del INSERT
     compound        TEXT NOT NULL,
     title           TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 255),
@@ -74,30 +74,30 @@ CREATE TABLE pills (
     FOREIGN KEY (prescription_id) REFERENCES prescriptions(id)
 );
 
-CREATE INDEX idx_pill_compound ON pills(compound)        WHERE deleted_at IS NULL;
-CREATE INDEX idx_pill_rx       ON pills(prescription_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_pill_created  ON pills(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pill_compound ON pills(compound)        WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_pill_rx       ON pills(prescription_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_pill_created  ON pills(created_at DESC);
 
 -- ─── FTS5 ────────────────────────────────────────────────────────────────────
 
-CREATE VIRTUAL TABLE pills_fts USING fts5(
+CREATE VIRTUAL TABLE IF NOT EXISTS pills_fts USING fts5(
     title, content, compound,
     content='pills',
     content_rowid='rowid',
     tokenize='unicode61 remove_diacritics 2'
 );
 
-CREATE TRIGGER pills_ai AFTER INSERT ON pills BEGIN
+CREATE TRIGGER IF NOT EXISTS pills_ai AFTER INSERT ON pills BEGIN
     INSERT INTO pills_fts(rowid, title, content, compound)
     VALUES (new.rowid, new.title, new.content, new.compound);
 END;
 
-CREATE TRIGGER pills_ad AFTER DELETE ON pills BEGIN
+CREATE TRIGGER IF NOT EXISTS pills_ad AFTER DELETE ON pills BEGIN
     INSERT INTO pills_fts(pills_fts, rowid, title, content, compound)
     VALUES ('delete', old.rowid, old.title, old.content, old.compound);
 END;
 
-CREATE TRIGGER pills_au AFTER UPDATE ON pills
+CREATE TRIGGER IF NOT EXISTS pills_au AFTER UPDATE ON pills
 WHEN OLD.title <> NEW.title OR OLD.content <> NEW.content OR OLD.compound <> NEW.compound
 BEGIN
     INSERT INTO pills_fts(pills_fts, rowid, title, content, compound)
@@ -108,10 +108,10 @@ END;
 
 -- ─── VERSIÓN DE SCHEMA ───────────────────────────────────────────────────────
 
-CREATE TABLE schema_migrations (
+CREATE TABLE IF NOT EXISTS schema_migrations (
     version    INTEGER PRIMARY KEY,
     name       TEXT NOT NULL,
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-INSERT INTO schema_migrations (version, name) VALUES (1, 'initial_local');
+INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (1, 'initial_local');

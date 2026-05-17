@@ -19,11 +19,20 @@ const SCHEMA_GLOBAL: &str = include_str!("migrations/00_schema_global.sql");
 /// Si la versión persistida es mayor que la conocida por el binario, falla
 /// (binario más viejo que la DB).
 ///
+/// Concurrencia (multi-proceso):
+/// El check-then-apply se hace dentro de una transacción `BEGIN IMMEDIATE`
+/// para serializar la inicialización: solo un proceso adquiere el lock y
+/// ejecuta la DDL; el resto reintentan (gobernados por `busy_timeout`),
+/// vuelven a leer `current_version` y ven el schema ya aplicado, así que
+/// salen sin hacer nada. La DDL usa `IF NOT EXISTS` por defensa adicional
+/// frente a cualquier ventana de carrera residual.
+///
 /// Nota: en esta fase no hay migraciones incrementales — el salto v0 → v1 se
 /// resuelve aplicando un único archivo elegido por scope.
 pub fn run(conn: &Connection, scope: DbScope) -> Result<()> {
+    // Fast path: si ya está al día, evitamos abrir transacción de escritura
+    // (útil para callers concurrentes — solo el primero coge el lock).
     let current = current_version(conn)?;
-
     if current > CURRENT_SCHEMA_VERSION {
         anyhow::bail!(
             "DB schema v{} found, v{} expected. The pillbox binary is older than the DB.",
@@ -31,18 +40,69 @@ pub fn run(conn: &Connection, scope: DbScope) -> Result<()> {
             CURRENT_SCHEMA_VERSION
         );
     }
-
     if current == CURRENT_SCHEMA_VERSION {
         return Ok(());
     }
 
-    // v0 → v1: aplicar el schema inicial según scope.
+    // Slow path: tomar lock de escritura inmediato y volver a comprobar.
+    // BEGIN IMMEDIATE adquiere el RESERVED lock al instante (no espera al
+    // primer write como BEGIN DEFERRED), evitando "database is locked"
+    // cuando varios procesos arrancan en paralelo.
+    conn.execute_batch("BEGIN IMMEDIATE;")
+        .context("failed to BEGIN IMMEDIATE for migration")?;
+
+    // Re-leer versión bajo el lock — puede que otro proceso acabara
+    // de aplicar la migración mientras esperábamos.
+    let current = match current_version(conn) {
+        Ok(v) => v,
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK;");
+            return Err(e);
+        }
+    };
+
+    if current >= CURRENT_SCHEMA_VERSION {
+        conn.execute_batch("COMMIT;")
+            .context("failed to COMMIT no-op migration tx")?;
+        return Ok(());
+    }
+
     let (sql, label) = match scope {
         DbScope::Local => (SCHEMA_LOCAL, "00_schema_local"),
         DbScope::Global => (SCHEMA_GLOBAL, "00_schema_global"),
     };
 
-    apply(conn, 1, sql).with_context(|| format!("migration {} failed", label))?;
+    // Filtra PRAGMA (no son transaccionables; ya se aplican en configure()).
+    let ddl: String = sql
+        .lines()
+        .filter(|l| !l.trim_start().to_uppercase().starts_with("PRAGMA"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    if let Err(e) = conn
+        .execute_batch(&ddl)
+        .with_context(|| format!("failed to apply migration {} (v1)", label))
+    {
+        let _ = conn.execute_batch("ROLLBACK;");
+        return Err(e);
+    }
+
+    // Marca la migración como aplicada. INSERT OR IGNORE por si la DDL
+    // ya contiene el seed (los schemas actuales lo hacen) — evita duplicate
+    // PK si el archivo seedea schema_migrations directamente.
+    if let Err(e) = conn
+        .execute(
+            "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?1, ?2)",
+            rusqlite::params![CURRENT_SCHEMA_VERSION, label],
+        )
+        .context("failed to record schema_migrations row")
+    {
+        let _ = conn.execute_batch("ROLLBACK;");
+        return Err(e);
+    }
+
+    conn.execute_batch("COMMIT;")
+        .with_context(|| format!("failed to COMMIT migration {} (v1)", label))?;
 
     Ok(())
 }
@@ -66,21 +126,6 @@ fn current_version(conn: &Connection) -> Result<i64> {
     )?;
 
     Ok(version)
-}
-
-/// Ejecuta un bloque SQL de migración dentro de una transacción explícita.
-/// Los PRAGMAs del archivo se omiten aquí — ya se aplicaron en `configure()`.
-fn apply(conn: &Connection, version: i64, sql: &str) -> Result<()> {
-    // Filtra líneas de PRAGMA — no son transaccionables y ya se aplican en configure()
-    let ddl: String = sql
-        .lines()
-        .filter(|l| !l.trim_start().to_uppercase().starts_with("PRAGMA"))
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    conn.execute_batch(&format!("BEGIN;\n{}\nCOMMIT;", ddl))
-        .with_context(|| format!("failed to apply migration v{}", version))?;
-    Ok(())
 }
 
 #[cfg(test)]
