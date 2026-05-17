@@ -7,7 +7,6 @@ mod cmd;
 mod i18n;
 mod mcp;
 mod output;
-mod server;
 
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
