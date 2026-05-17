@@ -14,7 +14,7 @@ pub fn cmd_pill_show(id: &str) -> Result<()> {
     use pillbox::db::{connection, store::pills, DbScope};
 
     let db_path =
-        pillbox::config::resolve_db_path().unwrap_or_else(pillbox::config::global_db_path);
+        pillbox::config::resolve_db_path_from_env().unwrap_or_else(pillbox::config::global_db_path);
 
     if !db_path.exists() {
         output::fmt::db_not_found();

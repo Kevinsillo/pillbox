@@ -60,7 +60,7 @@ pub fn run() -> Result<()> {
         path: local_path.display().to_string(),
     };
 
-    let bottle = pillbox::config::resolve_db_path()
+    let bottle = pillbox::config::resolve_db_path_from_env()
         .and_then(|db_path| {
             let scope = if db_path == global_path {
                 DbScope::Global

@@ -221,10 +221,13 @@ fn write_serve_port(port: u16) -> std::io::Result<()> {
 /// servicios mediante `pillbox serve run --port N`. Bloquea hasta recibir
 /// SIGTERM o CTRL+C.
 pub async fn cmd_serve_run(port: u16) -> Result<()> {
-    let db_path = pillbox::config::resolve_db_path()
+    // Fase 1: serve usa el cwd del proceso. Fase 2 introducirá un pool
+    // cuyo cwd llegará desde la request (X-Pillbox-Cwd) y llamará a
+    // `resolve_db_path(&req_cwd)` directamente.
+    let db_path = pillbox::config::resolve_db_path_from_env()
         .ok_or_else(|| anyhow::anyhow!("{}", t!("serve.error.no_db")))?;
     let global_db_path = pillbox::config::global_db_path();
-    crate::server::run(port, db_path, global_db_path).await
+    pillbox::server::run(port, db_path, global_db_path).await
 }
 
 /// Instala el servidor HTTP como servicio del sistema.

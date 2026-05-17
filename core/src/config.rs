@@ -3,7 +3,7 @@
 //! Centraliza todas las rutas del sistema (`~/.pillbox/`, `.pillbox/`) y
 //! los límites de validación usados en múltiples módulos.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Puerto por defecto del servidor HTTP.
 pub const DEFAULT_PORT: u16 = 4242;
@@ -23,24 +23,29 @@ pub const LOCAL_DIR: &str = ".pillbox";
 /// Nombre del fichero de base de datos.
 pub const DB_FILENAME: &str = "pillbox.db";
 
-/// Resuelve la ruta de la DB según el contexto de ejecución.
+/// Resuelve la ruta de la DB según el `cwd` indicado.
 ///
 /// Orden de prioridad:
-/// 1. `./.pillbox/pillbox.db` — DB local del proyecto (si existe)
+/// 1. `{cwd}/.pillbox/pillbox.db` — DB local del proyecto (si existe)
 /// 2. `~/.pillbox/pillbox.db` — DB global del usuario
 ///
 /// Si ninguna existe, devuelve `None`. El caller debe devolver un error claro al usuario:
 /// "DB global no encontrada. Reinstala con: curl -fsSL .../install.sh | bash"
 /// No se crea ninguna DB silenciosamente fuera del instalador (`install.sh`).
-pub fn resolve_db_path() -> Option<PathBuf> {
-    let local = local_db_path();
+///
+/// El parámetro `cwd` se introduce para permitir a Fases 2/3 inyectar el
+/// directorio de trabajo del cliente (axum request, MCP loop) en vez de
+/// confiar en `std::env::current_dir()` del proceso servidor. En Fase 1 los
+/// callers existentes usan el wrapper [`resolve_db_path_from_env`] que sigue
+/// leyendo `current_dir()`.
+pub fn resolve_db_path(cwd: &Path) -> Option<PathBuf> {
+    let local = cwd.join(LOCAL_DIR).join(DB_FILENAME);
     let global = global_db_path();
 
     if local.exists() {
         // Si cwd == $HOME, la ruta local y la global apuntan al mismo archivo.
         // En ese caso, tratar como global para no confundir al caller.
-        let abs_local = std::env::current_dir().ok()?.join(&local);
-        if abs_local != global {
+        if local != global {
             return Some(local);
         }
     }
@@ -50,6 +55,25 @@ pub fn resolve_db_path() -> Option<PathBuf> {
     }
 
     None
+}
+
+/// Wrapper que invoca [`resolve_db_path`] usando `std::env::current_dir()`.
+///
+/// Compatibilidad para callers que aún no propagan `cwd` explícitamente
+/// (subcomandos CLI one-shot, `pillbox serve` en Fase 1, `mcp::run` en Fase 1).
+/// Fases 2 y 3 migrarán estos call-sites a [`resolve_db_path`] con el cwd
+/// real del cliente — ver matriz en el design pill.
+///
+/// Callers actuales que dependen de este wrapper (Fase 1):
+/// - `cmd::shared::open_db_with_path` — todos los subcomandos CLI one-shot
+/// - `cmd::pill::cmd_pill_show`
+/// - `cmd::status::run`
+/// - `cmd::bottle::*` (vinculación)
+/// - `cmd::serve::cmd_serve_run` (Fase 2 lo cambia por pool con cwd-driven)
+/// - `mcp::execute` (Fase 3 lo cambia por loop con cwd en Request)
+pub fn resolve_db_path_from_env() -> Option<PathBuf> {
+    let cwd = std::env::current_dir().ok()?;
+    resolve_db_path(&cwd)
 }
 
 /// Ruta de la DB local del proyecto: `./.pillbox/pillbox.db`

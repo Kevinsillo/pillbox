@@ -5,14 +5,14 @@ use indicatif::{ProgressBar, ProgressStyle};
 use rust_i18n::t;
 use std::time::Duration;
 
-/// Abre la DB resuelta por [`pillbox::config::resolve_db_path`] y devuelve la conexión y su ruta.
+/// Abre la DB resuelta por [`pillbox::config::resolve_db_path_from_env`] y devuelve la conexión y su ruta.
 ///
 /// # Errors
 ///
 /// Devuelve error si no se encuentra ninguna DB (global ni local).
 pub fn open_resolved_db() -> Result<(rusqlite::Connection, std::path::PathBuf)> {
     use pillbox::db::DbScope;
-    let path = pillbox::config::resolve_db_path()
+    let path = pillbox::config::resolve_db_path_from_env()
         .ok_or_else(|| anyhow::anyhow!("{}", t!("db.open_not_found")))?;
     let abs = path
         .canonicalize()

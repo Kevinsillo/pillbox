@@ -727,9 +727,13 @@ mod tests {
         )
         .unwrap();
 
-        let pills =
-            list_by_prescription(&conn, &rx_id, ListFilter::Active, &PaginationParams::default())
-                .unwrap();
+        let pills = list_by_prescription(
+            &conn,
+            &rx_id,
+            ListFilter::Active,
+            &PaginationParams::default(),
+        )
+        .unwrap();
         assert_eq!(pills.items.len(), 2);
         assert_eq!(pills.items[0].title, "Segunda pill");
         assert_eq!(pills.items[1].title, "Decisión de diseño");
@@ -796,14 +800,19 @@ mod tests {
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, &pill.id).unwrap();
 
-        let pills =
-            list_by_prescription(&conn, &rx_id, ListFilter::Active, &PaginationParams::default())
-                .unwrap();
+        let pills = list_by_prescription(
+            &conn,
+            &rx_id,
+            ListFilter::Active,
+            &PaginationParams::default(),
+        )
+        .unwrap();
         assert!(pills.items.is_empty());
         assert_eq!(pills.total, 0);
 
-        let all = list_by_prescription(&conn, &rx_id, ListFilter::All, &PaginationParams::default())
-            .unwrap();
+        let all =
+            list_by_prescription(&conn, &rx_id, ListFilter::All, &PaginationParams::default())
+                .unwrap();
         assert_eq!(all.items.len(), 1);
         assert_eq!(all.total, 1);
         assert!(all.items[0].deleted_at.is_some());
@@ -832,9 +841,13 @@ mod tests {
         .unwrap();
         discard(&mut conn, &pill2.id).unwrap();
 
-        let pills =
-            list_by_prescription(&conn, &rx_id, ListFilter::Active, &PaginationParams::default())
-                .unwrap();
+        let pills = list_by_prescription(
+            &conn,
+            &rx_id,
+            ListFilter::Active,
+            &PaginationParams::default(),
+        )
+        .unwrap();
         assert_eq!(pills.items.len(), 1);
         assert_eq!(pills.total, 1);
         assert!(pills.items.iter().all(|p| p.deleted_at.is_none()));

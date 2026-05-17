@@ -44,10 +44,6 @@ enum Command {
     /// Estado global: DBs, bottle activo, servidor, MCP y skill.
     Status,
 
-    /// Lee JSON de stdin, ejecuta la operación y escribe JSON en stdout (usado por el MCP).
-    #[command(hide = true)]
-    Exec,
-
     /// Gestiona el servidor HTTP.
     Serve {
         #[command(subcommand)]
@@ -256,7 +252,11 @@ enum LangCommand {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Logs SIEMPRE a stderr — stdout queda exclusivamente para el protocolo MCP
+    // (JSON-RPC line-delimited). Cualquier byte de tracing que se filtre por
+    // stdout rompe al cliente MCP.
     tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
                 .add_directive(tracing::Level::WARN.into()),
@@ -282,7 +282,6 @@ async fn main() -> Result<()> {
     match cli.command {
         None => cmd_root_help(),
         Some(Command::Status) => cmd::status::run(),
-        Some(Command::Exec) => mcp::run(),
         Some(Command::Serve { cmd }) => match cmd {
             Some(ServeCommand::Run { port }) => cmd::serve::cmd_serve_run(port).await,
             Some(ServeCommand::Install { port }) => cmd::serve::cmd_serve_install(port),

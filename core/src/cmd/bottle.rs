@@ -522,7 +522,7 @@ pub fn cmd_migrate_help(help: &str) -> Result<()> {
     let global_path = pillbox::config::global_db_path();
     let local_path = pillbox::config::local_db_path();
 
-    let bottle_name: Option<String> = pillbox::config::resolve_db_path()
+    let bottle_name: Option<String> = pillbox::config::resolve_db_path_from_env()
         .and_then(|db_path| {
             let scope = if db_path == global_path {
                 DbScope::Global
