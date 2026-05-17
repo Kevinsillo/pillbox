@@ -16,6 +16,29 @@ use crate::mcp::response::{
     Response,
 };
 
+/// Resuelve un `bottle_id` opcional recibido por MCP (puede llegar como id
+/// corto de 12 chars sin guiones) al UUID canónico almacenado en la DB.
+///
+/// Devuelve `Ok(None)` si la entrada es `None`. Devuelve `Err(Response)` con
+/// `bottle_not_found` si el id no resuelve, o el error nativo si es inválido
+/// o ambiguo.
+fn resolve_bottle_filter(
+    conn: &Conn,
+    bottle_id: Option<String>,
+) -> std::result::Result<Option<String>, Response> {
+    let Some(id) = bottle_id else {
+        return Ok(None);
+    };
+    match store::id_resolver::resolve_id(conn, "bottles", &id) {
+        Ok(Some(canonical)) => Ok(Some(canonical)),
+        Ok(None) => Err(Response::err(
+            "bottle_not_found",
+            format!("no bottle matches id '{}'", id),
+        )),
+        Err(e) => Err(anyhow_to_response(e)),
+    }
+}
+
 /// Crea una pill nueva a partir de los datos del input y la persiste en la DB.
 ///
 /// # Errors
@@ -147,9 +170,13 @@ pub fn search(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
+    let bottle_id = match resolve_bottle_filter(conn, req.bottle_id) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
     let params = SearchParams {
         query: req.query.unwrap_or_default(),
-        bottle_id: req.bottle_id,
+        bottle_id,
         compound: req.compound,
         fuzzy: req.fuzzy,
     };
@@ -181,8 +208,12 @@ pub fn compounds(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
+    let bottle_id = match resolve_bottle_filter(conn, req.bottle_id) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
     let limit = req.limit.unwrap_or(50).min(200);
-    match store::pills::distinct_compounds(conn, req.bottle_id.as_deref(), limit) {
+    match store::pills::distinct_compounds(conn, bottle_id.as_deref(), limit) {
         Ok(rows) => {
             let entries: Vec<_> = rows
                 .into_iter()
@@ -572,5 +603,61 @@ mod tests {
 
         let resp = super::search(&mut conn, json!({ "compound": "decision" }));
         assert!(resp.ok, "expected ok, got {:?}", resp.error);
+    }
+
+    fn short_id(id: &str) -> String {
+        id.replace('-', "").chars().take(12).collect()
+    }
+
+    /// Regresión: `pill_search` con `bottle_id` corto (formato MCP) debe
+    /// encontrar las pills del bottle. Antes del fix devolvía 0 porque el
+    /// handler no resolvía el id corto a UUID canónico antes del WHERE.
+    #[test]
+    fn pill_search_resolves_short_bottle_id() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let (bottle_id, rx_id) = setup(&mut conn);
+        let _ = make_pill(&mut conn, &rx_id);
+
+        let short = short_id(&bottle_id);
+        let resp = super::search(
+            &mut conn,
+            json!({ "query": "prueba", "bottle_id": short }),
+        );
+        assert!(resp.ok, "expected ok, got {:?}", resp.error);
+        let items = resp.data.unwrap();
+        let arr = items.as_array().expect("expected array");
+        assert_eq!(arr.len(), 1, "expected 1 result with short bottle_id");
+    }
+
+    /// Regresión: `pill_search` con `bottle_id` que no resuelve devuelve
+    /// `bottle_not_found` (en lugar del antiguo "0 resultados silencioso").
+    #[test]
+    fn pill_search_bottle_not_found() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let (_, rx_id) = setup(&mut conn);
+        let _ = make_pill(&mut conn, &rx_id);
+
+        let resp = super::search(
+            &mut conn,
+            json!({ "query": "prueba", "bottle_id": "deadbeefdead" }),
+        );
+        assert!(!resp.ok);
+        assert_eq!(resp.error.as_deref(), Some("bottle_not_found"));
+    }
+
+    /// Regresión: `pill_compounds` con `bottle_id` corto debe agregar las
+    /// pills del bottle. Antes del fix devolvía vacío.
+    #[test]
+    fn pill_compounds_resolves_short_bottle_id() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let (bottle_id, rx_id) = setup(&mut conn);
+        let _ = make_pill(&mut conn, &rx_id);
+
+        let short = short_id(&bottle_id);
+        let resp = super::compounds(&mut conn, json!({ "bottle_id": short }));
+        assert!(resp.ok, "expected ok, got {:?}", resp.error);
+        let arr = resp.data.unwrap();
+        let arr = arr.as_array().expect("expected array");
+        assert!(!arr.is_empty(), "expected at least one compound");
     }
 }
