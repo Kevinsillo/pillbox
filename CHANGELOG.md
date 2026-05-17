@@ -1,3 +1,21 @@
+## [0.13.0] - 2026-05-17
+
+### 🚀 Features
+
+- *(webui)* Menú de prompts para agente en bottle/rx/pill/capsule
+- *(views)* Contador de vistas por lectura MCP en bottles/prescriptions/pills/capsules
+- *(webui)* Añadir widget de tamaño de la base de datos en el dashboard
+- *(webui)* Botón en sidebar para reportar bugs vía issue form de GitHub
+
+### 🐛 Bug Fixes
+
+- *(webui)* Scroll horizontal en tablas del markdown
+- *(mcp)* Pill_search y capsule_search aceptan compound sin query
+
+### 🎨 Styling
+
+- *(webui)* Quitar transition-colors en componentes y vistas
+
 ## [0.12.0] - 2026-05-16
 
 ### 🚀 Features
@@ -28,6 +46,10 @@
 ### 🧪 Testing
 
 - *(ids)* Añadir cobertura de resolución por prefijo de 12 chars
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.12.0
 
 ## [0.11.0] - 2026-05-11
 
