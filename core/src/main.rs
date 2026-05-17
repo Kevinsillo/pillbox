@@ -228,6 +228,12 @@ enum McpCommand {
     Install,
     /// Desinstala el servidor MCP.
     Uninstall,
+    /// Arranca el loop persistente MCP (NDJSON sobre stdin/stdout).
+    ///
+    /// Invocado por el wrapper TS (`pillboxExec`) como subproceso singleton.
+    /// No diseñado para uso interactivo.
+    #[command(hide = true)]
+    Run,
 }
 
 #[derive(Subcommand)]
@@ -340,6 +346,7 @@ async fn main() -> Result<()> {
         Some(Command::Mcp { cmd }) => match cmd {
             Some(McpCommand::Install) => cmd::mcp::cmd_mcp_install(),
             Some(McpCommand::Uninstall) => cmd::mcp::cmd_mcp_uninstall(),
+            Some(McpCommand::Run) => cmd::mcp::cmd_mcp_run(),
             None => cmd_mcp_status(),
         },
         Some(Command::Skill { cmd }) => match cmd {

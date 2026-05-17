@@ -42,6 +42,15 @@ pub fn cmd_mcp_install() -> Result<()> {
     Ok(())
 }
 
+/// Arranca el loop persistente NDJSON sobre stdin/stdout.
+///
+/// Bloquea hasta que el cliente cierre stdin (EOF). Toda la lógica vive
+/// en `crate::mcp::run`; este wrapper sólo existe para enganchar el match
+/// del subcomando en `main`.
+pub fn cmd_mcp_run() -> Result<()> {
+    crate::mcp::run()
+}
+
 /// Desinstala el servidor MCP eliminando su directorio y la entrada en `~/.claude.json`.
 pub fn cmd_mcp_uninstall() -> Result<()> {
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
