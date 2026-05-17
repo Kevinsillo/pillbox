@@ -451,6 +451,7 @@ mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
     use crate::db::store::{bottles, prescriptions};
+    use crate::db::DbScope;
     use crate::domain::bottle::{BottleScope, NewBottle};
     use crate::domain::pill::PillPatch;
     use crate::domain::prescription::NewPrescription;
@@ -494,7 +495,7 @@ mod tests {
 
     #[test]
     fn take_resolves_12char_prescription_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
 
@@ -510,7 +511,7 @@ mod tests {
 
     #[test]
     fn take_short_prescription_id_not_found() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, _rx_id) = setup(&mut conn);
 
         let mut input = sample_pill("019dca5fc003");
@@ -521,7 +522,7 @@ mod tests {
 
     #[test]
     fn take_and_read() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         let input = sample_pill(&rx_id);
@@ -539,7 +540,7 @@ mod tests {
 
     #[test]
     fn take_closed_prescription_fails() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         prescriptions::close(&mut conn, &rx_id).unwrap();
 
@@ -551,7 +552,7 @@ mod tests {
 
     #[test]
     fn pill_revise_blocked_on_closed_prescription() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         // Crear pill en rx abierta
@@ -587,7 +588,7 @@ mod tests {
 
     #[test]
     fn pill_discard_blocked_on_closed_prescription() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
@@ -610,7 +611,7 @@ mod tests {
 
     #[test]
     fn revise_partial_patch() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
@@ -633,7 +634,7 @@ mod tests {
 
     #[test]
     fn discard_soft_deletes() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
@@ -647,7 +648,7 @@ mod tests {
 
     #[test]
     fn discard_twice_returns_none() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
 
@@ -657,7 +658,7 @@ mod tests {
 
     #[test]
     fn read_missing_returns_none() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         assert!(read(&conn, "00000000-0000-0000-0000-000000000000")
             .unwrap()
             .is_none());
@@ -665,7 +666,7 @@ mod tests {
 
     #[test]
     fn revise_missing_returns_none() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let result = revise(
             &mut conn,
             "00000000-0000-0000-0000-000000000000",
@@ -681,7 +682,7 @@ mod tests {
 
     #[test]
     fn revise_discarded_returns_none() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, &pill.id).unwrap();
@@ -701,7 +702,7 @@ mod tests {
 
     #[test]
     fn list_by_prescription_returns_ordered_pills() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         take(&mut conn, &sample_pill(&rx_id)).unwrap();
@@ -726,7 +727,7 @@ mod tests {
 
     #[test]
     fn list_by_prescription_empty_for_unknown() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         let pills =
             list_by_prescription(&conn, "rx-inexistente", &PaginationParams::default()).unwrap();
         assert!(pills.items.is_empty());
@@ -735,7 +736,7 @@ mod tests {
 
     #[test]
     fn hard_delete_pill_removes_row() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
@@ -757,14 +758,14 @@ mod tests {
 
     #[test]
     fn hard_delete_nonexistent_pill_returns_none() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let result = hard_delete(&mut conn, "00000000-0000-0000-0000-000000000000").unwrap();
         assert_eq!(result, None);
     }
 
     #[test]
     fn read_excludes_discarded() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, &pill.id).unwrap();
@@ -775,7 +776,7 @@ mod tests {
 
     #[test]
     fn list_by_prescription_excludes_discarded() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, &pill.id).unwrap();
@@ -787,7 +788,7 @@ mod tests {
 
     #[test]
     fn list_by_prescription_only_active() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         // Active pill
@@ -816,7 +817,7 @@ mod tests {
 
     #[test]
     fn read_any_returns_archived_pill() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, &pill.id).unwrap();
@@ -828,7 +829,7 @@ mod tests {
 
     #[test]
     fn read_excludes_archived_but_read_any_does_not() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, &pill.id).unwrap();
@@ -839,7 +840,7 @@ mod tests {
 
     #[test]
     fn read_by_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         let short = result
@@ -854,7 +855,7 @@ mod tests {
 
     #[test]
     fn revise_by_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         let short = result
@@ -879,7 +880,7 @@ mod tests {
 
     #[test]
     fn discard_by_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let result = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         let short = result
@@ -895,7 +896,7 @@ mod tests {
 
     #[test]
     fn read_too_short_returns_invalid_id() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         let err = read(&conn, "abc").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::InvalidId { .. }));
@@ -903,7 +904,7 @@ mod tests {
 
     #[test]
     fn distinct_compounds_orders_by_count_desc_then_compound_asc() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (bottle_id_1, rx_id_1) = setup(&mut conn);
 
         // bottle 1: 2x "alpha", 1x "beta"
@@ -993,7 +994,7 @@ mod tests {
 
     #[test]
     fn distinct_compounds_tiebreak_alphabetical() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
 
         // Dos compounds con mismo count → alfabético ASC.
@@ -1023,7 +1024,7 @@ mod tests {
 
     #[test]
     fn read_ambiguous_returns_ambiguous_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         conn.execute(
             "INSERT INTO pills (id, compound, title, content, prescription_id)

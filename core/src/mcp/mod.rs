@@ -59,12 +59,19 @@ fn execute(raw: &str) -> Result<Response> {
     let req: Request =
         serde_json::from_str(raw).map_err(|e| anyhow::anyhow!("request_parse_error: {}", e))?;
 
-    let path = if CAPSULE_TOOLS.contains(&req.tool.as_str()) {
-        config::global_db_path()
+    let (path, scope) = if CAPSULE_TOOLS.contains(&req.tool.as_str()) {
+        (config::global_db_path(), db::DbScope::Global)
     } else {
-        config::resolve_db_path().ok_or_else(|| anyhow::anyhow!("no_db: no Pillbox DB found"))?
+        let p = config::resolve_db_path()
+            .ok_or_else(|| anyhow::anyhow!("no_db: no Pillbox DB found"))?;
+        let scope = if p == config::global_db_path() {
+            db::DbScope::Global
+        } else {
+            db::DbScope::Local
+        };
+        (p, scope)
     };
 
-    let mut conn = db::connection::open(&path)?;
+    let mut conn = db::connection::open(&path, scope)?;
     Ok(dispatch::dispatch(&mut conn, &req.tool, req.input))
 }

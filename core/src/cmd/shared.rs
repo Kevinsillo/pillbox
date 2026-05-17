@@ -11,12 +11,21 @@ use std::time::Duration;
 ///
 /// Devuelve error si no se encuentra ninguna DB (global ni local).
 pub fn open_resolved_db() -> Result<(rusqlite::Connection, std::path::PathBuf)> {
+    use pillbox::db::DbScope;
     let path = pillbox::config::resolve_db_path()
         .ok_or_else(|| anyhow::anyhow!("{}", t!("db.open_not_found")))?;
     let abs = path
         .canonicalize()
         .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default().join(&path));
-    let conn = pillbox::db::connection::open(&abs)?;
+    // Inferir scope comparando con global_db_path (canónico si existe).
+    let global_path = pillbox::config::global_db_path();
+    let global_canon = global_path.canonicalize().unwrap_or(global_path);
+    let scope = if abs == global_canon {
+        DbScope::Global
+    } else {
+        DbScope::Local
+    };
+    let conn = pillbox::db::connection::open(&abs, scope)?;
     Ok((conn, abs))
 }
 
@@ -33,9 +42,10 @@ pub fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
     use pillbox::db::{
         connection,
         store::{bottles, registered_bottles},
+        DbScope,
     };
     let global_path = pillbox::config::global_db_path();
-    let global_conn = connection::open(&global_path)?;
+    let global_conn = connection::open(&global_path, DbScope::Global)?;
     let current = std::env::current_dir()?;
 
     let mut best: Option<(usize, pillbox::domain::bottle::Bottle)> = None;
@@ -70,7 +80,7 @@ pub fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
             if current.starts_with(dir) {
                 let len = dir.to_string_lossy().len();
                 if best.as_ref().is_none_or(|(l, _)| len > *l) {
-                    if let Ok(local_conn) = connection::open(db_path) {
+                    if let Ok(local_conn) = connection::open(db_path, DbScope::Local) {
                         if let Ok(Some(bottle)) = bottles::find_by_id(&local_conn, &reg.bottle_id) {
                             best = Some((len, bottle));
                         }

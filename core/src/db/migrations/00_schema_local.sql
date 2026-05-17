@@ -1,4 +1,6 @@
--- Fase 1: Schema inicial completo de Pillbox
+-- Schema inicial — DB LOCAL (proyecto)
+-- Tablas: bottles, prescriptions, pills, pills_fts, schema_migrations.
+-- NO incluye: capsules, capsules_fts, registered_bottles (esos viven solo en la DB global).
 
 -- ─── PRAGMA ──────────────────────────────────────────────────────────────────
 
@@ -76,20 +78,6 @@ CREATE INDEX idx_pill_compound ON pills(compound)        WHERE deleted_at IS NUL
 CREATE INDEX idx_pill_rx       ON pills(prescription_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pill_created  ON pills(created_at DESC);
 
-CREATE TABLE capsules (
-    id         TEXT PRIMARY KEY,                   -- UUID v7, generado en Rust antes del INSERT
-    compound   TEXT NOT NULL,
-    title      TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 255),
-    content    TEXT NOT NULL CHECK (length(content) BETWEEN 1 AND 5000),
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT,
-    views      INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX idx_cap_compound ON capsules(compound)  WHERE deleted_at IS NULL;
-CREATE INDEX idx_cap_created  ON capsules(created_at DESC);
-
 -- ─── FTS5 ────────────────────────────────────────────────────────────────────
 
 CREATE VIRTUAL TABLE pills_fts USING fts5(
@@ -118,48 +106,6 @@ BEGIN
     VALUES (new.rowid, new.title, new.content, new.compound);
 END;
 
-CREATE VIRTUAL TABLE capsules_fts USING fts5(
-    title, content, compound,
-    content='capsules',
-    content_rowid='rowid',
-    tokenize='unicode61 remove_diacritics 2'
-);
-
-CREATE TRIGGER capsules_ai AFTER INSERT ON capsules BEGIN
-    INSERT INTO capsules_fts(rowid, title, content, compound)
-    VALUES (new.rowid, new.title, new.content, new.compound);
-END;
-
-CREATE TRIGGER capsules_ad AFTER DELETE ON capsules BEGIN
-    INSERT INTO capsules_fts(capsules_fts, rowid, title, content, compound)
-    VALUES ('delete', old.rowid, old.title, old.content, old.compound);
-END;
-
-CREATE TRIGGER capsules_au AFTER UPDATE ON capsules
-WHEN OLD.title <> NEW.title OR OLD.content <> NEW.content OR OLD.compound <> NEW.compound
-BEGIN
-    INSERT INTO capsules_fts(capsules_fts, rowid, title, content, compound)
-    VALUES ('delete', old.rowid, old.title, old.content, old.compound);
-    INSERT INTO capsules_fts(rowid, title, content, compound)
-    VALUES (new.rowid, new.title, new.content, new.compound);
-END;
-
--- ─── REGISTRY DE BOTTLES LOCALES (solo en DB global) ────────────────────────
--- Esta tabla solo tiene sentido en ~/.pillbox/pillbox.db.
--- En DBs locales existe pero permanece vacía.
-
-CREATE TABLE registered_bottles (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    bottle_id     TEXT NOT NULL,             -- UUID del bottle en la DB local
-    name          TEXT NOT NULL,             -- Nombre normalizado del bottle
-    display_name  TEXT NOT NULL,             -- Nombre original para mostrar
-    db_path       TEXT NOT NULL UNIQUE,      -- Ruta absoluta a la DB local
-    registered_at TEXT NOT NULL DEFAULT (datetime('now')),
-    last_seen_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX idx_reg_name ON registered_bottles(name);
-
 -- ─── VERSIÓN DE SCHEMA ───────────────────────────────────────────────────────
 
 CREATE TABLE schema_migrations (
@@ -168,4 +114,4 @@ CREATE TABLE schema_migrations (
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-INSERT INTO schema_migrations (version, name) VALUES (1, 'initial');
+INSERT INTO schema_migrations (version, name) VALUES (1, 'initial_local');

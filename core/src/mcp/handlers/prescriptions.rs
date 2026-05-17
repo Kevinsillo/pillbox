@@ -121,7 +121,7 @@ pub fn discard(conn: &mut Conn, input: Value) -> Response {
 #[cfg(test)]
 mod tests {
     use pillbox::{
-        db::{connection::open_in_memory, store},
+        db::{connection::open_in_memory, store, DbScope},
         domain::{
             bottle::{BottleScope, NewBottle},
             prescription::NewPrescription,
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn read_resolves_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "mcp-rx-read");
         let rx_id = make_rx(&mut conn, &bottle_id, "Test session");
         let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn close_resolves_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "mcp-rx-close");
         let rx_id = make_rx(&mut conn, &bottle_id, "Close session");
         let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn discard_resolves_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "mcp-rx-discard");
         let rx_id = make_rx(&mut conn, &bottle_id, "Discard session");
         let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn read_returns_invalid_id_when_too_short() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let response = super::read(&mut conn, json!({ "id": "abc" }));
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("invalid_id"));
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn mcp_reopen_success() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "mcp-reopen-ok");
         let rx_id = make_rx(&mut conn, &bottle_id, "Reabrir");
         store::prescriptions::close(&mut conn, &rx_id).unwrap();
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn mcp_reopen_collision() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "mcp-reopen-collision");
 
         let rx_a = make_rx(&mut conn, &bottle_id, "A");
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn mcp_reopen_empty_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let response = super::reopen(&mut conn, json!({ "id": "" }));
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("invalid_input"));
@@ -246,7 +246,7 @@ mod tests {
     /// (3) prescription_read incrementa prescriptions.views: 0 → 1 → 2.
     #[test]
     fn prescription_read_increments_views() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "mcp-rx-views");
         let rx_id = make_rx(&mut conn, &bottle_id, "Views test");
 
@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn read_returns_ambiguous_id_error() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "mcp-rx-amb");
         // Primera rx cerrada para no violar el índice UNIQUE parcial (ended_at IS NULL).
         conn.execute(

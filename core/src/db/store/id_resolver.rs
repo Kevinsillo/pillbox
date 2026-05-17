@@ -139,9 +139,14 @@ pub fn resolve_id(conn: &Connection, table: &str, id: &str) -> Result<Option<Str
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::connection::open_in_memory;
+    use crate::db::DbScope;
 
     fn setup_conn() -> Connection {
-        let conn = Connection::open_in_memory().unwrap();
+        // Usamos el helper con scope Local — los tests crean su propia tabla
+        // `test_items` aparte del schema, pero pasar por el helper centraliza el
+        // setup (arch decision: tests usan `open_in_memory(scope)`).
+        let conn = open_in_memory(DbScope::Local).unwrap();
         conn.execute("CREATE TABLE test_items (id TEXT PRIMARY KEY)", [])
             .unwrap();
         conn
@@ -231,7 +236,7 @@ mod tests {
     #[test]
     fn full_uuid_short_circuits_without_db_query() {
         // UUID completo se devuelve sin consultar la DB.
-        let conn = Connection::open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         let uuid = "019e1d3e-f211-77d3-9e62-0c421ae1b938";
         let result = resolve_id(&conn, "nonexistent_table", uuid).unwrap();
         assert_eq!(result, Some(uuid.to_string()));
@@ -240,7 +245,7 @@ mod tests {
     #[test]
     fn full_uuid_no_dash_short_circuits() {
         // UUID completo sin guiones también hace short-circuit y se normaliza.
-        let conn = Connection::open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         let uuid_no_dash = "019e1d3ef21177d39e620c421ae1b938";
         let uuid_with_dash = "019e1d3e-f211-77d3-9e62-0c421ae1b938";
         let result = resolve_id(&conn, "nonexistent_table", uuid_no_dash).unwrap();

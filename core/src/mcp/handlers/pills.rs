@@ -317,7 +317,7 @@ pub fn prescription_context(conn: &mut Conn, input: Value) -> Response {
 #[cfg(test)]
 mod tests {
     use pillbox::{
-        db::{connection::open_in_memory, store},
+        db::{connection::open_in_memory, store, DbScope},
         domain::{
             bottle::{BottleScope, NewBottle},
             pill::NewPill,
@@ -369,7 +369,7 @@ mod tests {
 
     #[test]
     fn read_resolves_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill_id = make_pill(&mut conn, &rx_id);
         let short = pill_id
@@ -384,7 +384,7 @@ mod tests {
 
     #[test]
     fn read_returns_invalid_id_when_too_short() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let response = super::read(&mut conn, json!({ "id": "abc" }));
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("invalid_id"));
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn read_returns_ambiguous_id_error() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         conn.execute(
             "INSERT INTO pills (id, compound, title, content, prescription_id)
@@ -413,7 +413,7 @@ mod tests {
 
     #[test]
     fn revise_resolves_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill_id = make_pill(&mut conn, &rx_id);
         let short = pill_id
@@ -431,7 +431,7 @@ mod tests {
 
     #[test]
     fn discard_resolves_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill_id = make_pill(&mut conn, &rx_id);
         let short = pill_id
@@ -458,7 +458,7 @@ mod tests {
     /// (1) pill_read incrementa pills.views: 0 → 1 → 2 (en respuesta y en DB).
     #[test]
     fn pill_read_increments_views() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill_id = make_pill(&mut conn, &rx_id);
         assert_eq!(db_views(&conn, "pills", &pill_id), 0);
@@ -477,7 +477,7 @@ mod tests {
     /// anidadas dentro.
     #[test]
     fn prescription_context_increments_prescription_and_nested_pills() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill_a = make_pill(&mut conn, &rx_id);
         let pill_b = make_pill(&mut conn, &rx_id);
@@ -504,7 +504,7 @@ mod tests {
     /// anidadas dentro.
     #[test]
     fn bottle_context_increments_bottle_and_nested_prescriptions() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (bottle_id, rx_id_a) = setup(&mut conn);
         // Cerramos rx_a para poder abrir otra en el mismo bottle.
         store::prescriptions::close(&mut conn, &rx_id_a).unwrap();
@@ -539,7 +539,7 @@ mod tests {
     /// (6) Negativa: store::pills::read directo NO incrementa views.
     #[test]
     fn store_pills_read_does_not_increment_views() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill_id = make_pill(&mut conn, &rx_id);
         assert_eq!(db_views(&conn, "pills", &pill_id), 0);
@@ -552,7 +552,7 @@ mod tests {
     /// (7) Negativa: MCP pill_search no incrementa views de las pills devueltas.
     #[test]
     fn pill_search_does_not_increment_views() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let pill_id = make_pill(&mut conn, &rx_id);
         assert_eq!(db_views(&conn, "pills", &pill_id), 0);
@@ -566,7 +566,7 @@ mod tests {
     /// `pill_search` debe aceptar `compound` sin `query` (lista por compound).
     #[test]
     fn pill_search_accepts_compound_without_query() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let (_, rx_id) = setup(&mut conn);
         let _ = make_pill(&mut conn, &rx_id);
 

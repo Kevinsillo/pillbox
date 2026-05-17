@@ -4,6 +4,7 @@ use pillbox::{
     config, db,
     db::store,
     db::store::registered_bottles,
+    db::DbScope,
     domain::bottle::{BottleScope, NewBottle},
 };
 use serde_json::{json, Value};
@@ -29,7 +30,7 @@ pub fn create(conn: &mut Conn, input: Value) -> Response {
         let local_db_path = std::path::Path::new(&req.directory)
             .join(".pillbox")
             .join("pillbox.db");
-        match db::connection::open(&local_db_path) {
+        match db::connection::open(&local_db_path, DbScope::Local) {
             Ok(mut local_conn) => store::bottles::create(&mut local_conn, &req),
             Err(e) => Err(e),
         }
@@ -47,7 +48,7 @@ pub fn create(conn: &mut Conn, input: Value) -> Response {
             } else {
                 global_path.clone()
             };
-            if let Ok(global_conn) = db::connection::open(&global_path) {
+            if let Ok(global_conn) = db::connection::open(&global_path, DbScope::Global) {
                 let _ = registered_bottles::register(
                     &global_conn,
                     &b.id,
@@ -71,7 +72,7 @@ pub fn list(_conn: &mut Conn, _input: Value) -> Response {
         return Response::ok(Vec::<Bottle>::new());
     }
 
-    let global_conn = match db::connection::open(&global_path) {
+    let global_conn = match db::connection::open(&global_path, DbScope::Global) {
         Ok(c) => c,
         Err(e) => return anyhow_to_response(e),
     };
@@ -104,7 +105,7 @@ pub fn list(_conn: &mut Conn, _input: Value) -> Response {
             continue;
         }
 
-        let db_conn = match db::connection::open(db_path) {
+        let db_conn = match db::connection::open(db_path, DbScope::Local) {
             Ok(c) => c,
             Err(_) => continue,
         };
@@ -181,7 +182,7 @@ pub fn vinculate(_conn: &mut Conn, input: Value) -> Response {
         }
     }
 
-    let local_conn = match db::connection::open(&db_path_canon) {
+    let local_conn = match db::connection::open(&db_path_canon, DbScope::Local) {
         Ok(c) => c,
         Err(e) => return anyhow_to_response(e),
     };
@@ -208,7 +209,7 @@ pub fn vinculate(_conn: &mut Conn, input: Value) -> Response {
         Err(e) => return anyhow_to_response(e),
     };
 
-    let global_conn = match db::connection::open(&global_path) {
+    let global_conn = match db::connection::open(&global_path, DbScope::Global) {
         Ok(c) => c,
         Err(e) => return anyhow_to_response(e),
     };
@@ -247,7 +248,7 @@ pub fn vinculate(_conn: &mut Conn, input: Value) -> Response {
 #[cfg(test)]
 mod tests {
     use pillbox::{
-        db::{connection::open_in_memory, store::registered_bottles},
+        db::{connection::open_in_memory, store::registered_bottles, DbScope},
         domain::bottle::{BottleScope, NewBottle},
     };
 
@@ -255,8 +256,8 @@ mod tests {
     /// `<directory>/.pillbox/pillbox.db`, comprobando la lógica que usa el handler.
     #[test]
     fn create_registers_in_global() {
-        let mut local_conn = open_in_memory().unwrap();
-        let global_conn = open_in_memory().unwrap();
+        let mut local_conn = open_in_memory(DbScope::Local).unwrap();
+        let global_conn = open_in_memory(DbScope::Global).unwrap();
 
         let input = NewBottle {
             name: "mi-proyecto".into(),
@@ -290,7 +291,7 @@ mod tests {
     /// devuelva Ok — la tabla `registered_bottles` no existe en el conn simulado.
     #[test]
     fn create_registration_failure_does_not_propagate() {
-        let mut local_conn = open_in_memory().unwrap();
+        let mut local_conn = open_in_memory(DbScope::Local).unwrap();
 
         // Conexión sin migraciones → no tiene registered_bottles
         let broken_conn = rusqlite::Connection::open_in_memory().unwrap();
@@ -325,8 +326,8 @@ mod tests {
     /// Verificar que registrar dos veces los mismos datos resulta en una sola fila.
     #[test]
     fn create_registration_is_idempotent() {
-        let mut local_conn = open_in_memory().unwrap();
-        let global_conn = open_in_memory().unwrap();
+        let mut local_conn = open_in_memory(DbScope::Local).unwrap();
+        let global_conn = open_in_memory(DbScope::Global).unwrap();
 
         let input = NewBottle {
             name: "idem-proj".into(),

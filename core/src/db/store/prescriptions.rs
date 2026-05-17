@@ -502,6 +502,7 @@ mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
     use crate::db::store::bottles;
+    use crate::db::DbScope;
     use crate::domain::bottle::{BottleScope, NewBottle};
     use crate::error::PillboxError;
 
@@ -535,7 +536,7 @@ mod tests {
 
     #[test]
     fn open_and_close() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "test");
 
         let rx = open(
@@ -558,7 +559,7 @@ mod tests {
 
     #[test]
     fn collision_returns_typed_error() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "colision");
 
         open(
@@ -599,7 +600,7 @@ mod tests {
 
     #[test]
     fn bottle_not_found_fails() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let err = open(
             &mut conn,
             &NewPrescription {
@@ -615,7 +616,7 @@ mod tests {
 
     #[test]
     fn open_resolves_12char_bottle_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "short-id-test");
         let short = bottle_id
             .replace('-', "")
@@ -640,7 +641,7 @@ mod tests {
 
     #[test]
     fn open_resolves_8char_bottle_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "short8-test");
         let short = bottle_id
             .replace('-', "")
@@ -663,13 +664,13 @@ mod tests {
 
     #[test]
     fn close_nonexistent_fails() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         assert!(close(&mut conn, "id-inexistente").is_err());
     }
 
     #[test]
     fn read_existing_prescription() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "read-test");
         let rx = open(
             &mut conn,
@@ -689,7 +690,7 @@ mod tests {
 
     #[test]
     fn read_discarded_returns_none() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "read-discard");
         let rx = open(
             &mut conn,
@@ -708,7 +709,7 @@ mod tests {
 
     #[test]
     fn list_by_bottle_returns_multiple() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "list-test");
 
         let rx1 = open(
@@ -752,7 +753,7 @@ mod tests {
 
     #[test]
     fn list_by_bottle_respects_limit() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "list-limit");
 
         for i in 0..5 {
@@ -784,7 +785,7 @@ mod tests {
 
     #[test]
     fn discard_twice_fails() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "discard-twice");
         let rx = open(
             &mut conn,
@@ -803,7 +804,7 @@ mod tests {
 
     #[test]
     fn hard_delete_prescription_removes_all_rows() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "hard-delete");
 
         let rx = open(
@@ -847,7 +848,7 @@ mod tests {
 
     #[test]
     fn hard_delete_nonexistent_prescription_returns_error() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let err = hard_delete(&mut conn, "id-inexistente").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>();
         assert!(matches!(
@@ -858,7 +859,7 @@ mod tests {
 
     #[test]
     fn discard_cascades_to_pills() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "cascade");
 
         let rx = open(
@@ -894,7 +895,7 @@ mod tests {
 
     #[test]
     fn list_by_bottle_excludes_archived() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "archived-include");
 
         let rx = open(
@@ -925,7 +926,7 @@ mod tests {
 
     #[test]
     fn list_by_bottle_only_active() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "active-and-archived");
 
         // Active prescription
@@ -971,7 +972,7 @@ mod tests {
 
     #[test]
     fn read_any_returns_archived_prescription() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "read-any-archived");
         let rx = open(
             &mut conn,
@@ -992,7 +993,7 @@ mod tests {
 
     #[test]
     fn read_excludes_archived_but_read_any_does_not() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "read-vs-read-any");
         let rx = open(
             &mut conn,
@@ -1012,7 +1013,7 @@ mod tests {
 
     #[test]
     fn author_fields_round_trip() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "author-round-trip");
 
         let rx = open(
@@ -1055,7 +1056,7 @@ mod tests {
 
     #[test]
     fn list_paginates_active_only() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "active-filter");
         for i in 0..3 {
             let id = make_rx(&mut conn, &bottle_id, &format!("Active {i}"));
@@ -1082,7 +1083,7 @@ mod tests {
 
     #[test]
     fn count_archived_by_bottle_returns_only_archived() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "count-archived");
         for i in 0..4 {
             let id = make_rx(&mut conn, &bottle_id, &format!("Active {i}"));
@@ -1098,7 +1099,7 @@ mod tests {
 
     #[test]
     fn count_archived_by_bottle_clamps_independent() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "limit-clamp");
         for i in 0..8 {
             let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
@@ -1110,7 +1111,7 @@ mod tests {
 
     #[test]
     fn read_by_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "prefix-rx-12");
         let rx_id = make_rx(&mut conn, &bottle_id, "Test session");
         let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
@@ -1120,7 +1121,7 @@ mod tests {
 
     #[test]
     fn close_by_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "close-short-rx");
         let rx_id = make_rx(&mut conn, &bottle_id, "Closing session");
         let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
@@ -1130,7 +1131,7 @@ mod tests {
 
     #[test]
     fn discard_by_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "discard-short-rx");
         let rx_id = make_rx(&mut conn, &bottle_id, "Discard session");
         let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
@@ -1140,7 +1141,7 @@ mod tests {
 
     #[test]
     fn read_too_short_returns_invalid_id() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         let err = read(&conn, "abc").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::InvalidId { .. }));
@@ -1148,7 +1149,7 @@ mod tests {
 
     #[test]
     fn read_ambiguous_returns_ambiguous_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "amb-rx");
         // Primera rx cerrada (ended_at != NULL) para no violar el índice UNIQUE parcial
         // que solo aplica a prescriptions con ended_at IS NULL.
@@ -1171,7 +1172,7 @@ mod tests {
 
     #[test]
     fn reopen_closed_prescription_no_collision() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "reopen-basic");
         let rx_id = make_rx(&mut conn, &bottle_id, "Reopen me");
         close(&mut conn, &rx_id).unwrap();
@@ -1188,7 +1189,7 @@ mod tests {
 
     #[test]
     fn reopen_collision_in_bottle() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "reopen-collision");
 
         // Prescription A: abierta y luego cerrada
@@ -1219,7 +1220,7 @@ mod tests {
 
     #[test]
     fn reopen_already_open() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "reopen-already-open");
         let rx_id = make_rx(&mut conn, &bottle_id, "Already open");
 
@@ -1233,7 +1234,7 @@ mod tests {
 
     #[test]
     fn reopen_not_found() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let err = reopen(&mut conn, "00000000-0000-0000-0000-000000000000").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::PrescriptionNotFound { .. }));
@@ -1244,7 +1245,7 @@ mod tests {
         use crate::db::store::pills;
         use crate::domain::pill::NewPill;
 
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "pills-count");
         let rx_id = make_rx(&mut conn, &bottle_id, "rx con pills");
         for i in 0..2 {

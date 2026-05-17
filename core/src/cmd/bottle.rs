@@ -12,6 +12,7 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
     use pillbox::db::{
         connection,
         store::{bottles, registered_bottles},
+        DbScope,
     };
 
     let global_path = pillbox::config::global_db_path();
@@ -20,7 +21,7 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
         return Ok(());
     }
 
-    let global_conn = connection::open(&global_path)?;
+    let global_conn = connection::open(&global_path, DbScope::Global)?;
     let registered = registered_bottles::list(&global_conn)?;
 
     let current = std::env::current_dir().ok();
@@ -45,7 +46,7 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
             continue;
         }
 
-        let db_conn = match connection::open(db_path) {
+        let db_conn = match connection::open(db_path, DbScope::Local) {
             Ok(c) => c,
             Err(_) => continue,
         };
@@ -111,7 +112,7 @@ pub fn cmd_bottle_status() -> Result<()> {
 /// Wizard interactivo para inicializar un bottle en el directorio actual.
 pub fn cmd_bottle_init() -> Result<()> {
     use inquire::{Confirm, Select, Text};
-    use pillbox::db::{connection, store::bottles};
+    use pillbox::db::{connection, store::bottles, DbScope};
     use pillbox::domain::bottle::{BottleScope, NewBottle};
 
     let current_dir = std::env::current_dir()?;
@@ -141,13 +142,13 @@ pub fn cmd_bottle_init() -> Result<()> {
         BottleScope::Global
     };
 
-    let db_path = match &scope {
-        BottleScope::Local => pillbox::config::local_db_path(),
-        BottleScope::Global => pillbox::config::global_db_path(),
+    let (db_path, db_scope) = match &scope {
+        BottleScope::Local => (pillbox::config::local_db_path(), DbScope::Local),
+        BottleScope::Global => (pillbox::config::global_db_path(), DbScope::Global),
     };
 
     let pb = spinner(t!("bottle.init.creating"));
-    let mut conn = connection::open(&db_path)?;
+    let mut conn = connection::open(&db_path, db_scope)?;
 
     if bottles::find_by_directory(&conn, &dir_str)?.is_some() {
         pb.finish_and_clear();
@@ -180,7 +181,7 @@ pub fn cmd_bottle_init() -> Result<()> {
 
     {
         let global_path = pillbox::config::global_db_path();
-        let _ = connection::open(&global_path);
+        let _ = connection::open(&global_path, DbScope::Global);
         let pb2 = spinner(t!("bottle.init.registering"));
         // Para scope local: registrar la DB local. Para scope global: registrar la DB global.
         let register_db_path: std::path::PathBuf = match &scope {
@@ -210,7 +211,7 @@ pub fn cmd_bottle_init() -> Result<()> {
 pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
     use inquire::Text;
     use owo_colors::OwoColorize;
-    use pillbox::db::{connection, store::registered_bottles};
+    use pillbox::db::{connection, store::registered_bottles, DbScope};
 
     let global_path = pillbox::config::global_db_path();
     if !global_path.exists() {
@@ -218,7 +219,7 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
         return Ok(());
     }
 
-    let global_conn = connection::open(&global_path)?;
+    let global_conn = connection::open(&global_path, DbScope::Global)?;
     let reg = registered_bottles::list(&global_conn)?
         .into_iter()
         .find(|r| r.name == slug);
@@ -290,7 +291,7 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
 pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
     use inquire::Text;
     use owo_colors::OwoColorize;
-    use pillbox::db::{connection, store::registered_bottles};
+    use pillbox::db::{connection, store::registered_bottles, DbScope};
 
     let global_path = pillbox::config::global_db_path();
     if !global_path.exists() {
@@ -298,7 +299,7 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
         return Ok(());
     }
 
-    let global_conn = connection::open(&global_path)?;
+    let global_conn = connection::open(&global_path, DbScope::Global)?;
     let reg = registered_bottles::list(&global_conn)?
         .into_iter()
         .find(|r| r.name == slug);
@@ -389,6 +390,7 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
     use pillbox::db::{
         connection,
         store::{bottles, registered_bottles},
+        DbScope,
     };
 
     let dir = directory.unwrap_or_else(|| std::env::current_dir().expect("cwd unavailable"));
@@ -423,7 +425,7 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
         }
     }
 
-    let local_conn = connection::open(&db_path_canon)?;
+    let local_conn = connection::open(&db_path_canon, DbScope::Local)?;
     let bottle = match bottles::list(
         &local_conn,
         &pillbox::domain::PaginationParams {
@@ -449,7 +451,7 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
         }
     };
 
-    let global_conn = connection::open(&global_path)?;
+    let global_conn = connection::open(&global_path, DbScope::Global)?;
     let db_path_str = db_path_canon
         .to_str()
         .context("local DB path contains non-UTF-8 characters")?;
@@ -502,9 +504,9 @@ fn register_in_global(
     display_name: &str,
     local_db_path: &std::path::Path,
 ) -> Result<()> {
-    use pillbox::db::{connection, store::registered_bottles};
+    use pillbox::db::{connection, store::registered_bottles, DbScope};
 
-    let conn = connection::open(global_path)?;
+    let conn = connection::open(global_path, DbScope::Global)?;
     let db_path_str = local_db_path
         .to_str()
         .context("local DB path contains non-UTF-8 characters")?;
@@ -515,13 +517,20 @@ fn register_in_global(
 
 /// Muestra la información de migración disponible para el bottle actual.
 pub fn cmd_migrate_help(help: &str) -> Result<()> {
-    use pillbox::db::{connection, store::bottles};
+    use pillbox::db::{connection, store::bottles, DbScope};
 
     let global_path = pillbox::config::global_db_path();
     let local_path = pillbox::config::local_db_path();
 
     let bottle_name: Option<String> = pillbox::config::resolve_db_path()
-        .and_then(|db_path| connection::open(&db_path).ok())
+        .and_then(|db_path| {
+            let scope = if db_path == global_path {
+                DbScope::Global
+            } else {
+                DbScope::Local
+            };
+            connection::open(&db_path, scope).ok()
+        })
         .and_then(|c| {
             let dir = std::env::current_dir().ok()?.to_string_lossy().to_string();
             bottles::find_by_directory(&c, &dir)
@@ -544,7 +553,7 @@ pub fn cmd_migrate_help(help: &str) -> Result<()> {
 /// Pide confirmación antes de proceder. Tras la migración elimina la DB local.
 pub fn cmd_migrate_global() -> Result<()> {
     use inquire::Confirm;
-    use pillbox::db::{connection, migrate};
+    use pillbox::db::{connection, migrate, DbScope};
 
     let global_path = pillbox::config::global_db_path();
     let local_path = pillbox::config::local_db_path();
@@ -559,7 +568,7 @@ pub fn cmd_migrate_global() -> Result<()> {
         anyhow::bail!("{}", t!("migrate.error.no_local"));
     }
 
-    let src_conn = connection::open(&local_path)?;
+    let src_conn = connection::open(&local_path, DbScope::Local)?;
     let current_dir = std::env::current_dir()?;
     let dir_str = current_dir.to_string_lossy();
 
@@ -598,7 +607,7 @@ pub fn cmd_migrate_global() -> Result<()> {
         return Ok(());
     }
 
-    let mut dst_conn = connection::open(&global_path)?;
+    let mut dst_conn = connection::open(&global_path, DbScope::Global)?;
     let result = migrate::migrate_bottle(&src_conn, &mut dst_conn, &bottle_name)?;
     drop(src_conn);
 
@@ -627,7 +636,7 @@ pub fn cmd_migrate_global() -> Result<()> {
 /// confirmación antes de proceder. Tras la migración elimina los datos del global.
 pub fn cmd_migrate_local() -> Result<()> {
     use inquire::{Confirm, Select};
-    use pillbox::db::{connection, migrate, store::bottles};
+    use pillbox::db::{connection, migrate, store::bottles, DbScope};
 
     let global_path = pillbox::config::global_db_path();
     let local_path = pillbox::config::local_db_path();
@@ -640,7 +649,7 @@ pub fn cmd_migrate_local() -> Result<()> {
     }
 
     if local_path.exists() {
-        let local_conn = connection::open(&local_path).ok();
+        let local_conn = connection::open(&local_path, DbScope::Local).ok();
         let has_bottle = local_conn.and_then(|c| {
             let dir = std::env::current_dir().ok()?.to_string_lossy().to_string();
             bottles::find_by_directory(&c, &dir).ok().flatten()
@@ -650,7 +659,7 @@ pub fn cmd_migrate_local() -> Result<()> {
         }
     }
 
-    let global_conn = connection::open(&global_path)?;
+    let global_conn = connection::open(&global_path, DbScope::Global)?;
     let bottle_list = migrate::list_bottles_with_counts(&global_conn)?;
 
     if bottle_list.is_empty() {
@@ -689,7 +698,7 @@ pub fn cmd_migrate_local() -> Result<()> {
         return Ok(());
     }
 
-    let mut dst_conn = connection::open(&local_path)?;
+    let mut dst_conn = connection::open(&local_path, DbScope::Local)?;
     let result = migrate::migrate_bottle(&global_conn, &mut dst_conn, &bottle_name)?;
 
     dst_conn.execute(
@@ -699,10 +708,13 @@ pub fn cmd_migrate_local() -> Result<()> {
 
     drop(global_conn);
 
-    let mut global_conn_mut = connection::open(&global_path)?;
+    let mut global_conn_mut = connection::open(&global_path, DbScope::Global)?;
     migrate::delete_bottle(&mut global_conn_mut, &bottle_name)?;
 
-    let local_path_str = local_path
+    let local_path_abs = local_path
+        .canonicalize()
+        .context("failed to canonicalize local DB path after migration")?;
+    let local_path_str = local_path_abs
         .to_str()
         .context("local DB path contains non-UTF-8 characters")?;
     global_conn_mut.execute(

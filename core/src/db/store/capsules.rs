@@ -296,6 +296,7 @@ fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
 mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
+    use crate::db::DbScope;
     use crate::domain::capsule::{CapsulePatch, NewCapsule};
 
     fn sample_capsule() -> NewCapsule {
@@ -308,7 +309,7 @@ mod tests {
 
     #[test]
     fn take_and_read() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let input = sample_capsule();
         let result = take(&mut conn, &input).unwrap();
         assert_eq!(result.action, "created");
@@ -323,7 +324,7 @@ mod tests {
 
     #[test]
     fn revise_partial_patch() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
 
         let updated = revise(
@@ -344,7 +345,7 @@ mod tests {
 
     #[test]
     fn discard_soft_deletes() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         let result = discard(&mut conn, &cap.id).unwrap().unwrap();
         assert_eq!(result.id, cap.id);
@@ -353,7 +354,7 @@ mod tests {
 
     #[test]
     fn discard_twice_returns_none() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         discard(&mut conn, &cap.id).unwrap();
         assert!(discard(&mut conn, &cap.id).unwrap().is_none());
@@ -361,7 +362,7 @@ mod tests {
 
     #[test]
     fn read_missing_returns_none() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         assert!(read(&conn, "00000000-0000-0000-0000-000000000000")
             .unwrap()
             .is_none());
@@ -369,7 +370,7 @@ mod tests {
 
     #[test]
     fn revise_missing_returns_none() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let result = revise(
             &mut conn,
             "00000000-0000-0000-0000-000000000000",
@@ -385,7 +386,7 @@ mod tests {
 
     #[test]
     fn revise_discarded_returns_none() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         discard(&mut conn, &cap.id).unwrap();
 
@@ -404,7 +405,7 @@ mod tests {
 
     #[test]
     fn list_returns_all_active() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         take(&mut conn, &sample_capsule()).unwrap();
         take(
             &mut conn,
@@ -429,7 +430,7 @@ mod tests {
 
     #[test]
     fn list_filters_by_compound() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         take(&mut conn, &sample_capsule()).unwrap(); // convention
         take(
             &mut conn,
@@ -454,7 +455,7 @@ mod tests {
 
     #[test]
     fn list_respects_limit() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         for i in 0..5 {
             take(
                 &mut conn,
@@ -483,7 +484,7 @@ mod tests {
 
     #[test]
     fn list_excludes_discarded() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         discard(&mut conn, &cap.id).unwrap();
 
@@ -500,7 +501,7 @@ mod tests {
 
     #[test]
     fn read_any_finds_archived() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         discard(&mut conn, &cap.id).unwrap();
 
@@ -511,7 +512,7 @@ mod tests {
 
     #[test]
     fn read_excludes_archived_but_read_any_does_not() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         discard(&mut conn, &cap.id).unwrap();
 
@@ -521,7 +522,7 @@ mod tests {
 
     #[test]
     fn hard_delete_removes_row() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         let deleted = hard_delete(&mut conn, &cap.id).unwrap();
         assert!(deleted);
@@ -530,14 +531,14 @@ mod tests {
 
     #[test]
     fn hard_delete_nonexistent_returns_false() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let deleted = hard_delete(&mut conn, "00000000-0000-0000-0000-000000000000").unwrap();
         assert!(!deleted);
     }
 
     #[test]
     fn list_active_only_excludes_archived() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         for i in 0..3 {
             take(
                 &mut conn,
@@ -583,7 +584,7 @@ mod tests {
 
     #[test]
     fn count_archived_still_returns_total() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let archived_ids: Vec<String> = (0..9)
             .map(|i| {
                 take(
@@ -607,7 +608,7 @@ mod tests {
 
     #[test]
     fn read_by_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let result = take(&mut conn, &sample_capsule()).unwrap();
         let short = result
             .id
@@ -621,7 +622,7 @@ mod tests {
 
     #[test]
     fn revise_by_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let result = take(&mut conn, &sample_capsule()).unwrap();
         let short = result
             .id
@@ -645,7 +646,7 @@ mod tests {
 
     #[test]
     fn discard_by_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let result = take(&mut conn, &sample_capsule()).unwrap();
         let short = result
             .id
@@ -661,7 +662,7 @@ mod tests {
     #[test]
     fn read_too_short_returns_invalid_id() {
         use crate::error::PillboxError;
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let err = read(&conn, "abc").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::InvalidId { .. }));
@@ -669,7 +670,7 @@ mod tests {
 
     #[test]
     fn distinct_compounds_orders_count_desc_compound_asc_excludes_deleted() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
 
         // 2x "convention", 1x "workflow", 1x "discovery" (será soft-deleted).
         take(
@@ -730,7 +731,7 @@ mod tests {
 
     #[test]
     fn distinct_compounds_tiebreak_alphabetical() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         for compound in ["zeta", "alfa", "zeta", "alfa"] {
             take(
                 &mut conn,
@@ -751,8 +752,7 @@ mod tests {
     #[test]
     fn read_ambiguous_returns_ambiguous_id() {
         use crate::error::PillboxError;
-        use rusqlite::params;
-        let mut conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         conn.execute(
             "INSERT INTO capsules (id, compound, title, content)
              VALUES ('01234567-aaaa-7000-8000-000000000001', 'convention', 'A', 'c')",

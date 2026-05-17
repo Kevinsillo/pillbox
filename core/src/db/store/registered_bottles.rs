@@ -135,13 +135,14 @@ fn row_to_registered(row: &rusqlite::Row<'_>) -> rusqlite::Result<RegisteredBott
 mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
+    use crate::db::DbScope;
     use crate::error::PillboxError;
 
     const BOTTLE_UUID: &str = "019db1d0-bd9e-7940-aa29-054b250450ec";
 
     #[test]
     fn register_and_list() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         register(
             &conn,
             BOTTLE_UUID,
@@ -162,7 +163,7 @@ mod tests {
 
     #[test]
     fn register_idempotent() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
         register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
 
@@ -172,13 +173,13 @@ mod tests {
 
     #[test]
     fn list_empty_returns_empty_vec() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         assert!(list(&conn).unwrap().is_empty());
     }
 
     #[test]
     fn register_multiple_different_paths() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let uuid_b = "019db1d0-bd9e-7940-aa29-054b250450ed";
         register(&conn, BOTTLE_UUID, "a", "A", "/tmp/a.db").unwrap();
         register(&conn, uuid_b, "b", "B", "/tmp/b.db").unwrap();
@@ -189,7 +190,7 @@ mod tests {
 
     #[test]
     fn find_by_bottle_id_ok() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
         let found = find_by_bottle_id(&conn, BOTTLE_UUID).unwrap();
         assert!(found.is_some());
@@ -198,14 +199,14 @@ mod tests {
 
     #[test]
     fn find_by_bottle_id_missing() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let found = find_by_bottle_id(&conn, "uuid-inexistente").unwrap();
         assert!(found.is_none());
     }
 
     #[test]
     fn find_by_bottle_id_8char_prefix() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
         // "019db1d0" son los primeros 8 chars del UUID
         let found = find_by_bottle_id(&conn, "019db1d0").unwrap();
@@ -215,7 +216,7 @@ mod tests {
 
     #[test]
     fn find_by_bottle_id_12char_prefix_without_dashes() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
         // "019db1d0bd9e" son los primeros 12 hex chars sin guiones
         let found = find_by_bottle_id(&conn, "019db1d0bd9e").unwrap();
@@ -225,7 +226,7 @@ mod tests {
 
     #[test]
     fn find_by_bottle_id_12char_prefix_with_dashes() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         register(&conn, BOTTLE_UUID, "proj", "Proj", "/tmp/proj.db").unwrap();
         // Formato con guion: "019db1d0-bd9e"
         let found = find_by_bottle_id(&conn, "019db1d0-bd9e").unwrap();
@@ -235,7 +236,7 @@ mod tests {
 
     #[test]
     fn find_by_bottle_id_too_short_returns_invalid_id() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let err = find_by_bottle_id(&conn, "abc").unwrap_err();
         let pe = err.downcast_ref::<PillboxError>().expect("PillboxError");
         assert!(matches!(pe, PillboxError::InvalidId { .. }));
@@ -243,7 +244,7 @@ mod tests {
 
     #[test]
     fn find_by_bottle_id_ambiguous_returns_ambiguous_id() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let uuid_a = "019db1d0-aaaa-7000-aa00-000000000000";
         let uuid_b = "019db1d0-bbbb-7000-bb00-000000000000";
         register(&conn, uuid_a, "a", "A", "/tmp/a.db").unwrap();

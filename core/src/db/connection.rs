@@ -3,13 +3,13 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 
-use crate::db::migrations;
+use crate::db::{migrations, DbScope};
 
-/// Abre una conexión SQLite y aplica las migraciones pendientes.
+/// Abre una conexión SQLite y aplica las migraciones pendientes para el `scope` indicado.
 ///
 /// Usado por `pillbox exec` (proceso pasivo, una operación por ejecución).
 /// Para `pillbox serve` se usará un pool — pendiente Fase 3.
-pub fn open(path: &Path) -> Result<Connection> {
+pub fn open(path: &Path, scope: DbScope) -> Result<Connection> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
             std::fs::create_dir_all(parent)
@@ -21,7 +21,7 @@ pub fn open(path: &Path) -> Result<Connection> {
         Connection::open(path).with_context(|| format!("failed to open DB at {:?}", path))?;
 
     configure(&conn)?;
-    migrations::run(&conn)?;
+    migrations::run(&conn, scope)?;
 
     Ok(conn)
 }
@@ -30,22 +30,24 @@ pub fn open(path: &Path) -> Result<Connection> {
 ///
 /// A diferencia de `open`, no llama a `create_dir_all` ni crea el archivo.
 /// Devuelve error si el path no existe en disco.
-pub fn open_existing(path: &Path) -> Result<Connection> {
+///
+/// `scope` lo decide el caller — no se infiere de la DB (ver arch decision).
+pub fn open_existing(path: &Path, scope: DbScope) -> Result<Connection> {
     if !path.exists() {
         anyhow::bail!("DB not found at {:?}", path);
     }
     let conn =
         Connection::open(path).with_context(|| format!("failed to open DB at {:?}", path))?;
     configure(&conn)?;
-    migrations::run(&conn)?;
+    migrations::run(&conn, scope)?;
     Ok(conn)
 }
 
-/// Abre una conexión en memoria — útil para tests.
-pub fn open_in_memory() -> Result<Connection> {
+/// Abre una conexión en memoria — útil para tests. Cada test elige scope coherente.
+pub fn open_in_memory(scope: DbScope) -> Result<Connection> {
     let conn = Connection::open_in_memory()?;
     configure(&conn)?;
-    migrations::run(&conn)?;
+    migrations::run(&conn, scope)?;
     Ok(conn)
 }
 
@@ -70,8 +72,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn open_in_memory_applies_migrations() {
-        let conn = open_in_memory().unwrap();
+    fn open_in_memory_applies_migrations_local() {
+        let conn = open_in_memory(DbScope::Local).unwrap();
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
@@ -79,10 +81,32 @@ mod tests {
     }
 
     #[test]
-    fn open_creates_parent_dirs() {
+    fn open_in_memory_applies_migrations_global() {
+        let conn = open_in_memory(DbScope::Global).unwrap();
+        // La DB global debe tener `capsules`.
+        let exists: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='capsules')",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(exists, "global scope must create capsules table");
+    }
+
+    #[test]
+    fn open_creates_parent_dirs_local() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("sub").join("pillbox.db");
-        let _conn = open(&path).unwrap();
+        let _conn = open(&path, DbScope::Local).unwrap();
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn open_creates_parent_dirs_global() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("sub").join("global.db");
+        let _conn = open(&path, DbScope::Global).unwrap();
         assert!(path.exists());
     }
 }

@@ -4,4 +4,7 @@ pub mod connection;
 pub mod migrate;
 pub mod migrations;
 pub mod schema;
+pub mod scope;
 pub mod store;
+
+pub use scope::DbScope;

@@ -8,7 +8,7 @@ use crate::output;
 
 /// Muestra el detalle de una capsule por su UUID, incluyendo archivadas.
 pub fn cmd_capsule_show(id: &str) -> Result<()> {
-    use pillbox::db::{connection, store::capsules};
+    use pillbox::db::{connection, store::capsules, DbScope};
 
     let global_path = pillbox::config::global_db_path();
     if !global_path.exists() {
@@ -16,7 +16,7 @@ pub fn cmd_capsule_show(id: &str) -> Result<()> {
         return Ok(());
     }
 
-    let conn = connection::open(&global_path)?;
+    let conn = connection::open(&global_path, DbScope::Global)?;
     match capsules::read_any(&conn, id)? {
         Some(capsule) => output::fmt::capsule_detail(&capsule),
         None => eprintln!(
@@ -34,7 +34,7 @@ pub fn cmd_capsule_show(id: &str) -> Result<()> {
 /// (cap por `archived_limit`). Una tercera consulta `COUNT(*)` sobre archivadas
 /// permite mostrar el trailer `... N más archivados` con el número exacto.
 pub fn cmd_capsule_list(limit: u32, archived_limit: u32) -> Result<()> {
-    use pillbox::db::{connection, store::capsules, store::ListFilter};
+    use pillbox::db::{connection, store::capsules, store::ListFilter, DbScope};
     use pillbox::domain::PaginationParams;
 
     let global_path = pillbox::config::global_db_path();
@@ -43,7 +43,7 @@ pub fn cmd_capsule_list(limit: u32, archived_limit: u32) -> Result<()> {
         return Ok(());
     }
 
-    let conn = connection::open(&global_path)?;
+    let conn = connection::open(&global_path, DbScope::Global)?;
     let total = capsules::count(&conn)?;
     let pagination = PaginationParams {
         page: 1,

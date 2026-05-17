@@ -22,6 +22,7 @@ use serde_json::json;
 
 use pillbox::db;
 use pillbox::db::store::registered_bottles;
+use pillbox::db::DbScope;
 use pillbox::error::PillboxError;
 
 use super::AppState;
@@ -176,7 +177,7 @@ pub(super) fn conn_for_bottle(
     s: &AppState,
     bottle_id: &str,
 ) -> Result<rusqlite::Connection, ApiResponse> {
-    let global = db::connection::open(&s.global_db_path).map_err(err_500)?;
+    let global = db::connection::open(&s.global_db_path, DbScope::Global).map_err(err_500)?;
     let reg = registered_bottles::find_by_bottle_id(&global, bottle_id)
         .map_err(|e| match e.downcast::<PillboxError>() {
             Ok(PillboxError::AmbiguousId {
@@ -188,7 +189,8 @@ pub(super) fn conn_for_bottle(
             Err(e) => err_500(e),
         })?
         .ok_or_else(|| err_404_bottle(bottle_id))?;
-    db::connection::open_existing(std::path::Path::new(&reg.db_path)).map_err(err_500)
+    db::connection::open_existing(std::path::Path::new(&reg.db_path), DbScope::Local)
+        .map_err(err_500)
 }
 
 /// Abre la DB del bottle y devuelve la conexión junto con el UUID completo del bottle.
@@ -214,7 +216,7 @@ pub(super) fn conn_for_bottle_with_id(
 ///
 /// Retorna `err_500` si la apertura de la conexión falla.
 pub(super) fn open_global_conn(state: &AppState) -> Result<rusqlite::Connection, ApiResponse> {
-    db::connection::open(&state.global_db_path).map_err(err_500)
+    db::connection::open(&state.global_db_path, DbScope::Global).map_err(err_500)
 }
 
 /// Valor por defecto 30 para `BottleStatsParams.days`.

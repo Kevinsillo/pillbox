@@ -167,7 +167,7 @@ pub fn compounds(conn: &mut Conn, input: Value) -> Response {
 #[cfg(test)]
 mod tests {
     use pillbox::{
-        db::{connection::open_in_memory, store},
+        db::{connection::open_in_memory, store, DbScope},
         domain::capsule::NewCapsule,
     };
     use serde_json::json;
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn read_resolves_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let result = store::capsules::take(&mut conn, &sample()).unwrap();
         let short = result
             .id
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn read_returns_invalid_id_when_too_short() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let response = super::read(&mut conn, json!({ "id": "abc" }));
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("invalid_id"));
@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn read_returns_ambiguous_id_error() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         conn.execute(
             "INSERT INTO capsules (id, compound, title, content)
              VALUES ('01234567-aaaa-7000-8000-000000000001', 'convention', 'A', 'c')",
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn revise_resolves_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let result = store::capsules::take(&mut conn, &sample()).unwrap();
         let short = result
             .id
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn discard_resolves_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let result = store::capsules::take(&mut conn, &sample()).unwrap();
         let short = result
             .id
@@ -258,7 +258,7 @@ mod tests {
     /// (2) capsule_read incrementa capsules.views: 0 → 1 → 2.
     #[test]
     fn capsule_read_increments_views() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let cap = store::capsules::take(&mut conn, &sample()).unwrap();
 
         let views0: i64 = conn

@@ -165,6 +165,7 @@ fn row_to_bottle(row: &rusqlite::Row<'_>) -> rusqlite::Result<Bottle> {
 mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
+    use crate::db::DbScope;
     use crate::domain::bottle::{BottleScope, NewBottle};
 
     fn test_bottle(name: &str, dir: &str) -> NewBottle {
@@ -178,7 +179,7 @@ mod tests {
 
     #[test]
     fn create_and_find() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let b = create(&mut conn, &test_bottle("mi-proyecto", "/tmp/mi-proyecto")).unwrap();
         assert_eq!(b.name, "mi-proyecto");
         assert_eq!(b.scope, "local");
@@ -189,7 +190,7 @@ mod tests {
 
     #[test]
     fn uuid_is_generated_on_create() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let b = create(&mut conn, &test_bottle("uuid-test", "/tmp/uuid-test")).unwrap();
         assert!(!b.id.is_empty());
         assert_eq!(b.id.len(), 36);
@@ -198,7 +199,7 @@ mod tests {
 
     #[test]
     fn two_bottles_have_different_ids() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let a = create(&mut conn, &test_bottle("a", "/tmp/a")).unwrap();
         let b = create(&mut conn, &test_bottle("b", "/tmp/b")).unwrap();
         assert_ne!(a.id, b.id);
@@ -206,7 +207,7 @@ mod tests {
 
     #[test]
     fn find_by_directory_ok() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         create(&mut conn, &test_bottle("proj", "/home/kevin/proj")).unwrap();
         let found = find_by_directory(&conn, "/home/kevin/proj").unwrap();
         assert!(found.is_some());
@@ -215,7 +216,7 @@ mod tests {
 
     #[test]
     fn list_returns_all() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         create(&mut conn, &test_bottle("a", "/tmp/a")).unwrap();
         create(&mut conn, &test_bottle("b", "/tmp/b")).unwrap();
         let page = list(&conn, &PaginationParams::default()).unwrap();
@@ -225,7 +226,7 @@ mod tests {
 
     #[test]
     fn duplicate_name_fails() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         create(&mut conn, &test_bottle("dup", "/tmp/dup1")).unwrap();
         let err = create(&mut conn, &test_bottle("dup", "/tmp/dup2")).unwrap_err();
         let typed = err.downcast::<PillboxError>().unwrap();
@@ -234,13 +235,13 @@ mod tests {
 
     #[test]
     fn find_by_id_missing_returns_none() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         assert!(find_by_id(&conn, "id-inexistente").unwrap().is_none());
     }
 
     #[test]
     fn find_by_directory_missing_returns_none() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         assert!(find_by_directory(&conn, "/ruta/inexistente")
             .unwrap()
             .is_none());
@@ -248,7 +249,7 @@ mod tests {
 
     #[test]
     fn list_empty_returns_empty_vec() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         let page = list(&conn, &PaginationParams::default()).unwrap();
         assert!(page.items.is_empty());
         assert_eq!(page.total, 0);
@@ -256,7 +257,7 @@ mod tests {
 
     #[test]
     fn find_by_id_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let b = create(&mut conn, &test_bottle("prefix-12", "/tmp/prefix-12")).unwrap();
         let short = b.id.replace('-', "").chars().take(12).collect::<String>();
         let found = find_by_id(&conn, &short).unwrap().unwrap();
@@ -265,7 +266,7 @@ mod tests {
 
     #[test]
     fn find_by_id_too_short_returns_invalid_id() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         let err = find_by_id(&conn, "abc").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::InvalidId { .. }));
@@ -273,7 +274,7 @@ mod tests {
 
     #[test]
     fn find_by_id_ambiguous_returns_ambiguous_id() {
-        let mut conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Local).unwrap();
         conn.execute(
             "INSERT INTO bottles (id, name, display_name, directory, scope)
              VALUES ('01234567-aaaa-7000-8000-000000000001', 'amb-a', 'A', '/tmp/amb-a', 'local')",
@@ -293,7 +294,7 @@ mod tests {
 
     #[test]
     fn list_paginates_correctly() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         for i in 0..25 {
             create(
                 &mut conn,
@@ -341,7 +342,7 @@ mod tests {
 
     #[test]
     fn delete_by_short_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
         let b = create(&mut conn, &test_bottle("del-short", "/tmp/del-short")).unwrap();
         let short = b.id.replace('-', "").chars().take(12).collect::<String>();
         assert!(delete(&mut conn, &short).unwrap());

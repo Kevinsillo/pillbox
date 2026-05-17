@@ -269,7 +269,9 @@ async fn main() -> Result<()> {
 
     if cli.init_global {
         let path = pillbox::config::global_db_path();
-        pillbox::db::connection::open(&path)?;
+        // `init_global` siempre crea/abre la DB global → scope Global (no es ambiguo:
+        // el flag toma el path directamente de `global_db_path()`, no de `resolve_db_path`).
+        pillbox::db::connection::open(&path, pillbox::db::DbScope::Global)?;
         return Ok(());
     }
 

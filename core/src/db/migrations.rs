@@ -1,17 +1,27 @@
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 
+use crate::db::DbScope;
+
 /// Última versión de schema conocida en tiempo de compilación.
+///
+/// Hay un único contador de versión compartido entre los dos schemas (local y
+/// global). El runner elige el SQL a aplicar según `DbScope`, no según número
+/// de archivo: la versión 0 → 1 se materializa con uno u otro fichero.
 pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
-const MIGRATION_001: &str = include_str!("migrations/001_initial.sql");
+const SCHEMA_LOCAL: &str = include_str!("migrations/00_schema_local.sql");
+const SCHEMA_GLOBAL: &str = include_str!("migrations/00_schema_global.sql");
 
-/// Aplica todas las migraciones pendientes en orden.
+/// Aplica el schema inicial correspondiente al `scope` si la DB está vacía.
 ///
-/// Lee la versión actual desde `schema_migrations` (si existe) y aplica
-/// solo las migraciones posteriores. Cada migración se ejecuta en una
-/// transacción atómica — si falla, la DB queda en el estado anterior.
-pub fn run(conn: &Connection) -> Result<()> {
+/// Si la DB ya está en `CURRENT_SCHEMA_VERSION` no hace nada (idempotente).
+/// Si la versión persistida es mayor que la conocida por el binario, falla
+/// (binario más viejo que la DB).
+///
+/// Nota: en esta fase no hay migraciones incrementales — el salto v0 → v1 se
+/// resuelve aplicando un único archivo elegido por scope.
+pub fn run(conn: &Connection, scope: DbScope) -> Result<()> {
     let current = current_version(conn)?;
 
     if current > CURRENT_SCHEMA_VERSION {
@@ -26,10 +36,13 @@ pub fn run(conn: &Connection) -> Result<()> {
         return Ok(());
     }
 
-    // Aplica migraciones desde current+1 hasta CURRENT_SCHEMA_VERSION
-    if current < 1 {
-        apply(conn, 1, MIGRATION_001).context("migration 001_initial failed")?;
-    }
+    // v0 → v1: aplicar el schema inicial según scope.
+    let (sql, label) = match scope {
+        DbScope::Local => (SCHEMA_LOCAL, "00_schema_local"),
+        DbScope::Global => (SCHEMA_GLOBAL, "00_schema_global"),
+    };
+
+    apply(conn, 1, sql).with_context(|| format!("migration {} failed", label))?;
 
     Ok(())
 }
@@ -76,9 +89,23 @@ mod tests {
     use rusqlite::Connection;
 
     #[test]
-    fn migrations_apply_on_empty_db() {
+    fn migrations_apply_on_empty_db_local() {
         let conn = Connection::open_in_memory().unwrap();
-        run(&conn).unwrap();
+        run(&conn, DbScope::Local).unwrap();
+
+        let version: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+
+        assert_eq!(version, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn migrations_apply_on_empty_db_global() {
+        let conn = Connection::open_in_memory().unwrap();
+        run(&conn, DbScope::Global).unwrap();
 
         let version: i64 = conn
             .query_row("SELECT MAX(version) FROM schema_migrations", [], |r| {
@@ -92,19 +119,19 @@ mod tests {
     #[test]
     fn migrations_idempotent() {
         let conn = Connection::open_in_memory().unwrap();
-        run(&conn).unwrap();
-        run(&conn).unwrap(); // segunda vez no debe fallar
+        run(&conn, DbScope::Local).unwrap();
+        run(&conn, DbScope::Local).unwrap(); // segunda vez no debe fallar
     }
 
     #[test]
     fn schema_migrations_seeded() {
         let conn = Connection::open_in_memory().unwrap();
-        run(&conn).unwrap();
+        run(&conn, DbScope::Global).unwrap();
 
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
 
-        assert!(count > 0);
+        assert_eq!(count, 1);
     }
 }

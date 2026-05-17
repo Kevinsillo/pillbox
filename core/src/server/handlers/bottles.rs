@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use pillbox::{
-    db::{self, store, store::registered_bottles},
+    db::{self, store, store::registered_bottles, DbScope},
     domain::{
         bottle::{Bottle, NewBottle},
         PaginationParams,
@@ -89,7 +89,7 @@ pub async fn bottle_list(
             });
             continue;
         }
-        let db_conn = match db::connection::open_existing(reg_db_path) {
+        let db_conn = match db::connection::open_existing(reg_db_path, DbScope::Local) {
             Ok(c) => c,
             Err(_) => continue,
         };
@@ -127,7 +127,12 @@ pub async fn bottle_create(State(s): State<AppState>, Json(input): Json<NewBottl
     if let Err(e) = input.validate() {
         return err_422(e);
     }
-    let mut conn = match db::connection::open(&s.db_path).map_err(err_500) {
+    let scope_for_db = if *s.db_path == *s.global_db_path {
+        DbScope::Global
+    } else {
+        DbScope::Local
+    };
+    let mut conn = match db::connection::open(&s.db_path, scope_for_db).map_err(err_500) {
         Ok(c) => c,
         Err(r) => return r,
     };

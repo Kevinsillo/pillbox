@@ -632,6 +632,7 @@ mod tests {
     use super::*;
     use crate::db::connection::open_in_memory;
     use crate::db::store::{bottles, capsules, pills, prescriptions};
+    use crate::db::DbScope;
     use crate::domain::bottle::{BottleScope, NewBottle};
     use crate::domain::capsule::NewCapsule;
     use crate::domain::pill::NewPill;
@@ -698,7 +699,7 @@ mod tests {
 
     #[test]
     fn pill_find_returns_results() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         setup_with_pills(&mut conn);
 
         let results = pill_find(
@@ -719,7 +720,7 @@ mod tests {
 
     #[test]
     fn pill_find_prefix_search() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         setup_with_pills(&mut conn);
 
         // "tok" debe encontrar "tokens" y "tokenizer"
@@ -740,7 +741,7 @@ mod tests {
 
     #[test]
     fn pill_find_fuzzy_typo() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         setup_with_pills(&mut conn);
 
         // "tokenir" (typo de "tokenizer") debe encontrar resultados via fuzzy
@@ -764,7 +765,7 @@ mod tests {
 
     #[test]
     fn pill_find_filters_by_compound() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         setup_with_pills(&mut conn);
 
         let results = pill_find(
@@ -785,7 +786,7 @@ mod tests {
 
     #[test]
     fn pill_find_empty_query_returns_empty() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let results = pill_find(
             &conn,
             &SearchParams {
@@ -802,7 +803,7 @@ mod tests {
 
     #[test]
     fn capsule_find_works() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
 
         capsules::take(
             &mut conn,
@@ -831,7 +832,7 @@ mod tests {
 
     #[test]
     fn bottle_context_lists_prescriptions() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
         let ctx = bottle_context(&conn, &bottle_id, 30).unwrap();
@@ -843,7 +844,7 @@ mod tests {
 
     #[test]
     fn bottle_context_resolves_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle_id = setup_with_pills(&mut conn);
         // Primeros 12 hex chars sin guiones
         let short = bottle_id
@@ -861,7 +862,7 @@ mod tests {
 
     #[test]
     fn bottle_context_resolves_8char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle_id = setup_with_pills(&mut conn);
         let short = bottle_id
             .replace('-', "")
@@ -878,7 +879,7 @@ mod tests {
 
     #[test]
     fn bottle_context_empty_bottle_returns_empty() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle = bottles::create(
             &mut conn,
             &NewBottle {
@@ -897,7 +898,7 @@ mod tests {
 
     #[test]
     fn prescription_context_returns_pills() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
         let rx_id: String = conn
@@ -919,7 +920,7 @@ mod tests {
 
     #[test]
     fn prescription_context_resolves_12char_prefix() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
         let rx_id: String = conn
@@ -942,7 +943,7 @@ mod tests {
 
     #[test]
     fn prescription_context_truncates_multibyte_safely() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle = bottles::create(
             &mut conn,
             &NewBottle {
@@ -986,7 +987,7 @@ mod tests {
 
     #[test]
     fn prescription_context_unknown_id_returns_empty() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let ctx = prescription_context(&conn, "00000000-0000-0000-0000-000000000000", 30).unwrap();
         assert!(ctx.id.is_none());
         assert!(ctx.pills.is_empty());
@@ -1024,7 +1025,7 @@ mod tests {
         // Regresión: FTS5 no acepta `"bare"* (group)` con AND implícito.
         // Una query donde un término tiene expansión fuzzy y otro no debe
         // funcionar sin error (usamos AND explícito entre grupos).
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         setup_with_pills(&mut conn);
 
         // "jwt" (3 chars, sin fuzzy) + "tokenizr" (typo, con fuzzy) = bare + group
@@ -1051,7 +1052,7 @@ mod tests {
     fn pill_find_multiple_fuzzy_terms() {
         // Regresión: dos términos con expansión fuzzy generan (group) AND (group),
         // que tampoco es válido con AND implícito en FTS5.
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         setup_with_pills(&mut conn);
 
         // Ambos términos con typos → ambos generan grupos
@@ -1075,7 +1076,7 @@ mod tests {
 
     #[test]
     fn pill_find_filters_by_bottle_id() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle_a = setup_with_pills(&mut conn);
 
         // Segundo bottle con pills distintas
@@ -1153,7 +1154,7 @@ mod tests {
 
     #[test]
     fn capsule_find_filters_by_compound() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
 
         capsules::take(
             &mut conn,
@@ -1192,7 +1193,7 @@ mod tests {
 
     #[test]
     fn capsule_find_empty_query_returns_empty() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let results = capsule_find(
             &conn,
             &SearchParams {
@@ -1211,7 +1212,7 @@ mod tests {
     fn pill_find_fuzzy_off_excludes_typo_pill() {
         // fuzzy=false debe ser estricto: solo prefix match.
         // fuzzy=true debe ampliar mediante Jaro-Winkler.
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle = bottles::create(
             &mut conn,
             &NewBottle {
@@ -1288,7 +1289,7 @@ mod tests {
 
     #[test]
     fn capsule_find_fuzzy_off_excludes_typo_capsule() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
 
         capsules::take(
             &mut conn,
@@ -1330,7 +1331,7 @@ mod tests {
 
     #[test]
     fn pill_find_paginates_correctly() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
         // Reuse the existing prescription in that bottle
@@ -1402,7 +1403,7 @@ mod tests {
 
     #[test]
     fn recent_pills_returns_pills_for_bottle() {
-        let mut conn = open_in_memory().unwrap();
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
         let bottle_id = setup_with_pills(&mut conn);
 
         let recent = recent_pills(&conn, &bottle_id, 10).unwrap();
@@ -1411,7 +1412,7 @@ mod tests {
 
     #[test]
     fn recent_pills_empty_for_unknown_bottle() {
-        let conn = open_in_memory().unwrap();
+        let conn = open_in_memory(DbScope::Global).unwrap();
         let recent = recent_pills(&conn, "uuid-inexistente", 10).unwrap();
         assert!(recent.is_empty());
     }

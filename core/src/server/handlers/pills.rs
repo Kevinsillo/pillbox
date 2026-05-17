@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use pillbox::{
-    db::{self, store, store::registered_bottles},
+    db::{self, store, store::registered_bottles, DbScope},
     domain::{
         pill::{NewPill, PillPatch},
         search::SearchParams,
@@ -265,7 +265,7 @@ pub async fn pill_search(
         let mut total: u64 = 0;
         for reg in &registered {
             let path = std::path::Path::new(&reg.db_path);
-            if let Ok(conn) = db::connection::open_existing(path) {
+            if let Ok(conn) = db::connection::open_existing(path, DbScope::Local) {
                 if let Ok(page) = store::search::pill_find(&conn, &params, &wide) {
                     total = total.saturating_add(page.total);
                     all_results.extend(page.items);
@@ -327,7 +327,7 @@ pub async fn compounds(
         let mut agg: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
         for reg in &registered {
             let path = std::path::Path::new(&reg.db_path);
-            if let Ok(conn) = db::connection::open_existing(path) {
+            if let Ok(conn) = db::connection::open_existing(path, DbScope::Local) {
                 if let Ok(rows) = store::pills::distinct_compounds(&conn, None, limit) {
                     for (compound, count) in rows {
                         *agg.entry(compound).or_insert(0) += count;
