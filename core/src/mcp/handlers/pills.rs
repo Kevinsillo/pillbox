@@ -619,10 +619,7 @@ mod tests {
         let _ = make_pill(&mut conn, &rx_id);
 
         let short = short_id(&bottle_id);
-        let resp = super::search(
-            &mut conn,
-            json!({ "query": "prueba", "bottle_id": short }),
-        );
+        let resp = super::search(&mut conn, json!({ "query": "prueba", "bottle_id": short }));
         assert!(resp.ok, "expected ok, got {:?}", resp.error);
         let items = resp.data.unwrap();
         let arr = items.as_array().expect("expected array");
