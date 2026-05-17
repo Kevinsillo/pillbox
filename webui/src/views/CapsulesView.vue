@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
 import { usePaginatedList } from '@/composables/usePaginatedList'
 import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesRepository'
 import type { CapsuleSummary } from '@/core/domain/types'
 import CapsuleCard from '@/components/CapsuleCard.vue'
 import Paginator from '@/components/Paginator.vue'
-
-const { t } = useI18n()
-const { confirm } = useConfirm()
 
 const { items, total, page, pageSize, refresh } = usePaginatedList<CapsuleSummary>({
     fetcher: (p) => capsulesApi.list(p),
@@ -20,30 +15,6 @@ const activeCapsules = computed(() => items.value.filter(c => c.deleted_at === n
 const archivedCapsules = computed(() => items.value.filter(c => c.deleted_at !== null))
 
 const poll = usePoll(refresh, 5000)
-
-async function archiveCapsule(c: CapsuleSummary) {
-    try {
-        await confirm(
-            t('confirm.delete_capsule_msg', { title: c.title }),
-            t('confirm.delete_capsule_title'),
-            { confirmText: t('common.delete'), cancelText: t('common.cancel') }
-        )
-        await capsulesApi.delete(c.id)
-        poll.restart()
-    } catch { /* cancelled */ }
-}
-
-async function purgeCapsule(c: CapsuleSummary) {
-    try {
-        await confirm(
-            t('confirm.purge_capsule_msg', { title: c.title }),
-            t('confirm.purge_capsule_title'),
-            { confirmText: t('common.delete_permanent'), cancelText: t('common.cancel'), waitSeconds: 3 }
-        )
-        await capsulesApi.purge(c.id)
-        await refresh()
-    } catch { /* cancelled */ }
-}
 </script>
 
 <template>
@@ -74,7 +45,6 @@ async function purgeCapsule(c: CapsuleSummary) {
                         v-for="c in activeCapsules"
                         :key="`active-${c.id}`"
                         :capsule="c"
-                        @archive="archiveCapsule(c)"
                     />
                 </TransitionGroup>
 
@@ -93,13 +63,12 @@ async function purgeCapsule(c: CapsuleSummary) {
                     tag="div"
                     class="space-y-2 relative"
                 >
-                    <div
+                    <CapsuleCard
                         v-for="c in archivedCapsules"
                         :key="`archived-${c.id}`"
-                        class="relative opacity-50"
-                    >
-                        <CapsuleCard :capsule="c" :archived="true" @purge="purgeCapsule(c)" />
-                    </div>
+                        :capsule="c"
+                        :archived="true"
+                    />
                 </TransitionGroup>
 
                 <div v-if="items.length > 0" class="pt-4 flex justify-center">
