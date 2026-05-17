@@ -2,9 +2,14 @@
 
 use axum::extract::{Path, Query, State};
 use pillbox::db::store;
+use pillbox::db::store::registered_bottles;
+use pillbox::error::PillboxError;
 use serde::Deserialize;
 
-use super::{conn_for_bottle_with_id, err_500, ok, ApiResponse, AppState};
+use super::{
+    conn_for_bottle_with_id, err_400_invalid_id, err_404_bottle, err_409_ambiguous_id, err_500,
+    ok, open_global_conn, ApiResponse, AppState,
+};
 
 fn default_8() -> u32 {
     8
@@ -23,6 +28,24 @@ pub async fn context_get(
     Path(bottle_id): Path<String>,
     Query(params): Query<ContextParams>,
 ) -> ApiResponse {
+    // Resolve registered bottle to obtain the on-disk DB path for size metadata.
+    let db_size_bytes: u64 = match open_global_conn(&s) {
+        Ok(global) => match registered_bottles::find_by_bottle_id(&global, &bottle_id) {
+            Ok(Some(reg)) => std::fs::metadata(&reg.db_path).map(|m| m.len()).unwrap_or(0),
+            Ok(None) => return err_404_bottle(&bottle_id),
+            Err(e) => match e.downcast::<PillboxError>() {
+                Ok(PillboxError::AmbiguousId {
+                    ref id_prefix,
+                    ref candidates,
+                }) => return err_409_ambiguous_id(id_prefix, candidates),
+                Ok(PillboxError::InvalidId { ref id }) => return err_400_invalid_id(id),
+                Ok(other) => return err_500(other.into()),
+                Err(e) => return err_500(e),
+            },
+        },
+        Err(r) => return r,
+    };
+
     let (conn, full_id) = match conn_for_bottle_with_id(&s, &bottle_id) {
         Ok(v) => v,
         Err(r) => return r,
@@ -43,5 +66,6 @@ pub async fn context_get(
         "context":            recent_pills,
         "pill_count":         pill_count,
         "prescription_count": prescription_count,
+        "db_size_bytes":      db_size_bytes,
     }))
 }

@@ -86,6 +86,7 @@ export interface Context {
     context: Pill[]
     prescription_count: number
     pill_count: number
+    db_size_bytes: number
 }
 
 export interface DayCount {

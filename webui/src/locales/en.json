@@ -71,6 +71,7 @@
     "manage_bottles": "Manage bottles",
     "stat_pills": "Total pills",
     "stat_prescriptions": "Prescriptions",
+    "stat_db_size": "Database size",
     "open_rx_label": "Open prescription",
     "last_prescriptions": "Latest prescriptions",
     "view_all": "View all",

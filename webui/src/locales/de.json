@@ -71,6 +71,7 @@
     "manage_bottles": "Bottles verwalten",
     "stat_pills": "Pills gesamt",
     "stat_prescriptions": "Prescriptions",
+    "stat_db_size": "Datenbankgröße",
     "open_rx_label": "Offene Prescription",
     "last_prescriptions": "Letzte Prescriptions",
     "view_all": "Alle ansehen",

@@ -10,6 +10,7 @@ import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository
 import { contextApi } from '@/core/infrastructure/repositories/ContextRepository'
 import { ApiError } from '@/core/infrastructure/managers/httpClient'
 import { shortId } from '@/core/utils/id'
+import { formatBytes } from '@/core/utils/bytes'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
@@ -90,6 +91,7 @@ const pillCountTween = useTween(pillCountTarget, 600)
 const rxCountTween = useTween(rxCountTarget, 600)
 const displayPillCount = computed(() => Math.round(pillCountTween.value))
 const displayRxCount = computed(() => Math.round(rxCountTween.value))
+const displayDbSize = computed(() => formatBytes(ctx.value?.db_size_bytes ?? 0))
 </script>
 
 <template>
@@ -124,7 +126,7 @@ const displayRxCount = computed(() => Math.round(rxCountTween.value))
                     class="space-y-6 transition-opacity duration-300"
                     :class="poll.loaded.value ? 'opacity-100' : 'opacity-0'"
                 >
-                    <!-- Stats + chart -->
+                    <!-- Stats 2x2 grid + activity chart side by side -->
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center">
                             <p class="text-2xl font-bold text-(--accent) tabular-nums">{{ displayPillCount }}</p>
@@ -134,7 +136,12 @@ const displayRxCount = computed(() => Math.round(rxCountTween.value))
                             <p class="text-2xl font-bold text-(--accent) tabular-nums">{{ displayRxCount }}</p>
                             <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_prescriptions') }}</p>
                         </div>
-                        <div class="sm:col-span-2">
+                        <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center">
+                            <p class="text-2xl font-bold text-(--accent) tabular-nums">{{ displayDbSize }}</p>
+                            <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_db_size') }}</p>
+                        </div>
+                        <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center"></div>
+                        <div class="col-span-2 sm:col-span-2 sm:row-span-2 sm:col-start-3 sm:row-start-1">
                             <PillsActivityChart
                                 :stats="stats"
                                 :active-period="activePeriod"
