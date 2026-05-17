@@ -15,6 +15,7 @@ import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 import Paginator from '@/components/Paginator.vue'
 import CopyableId from '@/components/CopyableId.vue'
 import HeaderMenu from '@/components/HeaderMenu.vue'
+import ViewsBadge from '@/components/ViewsBadge.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
 import IClipboard from '~icons/lucide/clipboard'
 import ILock from '~icons/lucide/lock'
@@ -168,13 +169,16 @@ async function purgeRx() {
                                     <PrescriptionStatusBadge :open="isOpen" />
                                     <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('prescription_detail.archived_badge') }}</span>
                                 </div>
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-start gap-2">
                                     <CopyableId :id="rx.id" />
                                     <h1 class="text-xl font-bold text-(--text-h)">{{ rx.title }}</h1>
                                 </div>
-                                <p class="text-xs text-zinc-500 mt-0.5">
-                                    {{ $t('prescription_detail.started_at') }} {{ new Date(rx.started_at).toLocaleString() }}
-                                    <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ new Date(rx.ended_at).toLocaleString() }}</span>
+                                <p class="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                    <ViewsBadge :views="rx.views" />
+                                    <span>
+                                        {{ $t('prescription_detail.started_at') }} {{ new Date(rx.started_at).toLocaleString() }}
+                                        <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ new Date(rx.ended_at).toLocaleString() }}</span>
+                                    </span>
                                 </p>
                                 <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">{{ authorDisplay }}</p>
                             </div>

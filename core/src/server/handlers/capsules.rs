@@ -201,7 +201,12 @@ pub async fn capsule_list(
         Ok(c) => c,
         Err(r) => return r,
     };
-    match store::capsules::list(&conn, store::ListFilter::Active, params.compound.as_deref(), &params.pagination) {
+    match store::capsules::list(
+        &conn,
+        store::ListFilter::Active,
+        params.compound.as_deref(),
+        &params.pagination,
+    ) {
         Ok(page) => ok(page),
         Err(e) => err_500(e),
     }

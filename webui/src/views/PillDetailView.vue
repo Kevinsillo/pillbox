@@ -2,6 +2,7 @@
 import CompoundBadge from "@/components/CompoundBadge.vue"
 import CopyableId from "@/components/CopyableId.vue"
 import HeaderMenu from "@/components/HeaderMenu.vue"
+import ViewsBadge from "@/components/ViewsBadge.vue"
 import type { Pill } from "@/core/domain/types"
 import { formatAuthor } from "@/core/domain/author"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
@@ -104,14 +105,17 @@ watchEffect(async () => {
                                 <CompoundBadge :compound="pill.compound" />
                                 <span v-if="pill.deleted_at" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text)">{{ $t('pill_detail.archived_badge') }}</span>
                             </div>
-                            <div class="flex items-center gap-2 mt-2">
+                            <div class="flex items-start gap-2 mt-2">
                                 <CopyableId :id="pill.id" />
                                 <h1 class="text-xl font-bold text-(--text-h)">{{ pill.title }}</h1>
                             </div>
-                            <p class="text-xs text-zinc-500 mt-0.5">
-                                {{ $t("pill_detail.created_at") }} {{ new Date(pill.created_at).toLocaleString() }}
-                                <span v-if="pill.updated_at !== pill.created_at">
-                                    · {{ $t("pill_detail.updated_at") }} {{ new Date(pill.updated_at).toLocaleString() }}
+                            <p class="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                <ViewsBadge :views="pill.views" />
+                                <span>
+                                    {{ $t("pill_detail.created_at") }} {{ new Date(pill.created_at).toLocaleString() }}
+                                    <span v-if="pill.updated_at !== pill.created_at">
+                                        · {{ $t("pill_detail.updated_at") }} {{ new Date(pill.updated_at).toLocaleString() }}
+                                    </span>
                                 </span>
                             </p>
                             <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">

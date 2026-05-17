@@ -14,6 +14,7 @@
   },
   "common": {
     "loading": "Laden",
+    "views_label": "{count} Ansichten",
     "copy_id": "ID kopieren",
     "copied": "Kopiert",
     "coming_soon": "(demnächst)",

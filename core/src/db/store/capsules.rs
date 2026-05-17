@@ -59,7 +59,8 @@ pub fn read(conn: &Connection, id: &str) -> Result<Option<Capsule>> {
         return Ok(None);
     };
     match conn.query_row(
-        "SELECT id, compound, title, content, created_at, updated_at, deleted_at
+        "SELECT id, compound, title, content, created_at, updated_at, deleted_at,
+                views
          FROM capsules WHERE id = ?1 AND deleted_at IS NULL",
         params![resolved_id],
         row_to_capsule,
@@ -76,7 +77,8 @@ pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Capsule>> {
         return Ok(None);
     };
     match conn.query_row(
-        "SELECT id, compound, title, content, created_at, updated_at, deleted_at
+        "SELECT id, compound, title, content, created_at, updated_at, deleted_at,
+                views
          FROM capsules WHERE id = ?1",
         params![resolved_id],
         row_to_capsule,
@@ -109,7 +111,7 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &CapsulePatch) -> Result<O
             params![
                 patch.title.as_deref(),
                 patch.content.as_deref(),
-                patch.compound.as_ref().map(|c| c.as_str()),
+                patch.compound.as_deref(),
                 resolved_id,
             ],
         )
@@ -121,7 +123,8 @@ pub fn revise(conn: &mut Connection, id: &str, patch: &CapsulePatch) -> Result<O
 
     let capsule = tx
         .query_row(
-            "SELECT id, compound, title, content, created_at, updated_at, deleted_at
+            "SELECT id, compound, title, content, created_at, updated_at, deleted_at,
+                    views
              FROM capsules WHERE id = ?1",
             params![resolved_id],
             row_to_capsule,
@@ -162,16 +165,15 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<Option<CapsuleDiscardR
     )?;
 
     tx.commit()?;
-    Ok(Some(CapsuleDiscardResult { id: resolved_id, deleted_at }))
+    Ok(Some(CapsuleDiscardResult {
+        id: resolved_id,
+        deleted_at,
+    }))
 }
 
 /// Lista capsules globales con filtros opcionales (incluye archivadas).
 pub fn count(conn: &Connection) -> Result<u32> {
-    let n: u32 = conn.query_row(
-        "SELECT COUNT(*) FROM capsules",
-        [],
-        |r| r.get(0),
-    )?;
+    let n: u32 = conn.query_row("SELECT COUNT(*) FROM capsules", [], |r| r.get(0))?;
     Ok(n)
 }
 
@@ -210,7 +212,8 @@ pub fn list(
     let offset = pagination.offset() as i64;
 
     let select_sql = format!(
-        "SELECT id, compound, title, content, created_at, updated_at, deleted_at
+        "SELECT id, compound, title, content, created_at, updated_at, deleted_at,
+                views
          FROM capsules
          WHERE {filter_clause} AND (?1 IS NULL OR compound = ?1)
          ORDER BY updated_at DESC
@@ -285,6 +288,7 @@ fn row_to_capsule(row: &rusqlite::Row<'_>) -> rusqlite::Result<Capsule> {
         created_at: row.get(4)?,
         updated_at: row.get(5)?,
         deleted_at: row.get(6)?,
+        views: row.get(7)?,
     })
 }
 
@@ -358,7 +362,9 @@ mod tests {
     #[test]
     fn read_missing_returns_none() {
         let conn = open_in_memory().unwrap();
-        assert!(read(&conn, "00000000-0000-0000-0000-000000000000").unwrap().is_none());
+        assert!(read(&conn, "00000000-0000-0000-0000-000000000000")
+            .unwrap()
+            .is_none());
     }
 
     #[test]
@@ -410,7 +416,13 @@ mod tests {
         )
         .unwrap();
 
-        let all = list(&conn, ListFilter::Active, None, &PaginationParams::default()).unwrap();
+        let all = list(
+            &conn,
+            ListFilter::Active,
+            None,
+            &PaginationParams::default(),
+        )
+        .unwrap();
         assert_eq!(all.items.len(), 2);
         assert_eq!(all.total, 2);
     }
@@ -429,7 +441,13 @@ mod tests {
         )
         .unwrap();
 
-        let conventions = list(&conn, ListFilter::Active, Some("convention"), &PaginationParams::default()).unwrap();
+        let conventions = list(
+            &conn,
+            ListFilter::Active,
+            Some("convention"),
+            &PaginationParams::default(),
+        )
+        .unwrap();
         assert_eq!(conventions.items.len(), 1);
         assert_eq!(conventions.items[0].compound, "convention");
     }
@@ -449,7 +467,16 @@ mod tests {
             .unwrap();
         }
 
-        let limited = list(&conn, ListFilter::Active, None, &PaginationParams { page: 1, page_size: 3 }).unwrap();
+        let limited = list(
+            &conn,
+            ListFilter::Active,
+            None,
+            &PaginationParams {
+                page: 1,
+                page_size: 3,
+            },
+        )
+        .unwrap();
         assert_eq!(limited.items.len(), 3);
         assert_eq!(limited.total, 5);
     }
@@ -460,7 +487,13 @@ mod tests {
         let cap = take(&mut conn, &sample_capsule()).unwrap();
         discard(&mut conn, &cap.id).unwrap();
 
-        let all = list(&conn, ListFilter::Active, None, &PaginationParams::default()).unwrap();
+        let all = list(
+            &conn,
+            ListFilter::Active,
+            None,
+            &PaginationParams::default(),
+        )
+        .unwrap();
         assert!(all.items.is_empty());
         assert_eq!(all.total, 0);
     }
@@ -506,15 +539,43 @@ mod tests {
     fn list_active_only_excludes_archived() {
         let mut conn = open_in_memory().unwrap();
         for i in 0..3 {
-            take(&mut conn, &NewCapsule { title: format!("Active {i}"), content: "c".into(), compound: "discovery".into() }).unwrap();
+            take(
+                &mut conn,
+                &NewCapsule {
+                    title: format!("Active {i}"),
+                    content: "c".into(),
+                    compound: "discovery".into(),
+                },
+            )
+            .unwrap();
         }
         let archived_ids: Vec<String> = (0..5)
-            .map(|i| take(&mut conn, &NewCapsule { title: format!("Archived {i}"), content: "c".into(), compound: "discovery".into() }).unwrap().id)
+            .map(|i| {
+                take(
+                    &mut conn,
+                    &NewCapsule {
+                        title: format!("Archived {i}"),
+                        content: "c".into(),
+                        compound: "discovery".into(),
+                    },
+                )
+                .unwrap()
+                .id
+            })
             .collect();
         for id in &archived_ids {
             discard(&mut conn, id).unwrap();
         }
-        let active = list(&conn, ListFilter::Active, None, &PaginationParams { page: 1, page_size: 100 }).unwrap();
+        let active = list(
+            &conn,
+            ListFilter::Active,
+            None,
+            &PaginationParams {
+                page: 1,
+                page_size: 100,
+            },
+        )
+        .unwrap();
         assert_eq!(active.items.len(), 3);
         assert_eq!(active.total, 3);
         assert!(active.items.iter().all(|c| c.deleted_at.is_none()));
@@ -524,7 +585,18 @@ mod tests {
     fn count_archived_still_returns_total() {
         let mut conn = open_in_memory().unwrap();
         let archived_ids: Vec<String> = (0..9)
-            .map(|i| take(&mut conn, &NewCapsule { title: format!("Archived {i}"), content: "c".into(), compound: "discovery".into() }).unwrap().id)
+            .map(|i| {
+                take(
+                    &mut conn,
+                    &NewCapsule {
+                        title: format!("Archived {i}"),
+                        content: "c".into(),
+                        compound: "discovery".into(),
+                    },
+                )
+                .unwrap()
+                .id
+            })
             .collect();
         for id in &archived_ids {
             discard(&mut conn, id).unwrap();
@@ -537,7 +609,12 @@ mod tests {
     fn read_by_12char_prefix() {
         let mut conn = open_in_memory().unwrap();
         let result = take(&mut conn, &sample_capsule()).unwrap();
-        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let short = result
+            .id
+            .replace('-', "")
+            .chars()
+            .take(12)
+            .collect::<String>();
         let found = read(&conn, &short).unwrap().unwrap();
         assert_eq!(found.id, result.id);
     }
@@ -546,11 +623,20 @@ mod tests {
     fn revise_by_short_id() {
         let mut conn = open_in_memory().unwrap();
         let result = take(&mut conn, &sample_capsule()).unwrap();
-        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let short = result
+            .id
+            .replace('-', "")
+            .chars()
+            .take(12)
+            .collect::<String>();
         let updated = revise(
             &mut conn,
             &short,
-            &CapsulePatch { title: Some("Revisada por prefijo".into()), content: None, compound: None },
+            &CapsulePatch {
+                title: Some("Revisada por prefijo".into()),
+                content: None,
+                compound: None,
+            },
         )
         .unwrap()
         .unwrap();
@@ -561,7 +647,12 @@ mod tests {
     fn discard_by_short_id() {
         let mut conn = open_in_memory().unwrap();
         let result = take(&mut conn, &sample_capsule()).unwrap();
-        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let short = result
+            .id
+            .replace('-', "")
+            .chars()
+            .take(12)
+            .collect::<String>();
         let discarded = discard(&mut conn, &short).unwrap().unwrap();
         assert_eq!(discarded.id, result.id);
         assert!(read(&conn, &result.id).unwrap().is_none());
@@ -631,7 +722,10 @@ mod tests {
 
         let i_convention = rows.iter().position(|(c, _)| c == "convention").unwrap();
         let i_workflow = rows.iter().position(|(c, _)| c == "workflow").unwrap();
-        assert!(i_convention < i_workflow, "convention (2) antes que workflow (1)");
+        assert!(
+            i_convention < i_workflow,
+            "convention (2) antes que workflow (1)"
+        );
     }
 
     #[test]

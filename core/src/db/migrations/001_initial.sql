@@ -23,7 +23,8 @@ CREATE TABLE bottles (
     directory    TEXT NOT NULL UNIQUE,
     scope        TEXT NOT NULL DEFAULT 'local' CHECK (scope IN ('local', 'global')),
     created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    last_seen_at TEXT NOT NULL DEFAULT (datetime('now'))
+    last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+    views        INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE prescriptions (
@@ -46,6 +47,7 @@ CREATE TABLE prescriptions (
     -- Soft delete: al descartar una prescripción, sus pills también se soft-deletan
     -- en el store (cascade lógico en Rust, no a nivel DB).
     deleted_at TEXT,
+    views      INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (bottle_id) REFERENCES bottles(id)
 );
 
@@ -66,6 +68,7 @@ CREATE TABLE pills (
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
     deleted_at      TEXT,
+    views           INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (prescription_id) REFERENCES prescriptions(id)
 );
 
@@ -80,7 +83,8 @@ CREATE TABLE capsules (
     content    TEXT NOT NULL CHECK (length(content) BETWEEN 1 AND 5000),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    deleted_at TEXT
+    deleted_at TEXT,
+    views      INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_cap_compound ON capsules(compound)  WHERE deleted_at IS NULL;
@@ -105,7 +109,9 @@ CREATE TRIGGER pills_ad AFTER DELETE ON pills BEGIN
     VALUES ('delete', old.rowid, old.title, old.content, old.compound);
 END;
 
-CREATE TRIGGER pills_au AFTER UPDATE ON pills BEGIN
+CREATE TRIGGER pills_au AFTER UPDATE ON pills
+WHEN OLD.title <> NEW.title OR OLD.content <> NEW.content OR OLD.compound <> NEW.compound
+BEGIN
     INSERT INTO pills_fts(pills_fts, rowid, title, content, compound)
     VALUES ('delete', old.rowid, old.title, old.content, old.compound);
     INSERT INTO pills_fts(rowid, title, content, compound)
@@ -129,7 +135,9 @@ CREATE TRIGGER capsules_ad AFTER DELETE ON capsules BEGIN
     VALUES ('delete', old.rowid, old.title, old.content, old.compound);
 END;
 
-CREATE TRIGGER capsules_au AFTER UPDATE ON capsules BEGIN
+CREATE TRIGGER capsules_au AFTER UPDATE ON capsules
+WHEN OLD.title <> NEW.title OR OLD.content <> NEW.content OR OLD.compound <> NEW.compound
+BEGIN
     INSERT INTO capsules_fts(capsules_fts, rowid, title, content, compound)
     VALUES ('delete', old.rowid, old.title, old.content, old.compound);
     INSERT INTO capsules_fts(rowid, title, content, compound)

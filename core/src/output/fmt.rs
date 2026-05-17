@@ -83,6 +83,7 @@ pub struct BottleListRow {
     pub scope: String,
     pub linked: bool,
     pub is_active: bool,
+    pub views: i64,
 }
 
 /// Muestra la lista de bottles registrados con su estado de enlace.
@@ -125,7 +126,8 @@ pub fn bottles_registered_list(rows: &[BottleListRow], total: u32) {
 
             let scope_cell = r.scope.dimmed().to_string();
 
-            vec![estado, name_cell, dir_cell, scope_cell]
+            let views_cell = r.views.to_string().dimmed().to_string();
+            vec![estado, views_cell, name_cell, dir_cell, scope_cell]
         })
         .collect();
 
@@ -134,6 +136,7 @@ pub fn bottles_registered_list(rows: &[BottleListRow], total: u32) {
         table::plain_list(
             &[
                 " ",
+                "👁",
                 t!("bottles.list.col.name").as_ref(),
                 t!("bottles.list.col.dir").as_ref(),
                 t!("bottles.list.col.scope").as_ref(),
@@ -171,6 +174,10 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
                 format!("{} — \"{}\"", bottle.name, bottle.display_name),
             ],
             [
+                t!("bottle.status.labels.views").bold().to_string(),
+                bottle.views.to_string(),
+            ],
+            [
                 t!("bottle.status.labels.scope").bold().to_string(),
                 bottle.scope.to_string(),
             ],
@@ -194,10 +201,18 @@ pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, 
 
 // ─── Status ───────────────────────────────────────────────────────────────────
 
+/// Tupla de métricas leídas de una DB para el panel de estado:
+/// (schema_version, bottles, pills, capsules, prescriptions).
+pub type StatusDbMetrics = (i64, i64, i64, i64, i64);
+
+/// Resultado de consultar las métricas de una DB: `None` si la DB no existe,
+/// `Some(Ok(...))` con la tupla de conteos, o `Some(Err(msg))` si la consulta falla.
+pub type StatusDbResult = Option<Result<StatusDbMetrics, String>>;
+
 /// Datos de una DB (global o local) para mostrar en el panel de estado.
 pub struct StatusDb {
     pub path: String,
-    pub result: Option<Result<(i64, i64, i64, i64, i64), String>>,
+    pub result: StatusDbResult,
 }
 
 /// Información del bottle activo para mostrar en el panel de estado.
@@ -413,7 +428,13 @@ pub fn prescriptions_list(
                     Some(name) => truncate(name, 18),
                     None => "-".dimmed().to_string(),
                 };
-                vec![short_id.to_string(), truncate(&rx.title, 40), estado, author]
+                vec![
+                    short_id.to_string(),
+                    rx.views.to_string().dimmed().to_string(),
+                    truncate(&rx.title, 40),
+                    estado,
+                    author,
+                ]
             })
             .collect();
         print!(
@@ -421,6 +442,7 @@ pub fn prescriptions_list(
             table::plain_list(
                 &[
                     t!("prescriptions.list.col.id").as_ref(),
+                    "👁",
                     t!("prescriptions.list.col.title").as_ref(),
                     t!("prescriptions.list.col.state").as_ref(),
                     t!("prescriptions.list.col.author").as_ref(),
@@ -441,9 +463,7 @@ pub fn prescriptions_list(
         let n = archived_shown.len();
         println!(
             "\n  {}\n",
-            t!("prescriptions.list.archived_section", count = n)
-                .dimmed()
-                .to_string()
+            t!("prescriptions.list.archived_section", count = n).dimmed()
         );
         let rows = archived_shown
             .iter()
@@ -454,19 +474,19 @@ pub fn prescriptions_list(
                 } else {
                     t!("prescriptions.state.open").dimmed().to_string()
                 };
-                let archived_date = rx
+                let archived_date_raw = rx
                     .deleted_at
                     .as_deref()
                     .and_then(|d| d.get(..10))
-                    .unwrap_or("—")
-                    .dimmed()
-                    .to_string();
+                    .unwrap_or("—");
+                let archived_date = archived_date_raw.dimmed().to_string();
                 let author = match &rx.author_name {
                     Some(name) => truncate(name, 18).dimmed().to_string(),
                     None => "-".dimmed().to_string(),
                 };
                 vec![
                     short_id.dimmed().to_string(),
+                    rx.views.to_string().dimmed().to_string(),
                     truncate(&rx.title, 36).dimmed().to_string(),
                     estado,
                     author,
@@ -479,6 +499,7 @@ pub fn prescriptions_list(
             table::plain_list(
                 &[
                     t!("prescriptions.list.col.id").as_ref(),
+                    "👁",
                     t!("prescriptions.list.col.title").as_ref(),
                     t!("prescriptions.list.col.state").as_ref(),
                     t!("prescriptions.list.col.author").as_ref(),
@@ -491,8 +512,7 @@ pub fn prescriptions_list(
         if archived_hidden > 0 {
             println!(
                 "   {}",
-                t!("prescriptions.list.more_archived", count = archived_hidden)
-                    .dimmed()
+                t!("prescriptions.list.more_archived", count = archived_hidden).dimmed()
             );
         }
         println!();
@@ -503,7 +523,7 @@ pub fn prescriptions_list(
 
 /// Confirma en pantalla la apertura de una prescripción nueva.
 pub fn prescription_opened(id: &str, title: &str) {
-    let short_id = &display_id(&id);
+    let short_id = &display_id(id);
     print_a(
         &t!("prescriptions.msg.opened"),
         &[("title", title), ("id", short_id)],
@@ -517,7 +537,7 @@ pub fn prescription_closed(_title: &str) {
 
 /// Confirma en pantalla la reapertura de una prescripción.
 pub fn prescription_reopened(id: &str, title: &str) {
-    let short_id = &display_id(&id);
+    let short_id = &display_id(id);
     print_a(
         &t!("prescriptions.msg.reopened"),
         &[("title", title), ("id", short_id)],
@@ -763,6 +783,10 @@ pub fn prescription_show(
             short_id.cyan().to_string(),
         ],
         [
+            t!("prescription.show.views").bold().to_string(),
+            rx.views.to_string(),
+        ],
+        [
             t!("prescription.show.title").bold().to_string(),
             rx.title.clone(),
         ],
@@ -784,7 +808,8 @@ pub fn prescription_show(
     ) = pills.iter().partition(|p| p.deleted_at.is_none());
 
     let total_active = active_pills.len();
-    let shown_active: Vec<&pillbox::domain::pill::Pill> = active_pills.iter().copied().take(limit as usize).collect();
+    let shown_active: Vec<&pillbox::domain::pill::Pill> =
+        active_pills.iter().copied().take(limit as usize).collect();
     let hidden = total_active.saturating_sub(shown_active.len());
 
     let archived_cap = archived_limit as usize;
@@ -813,9 +838,13 @@ pub fn prescription_show(
             .map(|p| {
                 vec![
                     display_id(&p.id),
+                    p.views.to_string().dimmed().to_string(),
                     truncate(&p.compound, 16),
                     truncate(&p.title, 50),
-                    p.author_name.as_deref().map(|n| truncate(n, 18)).unwrap_or_else(|| "-".dimmed().to_string()),
+                    p.author_name
+                        .as_deref()
+                        .map(|n| truncate(n, 18))
+                        .unwrap_or_else(|| "-".dimmed().to_string()),
                 ]
             })
             .collect();
@@ -824,6 +853,7 @@ pub fn prescription_show(
             table::plain_list(
                 &[
                     t!("pills.list.col.num").as_ref(),
+                    "👁",
                     t!("pills.list.col.compound").as_ref(),
                     t!("pills.list.col.title").as_ref(),
                     t!("pills.list.col.author").as_ref(),
@@ -842,18 +872,20 @@ pub fn prescription_show(
         let n = archived_shown.len();
         println!(
             "\n  {}\n",
-            t!("prescription.pills.archived_section", count = n)
-                .dimmed()
-                .to_string()
+            t!("prescription.pills.archived_section", count = n).dimmed()
         );
         let table_rows = archived_shown
             .iter()
             .map(|p| {
                 vec![
                     p.id.to_string().dimmed().to_string(),
+                    p.views.to_string().dimmed().to_string(),
                     truncate(&p.compound, 16).dimmed().to_string(),
                     truncate(&p.title, 50).dimmed().to_string(),
-                    p.author_name.as_deref().map(|n| truncate(n, 18).dimmed().to_string()).unwrap_or_else(|| "-".dimmed().to_string()),
+                    p.author_name
+                        .as_deref()
+                        .map(|n| truncate(n, 18).dimmed().to_string())
+                        .unwrap_or_else(|| "-".dimmed().to_string()),
                 ]
             })
             .collect();
@@ -862,6 +894,7 @@ pub fn prescription_show(
             table::plain_list(
                 &[
                     t!("pills.list.col.num").as_ref(),
+                    "👁",
                     t!("pills.list.col.compound").as_ref(),
                     t!("pills.list.col.title").as_ref(),
                     t!("pills.list.col.author").as_ref(),
@@ -892,6 +925,10 @@ pub fn pill_detail(pill: &Pill) {
     let rows = vec![
         [t!("pill.detail.id").bold().to_string(), short_id],
         [
+            t!("pill.detail.views").bold().to_string(),
+            pill.views.to_string(),
+        ],
+        [
             t!("pill.detail.compound").bold().to_string(),
             pill.compound.clone(),
         ],
@@ -907,10 +944,7 @@ pub fn pill_detail(pill: &Pill) {
             t!("pill.detail.created").bold().to_string(),
             pill.created_at.clone(),
         ],
-        [
-            t!("pill.detail.author").bold().to_string(),
-            author_val,
-        ],
+        [t!("pill.detail.author").bold().to_string(), author_val],
     ];
     println!("\n{}", table::dict(rows));
     println!();
@@ -958,6 +992,7 @@ pub fn capsules_list(
             .map(|c| {
                 vec![
                     display_id(&c.id),
+                    c.views.to_string().dimmed().to_string(),
                     truncate(&c.compound, 14),
                     truncate(&c.title, 50),
                 ]
@@ -968,6 +1003,7 @@ pub fn capsules_list(
             table::plain_list(
                 &[
                     t!("capsules.list.col.num").as_ref(),
+                    "👁",
                     t!("capsules.list.col.compound").as_ref(),
                     t!("capsules.list.col.title").as_ref(),
                 ],
@@ -987,22 +1023,20 @@ pub fn capsules_list(
         let n = archived_shown.len();
         println!(
             "\n  {}\n",
-            t!("capsules.list.archived_section", count = n)
-                .dimmed()
-                .to_string()
+            t!("capsules.list.archived_section", count = n).dimmed()
         );
         let rows = archived_shown
             .iter()
             .map(|c| {
-                let archived_date = c
+                let archived_date_raw = c
                     .deleted_at
                     .as_deref()
                     .and_then(|d| d.get(..10))
-                    .unwrap_or("—")
-                    .dimmed()
-                    .to_string();
+                    .unwrap_or("—");
+                let archived_date = archived_date_raw.dimmed().to_string();
                 vec![
                     display_id(&c.id).dimmed().to_string(),
+                    c.views.to_string().dimmed().to_string(),
                     truncate(&c.compound, 14).dimmed().to_string(),
                     truncate(&c.title, 46).dimmed().to_string(),
                     archived_date,
@@ -1014,6 +1048,7 @@ pub fn capsules_list(
             table::plain_list(
                 &[
                     t!("capsules.list.col.num").as_ref(),
+                    "👁",
                     t!("capsules.list.col.compound").as_ref(),
                     t!("capsules.list.col.title").as_ref(),
                     t!("capsules.list.col.archived_at").as_ref(),
@@ -1046,6 +1081,10 @@ pub fn capsule_detail(capsule: &Capsule) {
     };
     let rows = vec![
         [t!("capsule.detail.id").bold().to_string(), short_id],
+        [
+            t!("capsule.detail.views").bold().to_string(),
+            capsule.views.to_string(),
+        ],
         [
             t!("capsule.detail.compound").bold().to_string(),
             capsule.compound.clone(),

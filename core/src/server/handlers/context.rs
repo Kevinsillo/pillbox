@@ -6,7 +6,9 @@ use serde::Deserialize;
 
 use super::{conn_for_bottle_with_id, err_500, ok, ApiResponse, AppState};
 
-fn default_8() -> u32 { 8 }
+fn default_8() -> u32 {
+    8
+}
 
 /// Parámetros de query para ajustar el número de pills recientes devueltas.
 #[derive(Deserialize)]

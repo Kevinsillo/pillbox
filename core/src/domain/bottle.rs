@@ -69,4 +69,7 @@ pub struct Bottle {
     /// ID del registro en `registered_bottles` (presente en bottles con DB registrada).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reg_id: Option<i64>,
+    /// Contador de vistas. `#[serde(default)]` por compatibilidad con clientes API que no envían el campo.
+    #[serde(default)]
+    pub views: i64,
 }

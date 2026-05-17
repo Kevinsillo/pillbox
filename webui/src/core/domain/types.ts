@@ -16,6 +16,7 @@ export interface Bottle {
     last_seen_at: string
     linked: boolean
     reg_id?: number
+    views: number
 }
 
 export interface Prescription {
@@ -27,6 +28,7 @@ export interface Prescription {
     started_at: string
     ended_at: string | null
     deleted_at: string | null
+    views: number
 }
 
 export interface Pill {
@@ -40,6 +42,7 @@ export interface Pill {
     created_at: string
     updated_at: string
     deleted_at: string | null
+    views: number
 }
 
 export interface PillSearchResult {
@@ -62,6 +65,7 @@ export interface Capsule {
     created_at: string
     updated_at: string
     deleted_at: string | null
+    views: number
 }
 
 export interface CapsuleSummary {
@@ -71,6 +75,7 @@ export interface CapsuleSummary {
     created_at: string
     updated_at: string
     deleted_at: string | null
+    views: number
 }
 
 export interface CapsuleSearchResult extends CapsuleSummary {

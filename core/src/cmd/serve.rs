@@ -148,7 +148,10 @@ fn write_hosts_entry() -> std::io::Result<()> {
     if needs_newline {
         new_content.push('\n');
     }
-    new_content.push_str(&format!("127.0.0.1\t{}\t{}\n", HOSTS_HOSTNAME, HOSTS_MARKER));
+    new_content.push_str(&format!(
+        "127.0.0.1\t{}\t{}\n",
+        HOSTS_HOSTNAME, HOSTS_MARKER
+    ));
 
     fs::write(&path, new_content)
 }
@@ -284,18 +287,10 @@ pub fn cmd_serve_install(port: u16) -> Result<()> {
 
     if let Err(e) = write_hosts_entry() {
         tracing::warn!("hosts write failed: {}", e);
-        eprintln!(
-            "{} {}",
-            "!".yellow().bold(),
-            t!("serve.error.hosts_write")
-        );
+        eprintln!("{} {}", "!".yellow().bold(), t!("serve.error.hosts_write"));
     }
 
-    println!(
-        "\n{} {}\n",
-        "✓".green().bold(),
-        t!("serve.install.success")
-    );
+    println!("\n{} {}\n", "✓".green().bold(), t!("serve.install.success"));
     Ok(())
 }
 
@@ -343,7 +338,11 @@ pub fn cmd_serve_start() -> Result<()> {
         })
         .map_err(|e| anyhow::anyhow!("failed to start service: {}", e))?;
     let port = read_serve_port().unwrap_or(DEFAULT_PORT);
-    let host = if hosts_entry_present() { HOSTS_HOSTNAME } else { "localhost" };
+    let host = if hosts_entry_present() {
+        HOSTS_HOSTNAME
+    } else {
+        "localhost"
+    };
     let url = format!("http://{}:{}", host, port);
     crate::output::fmt::serve_started(&url);
     Ok(())

@@ -106,9 +106,7 @@ pub fn resolve_id(conn: &Connection, table: &str, id: &str) -> Result<Option<Str
     // Short-circuit: UUID completo (con o sin guiones) — no puede ser ambiguo.
     // Se normaliza por si llega sin guiones. No verifica existencia; el caller
     // debe manejar el caso Not Found si es necesario.
-    if id.len() == FULL_UUID_LEN
-        || (id.len() == FULL_UUID_NO_DASH_LEN && !id.contains('-'))
-    {
+    if id.len() == FULL_UUID_LEN || (id.len() == FULL_UUID_NO_DASH_LEN && !id.contains('-')) {
         return Ok(Some(normalize_prefix(id)));
     }
 
@@ -165,10 +163,7 @@ mod tests {
         assert_eq!(normalize_prefix("019e1d521a89"), "019e1d52-1a89");
         assert_eq!(normalize_prefix("019e1d52"), "019e1d52");
         assert_eq!(normalize_prefix("019e1d52-1a89"), "019e1d52-1a89");
-        assert_eq!(
-            normalize_prefix("019e1d521a897d41"),
-            "019e1d52-1a89-7d41"
-        );
+        assert_eq!(normalize_prefix("019e1d521a897d41"), "019e1d52-1a89-7d41");
     }
 
     #[test]

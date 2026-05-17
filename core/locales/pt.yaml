@@ -12,6 +12,7 @@ bottle:
   status:
     labels:
       bottle: "Bottle"
+      views: "Visualizações"
       scope: "Escopo"
       dir: "Diretório"
       pills: "Pills"
@@ -135,6 +136,7 @@ pills:
 pill:
   detail:
     id: "ID"
+    views: "Visualizações"
     compound: "Composto"
     title: "Título"
     prescription: "Prescrição"
@@ -146,6 +148,7 @@ pill:
 capsule:
   detail:
     id: "ID"
+    views: "Visualizações"
     compound: "Composto"
     title: "Título"
     created: "Criada"
@@ -193,6 +196,7 @@ prescriptions:
 prescription:
   show:
     id: "ID"
+    views: "Visualizações"
     title: "Título"
     state: "Estado"
     started: "Iniciada"

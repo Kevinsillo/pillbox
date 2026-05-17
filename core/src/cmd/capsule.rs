@@ -45,9 +45,15 @@ pub fn cmd_capsule_list(limit: u32, archived_limit: u32) -> Result<()> {
 
     let conn = connection::open(&global_path)?;
     let total = capsules::count(&conn)?;
-    let pagination = PaginationParams { page: 1, page_size: limit.max(1).min(100) };
+    let pagination = PaginationParams {
+        page: 1,
+        page_size: limit.clamp(1, 100),
+    };
     let active = capsules::list(&conn, ListFilter::Active, None, &pagination)?.items;
-    let archived_pagination = PaginationParams { page: 1, page_size: archived_limit.max(1).min(100) };
+    let archived_pagination = PaginationParams {
+        page: 1,
+        page_size: archived_limit.clamp(1, 100),
+    };
     let archived = capsules::list(&conn, ListFilter::Archived, None, &archived_pagination)?.items;
     let archived_total = capsules::count_archived(&conn)?;
     output::fmt::capsules_list(&active, &archived, archived_limit, archived_total, total);

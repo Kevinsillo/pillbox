@@ -5,7 +5,6 @@
 
 /// Fila de la tabla `pills`.
 
-
 #[derive(Debug, Clone)]
 pub struct PillRow {
     pub id: i64,
@@ -19,6 +18,7 @@ pub struct PillRow {
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
+    pub views: i64,
 }
 
 /// Fila de la tabla `capsules`.
@@ -32,6 +32,7 @@ pub struct CapsuleRow {
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
+    pub views: i64,
 }
 
 /// Fila de la tabla `prescriptions`.
@@ -43,6 +44,7 @@ pub struct PrescriptionRow {
     pub started_at: String,
     pub ended_at: Option<String>,
     pub deleted_at: Option<String>,
+    pub views: i64,
 }
 
 /// Fila de la tabla `bottles`.
@@ -55,5 +57,5 @@ pub struct BottleRow {
     pub scope: String,
     pub created_at: String,
     pub last_seen_at: String,
+    pub views: i64,
 }
-

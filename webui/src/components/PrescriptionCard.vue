@@ -7,6 +7,7 @@ import { formatAuthor } from '@/core/domain/author'
 import { shortId } from '@/core/utils/id'
 import PrescriptionStatusBadge from './PrescriptionStatusBadge.vue'
 import TruncatedTitle from './TruncatedTitle.vue'
+import ViewsBadge from './ViewsBadge.vue'
 import IClipboard from '~icons/lucide/clipboard'
 
 useI18n()
@@ -36,8 +37,9 @@ const isOpen = computed(() =>
                     <PrescriptionStatusBadge :open="isOpen" />
                     <TruncatedTitle :title="prescription.title" class="text-(--text-h) text-sm font-medium" />
                 </div>
-                <p class="text-xs text-zinc-600">
-                    {{ new Date(prescription.started_at).toLocaleString() }}<template v-if="formatAuthor(prescription.author_name, prescription.author_email)"> · {{ formatAuthor(prescription.author_name, prescription.author_email) }}</template>
+                <p class="text-xs text-zinc-600 flex items-center gap-2 flex-wrap">
+                    <ViewsBadge :views="prescription.views" />
+                    <span>{{ new Date(prescription.started_at).toLocaleString() }}<template v-if="formatAuthor(prescription.author_name, prescription.author_email)"> · {{ formatAuthor(prescription.author_name, prescription.author_email) }}</template></span>
                 </p>
             </div>
         </RouterLink>

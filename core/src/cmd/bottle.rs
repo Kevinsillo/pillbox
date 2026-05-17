@@ -40,6 +40,7 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
                 scope: "local".to_string(),
                 linked: false,
                 is_active: false,
+                views: 0,
             });
             continue;
         }
@@ -48,9 +49,15 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
             Ok(c) => c,
             Err(_) => continue,
         };
-        let bottles_in_db = bottles::list(&db_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 })
-            .map(|p| p.items)
-            .unwrap_or_default();
+        let bottles_in_db = bottles::list(
+            &db_conn,
+            &pillbox::domain::PaginationParams {
+                page: 1,
+                page_size: 100,
+            },
+        )
+        .map(|p| p.items)
+        .unwrap_or_default();
         for bottle in bottles_in_db {
             let is_active = current
                 .as_ref()
@@ -62,6 +69,7 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
                 scope: bottle.scope,
                 linked: true,
                 is_active,
+                views: bottle.views,
             });
         }
     }
@@ -255,7 +263,7 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
     );
     println!();
 
-    let input = Text::new(&t!("bottle.delete.confirm", slug = reg.name).to_string()).prompt()?;
+    let input = Text::new(t!("bottle.delete.confirm", slug = reg.name).as_ref()).prompt()?;
 
     if input.trim() != reg.name {
         eprintln!(
@@ -325,8 +333,8 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
     );
     println!();
 
-    let new_path = Text::new(&t!("bottle.repair.prompt").to_string())
-        .with_help_message(&t!("bottle.repair.prompt_help").to_string())
+    let new_path = Text::new(t!("bottle.repair.prompt").as_ref())
+        .with_help_message(t!("bottle.repair.prompt_help").as_ref())
         .prompt()?;
 
     let new_path = new_path.trim().to_string();
@@ -378,7 +386,10 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
 /// Es idempotente: si ya estaba vinculada, lo informa pero no falla.
 pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()> {
     use owo_colors::OwoColorize;
-    use pillbox::db::{connection, store::{bottles, registered_bottles}};
+    use pillbox::db::{
+        connection,
+        store::{bottles, registered_bottles},
+    };
 
     let dir = directory.unwrap_or_else(|| std::env::current_dir().expect("cwd unavailable"));
     let db_path = dir.join(".pillbox").join("pillbox.db");
@@ -387,7 +398,10 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
         eprintln!(
             "\n{}  {}\n",
             "✗".red().bold(),
-            t!("bottle.vinculate.error_db_not_found", path = db_path.display())
+            t!(
+                "bottle.vinculate.error_db_not_found",
+                path = db_path.display()
+            )
         );
         std::process::exit(1);
     }
@@ -410,13 +424,26 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
     }
 
     let local_conn = connection::open(&db_path_canon)?;
-    let bottle = match bottles::list(&local_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 })?.items.into_iter().next() {
+    let bottle = match bottles::list(
+        &local_conn,
+        &pillbox::domain::PaginationParams {
+            page: 1,
+            page_size: 100,
+        },
+    )?
+    .items
+    .into_iter()
+    .next()
+    {
         Some(b) => b,
         None => {
             eprintln!(
                 "\n{}  {}\n",
                 "✗".red().bold(),
-                t!("bottle.vinculate.error_no_bottle", path = db_path_canon.display())
+                t!(
+                    "bottle.vinculate.error_no_bottle",
+                    path = db_path_canon.display()
+                )
             );
             std::process::exit(1);
         }

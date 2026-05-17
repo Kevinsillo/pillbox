@@ -62,7 +62,13 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
         Err(r) => return r,
     };
     match store::prescriptions::read(conn, &req.id) {
-        Ok(Some(rx)) => Response::ok(rx),
+        Ok(Some(mut rx)) => match store::counters::increment_views(conn, "prescriptions", &rx.id) {
+            Ok(v) => {
+                rx.views = v;
+                Response::ok(rx)
+            }
+            Err(e) => anyhow_to_response(e),
+        },
         Ok(None) => from_pillbox(&PillboxError::PrescriptionNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
@@ -201,7 +207,11 @@ mod tests {
         store::prescriptions::close(&mut conn, &rx_id).unwrap();
 
         let response = super::reopen(&mut conn, json!({ "id": rx_id.clone() }));
-        assert!(response.ok, "expected ok response, got {:?}", response.error);
+        assert!(
+            response.ok,
+            "expected ok response, got {:?}",
+            response.error
+        );
         let data = response.data.unwrap();
         assert_eq!(data["id"].as_str().unwrap(), rx_id);
         assert!(data["ended_at"].is_null());
@@ -231,6 +241,39 @@ mod tests {
         let response = super::reopen(&mut conn, json!({ "id": "" }));
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("invalid_input"));
+    }
+
+    /// (3) prescription_read incrementa prescriptions.views: 0 → 1 → 2.
+    #[test]
+    fn prescription_read_increments_views() {
+        let mut conn = open_in_memory().unwrap();
+        let bottle_id = make_bottle(&mut conn, "mcp-rx-views");
+        let rx_id = make_rx(&mut conn, &bottle_id, "Views test");
+
+        let views0: i64 = conn
+            .query_row(
+                "SELECT views FROM prescriptions WHERE id = ?1",
+                params![rx_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(views0, 0);
+
+        let r1 = super::read(&mut conn, json!({ "id": rx_id.clone() }));
+        assert!(r1.ok);
+        assert_eq!(r1.data.unwrap()["views"].as_i64().unwrap(), 1);
+
+        let views1: i64 = conn
+            .query_row(
+                "SELECT views FROM prescriptions WHERE id = ?1",
+                params![rx_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(views1, 1);
+
+        let r2 = super::read(&mut conn, json!({ "id": rx_id.clone() }));
+        assert_eq!(r2.data.unwrap()["views"].as_i64().unwrap(), 2);
     }
 
     #[test]

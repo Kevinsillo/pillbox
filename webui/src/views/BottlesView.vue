@@ -4,12 +4,10 @@ import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository
 import { useActiveBottle } from '@/composables/useActiveBottle'
 import { usePoll } from '@/composables/usePoll'
 import { usePaginatedList } from '@/composables/usePaginatedList'
-import { shortId } from '@/core/utils/id'
 import type { Bottle } from '@/core/domain/types'
-import { RouterLink } from 'vue-router'
 import { useConfirm } from '@/composables/useConfirm'
 import Paginator from '@/components/Paginator.vue'
-import IBox from '~icons/lucide/box'
+import BottleCard from '@/components/BottleCard.vue'
 import IAlertTriangle from '~icons/lucide/alert-triangle'
 import ITrash2 from '~icons/lucide/trash-2'
 
@@ -76,38 +74,12 @@ async function deleteRegistration(b: Bottle) {
             >
                 <div v-for="b in items" :key="b.linked ? `b-${b.id}` : `r-${b.reg_id}`">
                     <!-- Bottle vinculado (normal) -->
-                    <RouterLink
+                    <BottleCard
                         v-if="b.linked"
-                        :to="`/bottles/${shortId(b.id)}`"
-                        class="flex items-center justify-between bg-(--bg-surface) border border-(--border) rounded-lg p-3 hover:border-zinc-600"
-                    >
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="relative shrink-0">
-                                <div :class="b.id === activeBottleId ? 'bg-green-500/5 border border-green-500/50' : 'bg-(--accent-bg)'"
-                                     class="w-9 h-9 rounded-lg flex items-center justify-center">
-                                    <IBox :class="b.id === activeBottleId ? 'text-green-500' : 'text-zinc-400'" class="w-4 h-4" />
-                                </div>
-                                <span v-if="b.id === activeBottleId"
-                                      class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-(--bg-surface)" />
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-baseline gap-2">
-                                    <span class="text-(--text-h) font-medium">{{ b.display_name }}</span>
-                                    <span class="text-sm text-zinc-600 font-mono">{{ b.name }}</span>
-                                </div>
-                                <div class="flex items-center gap-1.5 mt-0.5 min-w-0">
-                                    <span class="text-[11px] text-zinc-600 border border-(--border) px-1.5 py-0 rounded shrink-0">{{ b.scope }}</span>
-                                    <span class="text-xs text-zinc-600 truncate">{{ b.directory }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <button
-                            v-if="b.id !== activeBottleId"
-                            class="text-xs text-zinc-400 hover:text-(--text-h) ml-4 shrink-0"
-                            @click.prevent="activeBottleId = b.id">
-                            {{ $t('bottles.activate_btn') }}
-                        </button>
-                    </RouterLink>
+                        :bottle="b"
+                        :active="b.id === activeBottleId"
+                        @activate="activeBottleId = b.id"
+                    />
 
                     <!-- Bottle desvinculado -->
                     <div

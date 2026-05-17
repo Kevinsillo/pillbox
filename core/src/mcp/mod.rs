@@ -62,8 +62,7 @@ fn execute(raw: &str) -> Result<Response> {
     let path = if CAPSULE_TOOLS.contains(&req.tool.as_str()) {
         config::global_db_path()
     } else {
-        config::resolve_db_path()
-            .ok_or_else(|| anyhow::anyhow!("no_db: no Pillbox DB found"))?
+        config::resolve_db_path().ok_or_else(|| anyhow::anyhow!("no_db: no Pillbox DB found"))?
     };
 
     let mut conn = db::connection::open(&path)?;

@@ -7,13 +7,13 @@ use crate::output;
 
 /// Muestra el estado global del sistema: DBs, bottle activo, servidor, MCP y skill.
 pub fn run() -> Result<()> {
-    use output::fmt::{StatusBottle, StatusDb};
+    use output::fmt::{StatusBottle, StatusDb, StatusDbResult};
 
     let bin_path = std::env::current_exe()
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| t!("status.bin_unknown").to_string());
 
-    let query_db = |path: &std::path::Path| -> Option<Result<(i64, i64, i64, i64, i64), String>> {
+    let query_db = |path: &std::path::Path| -> StatusDbResult {
         if !path.exists() {
             return None;
         }

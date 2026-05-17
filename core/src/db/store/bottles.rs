@@ -42,7 +42,8 @@ pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
 
     let bottle = tx
         .query_row(
-            "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
+            "SELECT id, name, display_name, directory, scope, created_at, last_seen_at,
+                views
          FROM bottles WHERE id = ?1",
             params![id],
             row_to_bottle,
@@ -60,7 +61,8 @@ pub fn list(conn: &Connection, pagination: &PaginationParams) -> Result<Paginate
     let offset = pagination.offset() as i64;
 
     let mut stmt = conn.prepare(
-        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
+        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at,
+                views
          FROM bottles ORDER BY created_at DESC
          LIMIT ?1 OFFSET ?2",
     )?;
@@ -84,7 +86,8 @@ pub fn find_by_id(conn: &Connection, id: &str) -> Result<Option<Bottle>> {
         return Ok(None);
     };
     match conn.query_row(
-        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
+        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at,
+                views
          FROM bottles WHERE id = ?1",
         params![resolved_id],
         row_to_bottle,
@@ -98,7 +101,8 @@ pub fn find_by_id(conn: &Connection, id: &str) -> Result<Option<Bottle>> {
 /// Busca un bottle por el directorio del proyecto.
 pub fn find_by_directory(conn: &Connection, directory: &str) -> Result<Option<Bottle>> {
     match conn.query_row(
-        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at
+        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at,
+                views
          FROM bottles WHERE directory = ?1",
         params![directory],
         row_to_bottle,
@@ -153,6 +157,7 @@ fn row_to_bottle(row: &rusqlite::Row<'_>) -> rusqlite::Result<Bottle> {
         last_seen_at: row.get(6)?,
         linked: true,
         reg_id: None,
+        views: row.get(7)?,
     })
 }
 
@@ -299,7 +304,10 @@ mod tests {
 
         let p1 = list(
             &conn,
-            &PaginationParams { page: 1, page_size: 20 },
+            &PaginationParams {
+                page: 1,
+                page_size: 20,
+            },
         )
         .unwrap();
         assert_eq!(p1.items.len(), 20);
@@ -308,7 +316,10 @@ mod tests {
 
         let p2 = list(
             &conn,
-            &PaginationParams { page: 2, page_size: 20 },
+            &PaginationParams {
+                page: 2,
+                page_size: 20,
+            },
         )
         .unwrap();
         assert_eq!(p2.items.len(), 5);
@@ -317,7 +328,10 @@ mod tests {
 
         let p10 = list(
             &conn,
-            &PaginationParams { page: 10, page_size: 20 },
+            &PaginationParams {
+                page: 10,
+                page_size: 20,
+            },
         )
         .unwrap();
         assert_eq!(p10.items.len(), 0);
@@ -333,5 +347,4 @@ mod tests {
         assert!(delete(&mut conn, &short).unwrap());
         assert!(find_by_id(&conn, &b.id).unwrap().is_none());
     }
-
 }

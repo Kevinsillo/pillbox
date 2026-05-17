@@ -5,6 +5,7 @@ import { formatAuthor } from '@/core/domain/author'
 import { shortId } from '@/core/utils/id'
 import CompoundBadge from './CompoundBadge.vue'
 import TruncatedTitle from './TruncatedTitle.vue'
+import ViewsBadge from './ViewsBadge.vue'
 import IFileText from '~icons/lucide/file-text'
 import ITrash2 from '~icons/lucide/trash-2'
 import { RouterLink } from 'vue-router'
@@ -35,7 +36,7 @@ defineEmits<{ delete: [] }>()
                     <CompoundBadge :compound="pill.compound" />
                     <TruncatedTitle tag="p" :title="pill.title" class="text-(--text-h) font-medium text-sm" />
                 </div>
-                <p class="text-xs text-zinc-600">{{ new Date(pill.updated_at).toLocaleString() }}<template v-if="formatAuthor(pill.author_name, pill.author_email)"> · {{ formatAuthor(pill.author_name, pill.author_email) }}</template></p>
+                <p class="text-xs text-zinc-600 flex items-center gap-2 flex-wrap"><ViewsBadge :views="pill.views" /><span>{{ new Date(pill.updated_at).toLocaleString() }}<template v-if="formatAuthor(pill.author_name, pill.author_email)"> · {{ formatAuthor(pill.author_name, pill.author_email) }}</template></span></p>
             </div>
         </div>
         <div v-if="editable && pill.prescription_id" class="flex gap-2 shrink-0" @click.prevent>

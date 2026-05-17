@@ -39,6 +39,9 @@ pub struct Pill {
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
+    /// Contador de vistas. `#[serde(default)]` por compatibilidad con clientes API que no envían el campo.
+    #[serde(default)]
+    pub views: i64,
 }
 
 /// Campos actualizables en una revisión parcial.

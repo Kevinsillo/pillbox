@@ -33,4 +33,7 @@ pub struct Prescription {
     pub started_at: String,
     pub ended_at: Option<String>,
     pub deleted_at: Option<String>,
+    /// Contador de vistas. `#[serde(default)]` por compatibilidad con clientes API que no envían el campo.
+    #[serde(default)]
+    pub views: i64,
 }

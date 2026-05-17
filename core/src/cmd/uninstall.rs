@@ -15,7 +15,10 @@ pub fn run() -> Result<()> {
 
     // Construye la lista de componentes presentes
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
-    let skill_dir = pillbox::config::skill_path().parent().unwrap().to_path_buf();
+    let skill_dir = pillbox::config::skill_path()
+        .parent()
+        .unwrap()
+        .to_path_buf();
     let global_db = pillbox::config::global_db_path();
     let lang_path = lang_file_path();
     let port_path = pillbox::config::serve_port_path();
@@ -82,7 +85,7 @@ pub fn run() -> Result<()> {
         let _ = std::fs::remove_file(&port_path);
     }
 
-    if let Err(_) = std::fs::remove_file(&bin_path) {
+    if std::fs::remove_file(&bin_path).is_err() {
         eprintln!(
             "{} {}",
             "!".yellow().bold(),

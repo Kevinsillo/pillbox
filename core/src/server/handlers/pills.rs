@@ -19,8 +19,8 @@ use validator::Validate;
 
 use super::{
     conn_for_bottle, err_400_invalid_id, err_400_pagination, err_404_pill, err_404_prescription,
-    err_409, err_409_ambiguous_id, err_422, err_500, ok, ok_created, open_global_conn,
-    ApiResponse, AppState,
+    err_409, err_409_ambiguous_id, err_422, err_500, ok, ok_created, open_global_conn, ApiResponse,
+    AppState,
 };
 
 /// Parámetros de query para `GET /api/pills/search` — combina `SearchParams` con paginación.
@@ -88,7 +88,9 @@ pub async fn pill_create(
     match store::pills::take(&mut conn, &new_pill) {
         Ok(r) => ok_created(r),
         Err(e) => match e.downcast::<PillboxError>() {
-            Ok(PillboxError::PrescriptionClosed { ref prescription_id }) => err_409(
+            Ok(PillboxError::PrescriptionClosed {
+                ref prescription_id,
+            }) => err_409(
                 "prescription_closed",
                 "prescription_closed",
                 json!({ "prescription_id": prescription_id }),
@@ -140,7 +142,9 @@ pub async fn pill_patch(
         Ok(Some(p)) => ok(p),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => match e.downcast::<PillboxError>() {
-            Ok(PillboxError::PrescriptionClosed { ref prescription_id }) => err_409(
+            Ok(PillboxError::PrescriptionClosed {
+                ref prescription_id,
+            }) => err_409(
                 "prescription_closed",
                 "prescription_closed",
                 json!({ "prescription_id": prescription_id }),
@@ -169,7 +173,9 @@ pub async fn pill_delete(
         Ok(Some(r)) => ok(r),
         Ok(None) => err_404_pill(pill_id),
         Err(e) => match e.downcast::<PillboxError>() {
-            Ok(PillboxError::PrescriptionClosed { ref prescription_id }) => err_409(
+            Ok(PillboxError::PrescriptionClosed {
+                ref prescription_id,
+            }) => err_409(
                 "prescription_closed",
                 "prescription_closed",
                 json!({ "prescription_id": prescription_id }),
@@ -220,7 +226,10 @@ pub async fn pill_search(
     if let Err(e) = q.pagination.validate() {
         return err_400_pagination(&e);
     }
-    let PillSearchQuery { search: params, pagination } = q;
+    let PillSearchQuery {
+        search: params,
+        pagination,
+    } = q;
 
     if let Some(ref bottle_id) = params.bottle_id {
         let conn = match conn_for_bottle(&s, bottle_id) {
@@ -248,7 +257,10 @@ pub async fn pill_search(
             Ok(r) => r,
             Err(r) => return r,
         };
-        let wide = PaginationParams { page: 1, page_size: 100 };
+        let wide = PaginationParams {
+            page: 1,
+            page_size: 100,
+        };
         let mut all_results = vec![];
         let mut total: u64 = 0;
         for reg in &registered {
@@ -327,7 +339,11 @@ pub async fn compounds(
             .into_iter()
             .map(|(compound, count)| CompoundEntry { compound, count })
             .collect();
-        entries.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.compound.cmp(&b.compound)));
+        entries.sort_by(|a, b| {
+            b.count
+                .cmp(&a.count)
+                .then_with(|| a.compound.cmp(&b.compound))
+        });
         entries.truncate(limit as usize);
         ok(entries)
     }

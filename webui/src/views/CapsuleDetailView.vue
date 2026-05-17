@@ -2,6 +2,7 @@
 import CompoundBadge from "@/components/CompoundBadge.vue"
 import CopyableId from "@/components/CopyableId.vue"
 import HeaderMenu from "@/components/HeaderMenu.vue"
+import ViewsBadge from "@/components/ViewsBadge.vue"
 import type { Capsule } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
 import { useConfirm } from "@/composables/useConfirm"
@@ -117,12 +118,13 @@ watchEffect(async () => {
                                     <CompoundBadge :compound="capsule.compound" />
                                     <span v-if="isArchived" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-700/50 text-zinc-400">{{ $t('capsule_detail.archived_badge') }}</span>
                                 </div>
-                                <div class="flex items-center gap-2 mt-2">
+                                <div class="flex items-start gap-2 mt-2">
                                     <CopyableId :id="capsule.id" />
                                     <h1 class="text-xl font-bold text-(--text-h)">{{ capsule.title }}</h1>
                                 </div>
-                                <p class="text-xs text-zinc-500 mt-0.5">
-                                    {{ $t("capsule_detail.updated_at") }} {{ new Date(capsule.updated_at).toLocaleString() }}
+                                <p class="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                    <ViewsBadge :views="capsule.views" />
+                                    <span>{{ $t("capsule_detail.updated_at") }} {{ new Date(capsule.updated_at).toLocaleString() }}</span>
                                 </p>
                             </div>
                         </div>

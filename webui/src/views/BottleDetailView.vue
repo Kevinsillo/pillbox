@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CopyableId from '@/components/CopyableId.vue'
 import HeaderMenu from '@/components/HeaderMenu.vue'
+import ViewsBadge from '@/components/ViewsBadge.vue'
 import Paginator from '@/components/Paginator.vue'
 import PrescriptionCard from '@/components/PrescriptionCard.vue'
 import { useActiveBottle } from '@/composables/useActiveBottle'
@@ -104,7 +105,7 @@ async function deleteBottle() {
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-start gap-2">
                                 <span v-if="bottle.id === activeBottleId"
                                       class="inline-flex items-center justify-center size-7 p-1 rounded-md bg-green-500/10 border border-green-500/20">
                                     <IZap class="w-3 h-3 text-green-500" />
@@ -114,6 +115,7 @@ async function deleteBottle() {
                                 <span class="text-sm text-zinc-600 font-mono">{{ bottle.name }}</span>
                             </div>
                             <div class="flex items-center gap-2 mt-0.5">
+                                <ViewsBadge :views="bottle.views" />
                                 <span class="text-[11px] text-zinc-600 border border-(--border) px-1.5 py-0 rounded shrink-0">{{ bottle.scope }}</span>
                                 <span class="text-xs text-zinc-500 truncate">{{ bottle.directory }}</span>
                             </div>

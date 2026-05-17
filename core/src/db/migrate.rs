@@ -13,6 +13,9 @@
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 
+/// Row fetched when copying prescriptions: (id, title, started_at, ended_at, deleted_at).
+type PrescriptionRow = (String, String, String, Option<String>, Option<String>);
+
 #[derive(Debug)]
 pub struct MigrateResult {
     pub bottles: usize,
@@ -76,7 +79,7 @@ pub fn migrate_bottle(
          FROM prescriptions WHERE bottle_id = ?1",
     )?;
 
-    let prescriptions: Vec<(String, String, String, Option<String>, Option<String>)> = rx_stmt
+    let prescriptions: Vec<PrescriptionRow> = rx_stmt
         .query_map(params![src_bottle_id], |r| {
             Ok((
                 r.get::<_, String>(0)?,
@@ -116,16 +119,16 @@ pub fn migrate_bottle(
         let pills: Vec<_> = pill_stmt
             .query_map(params![rx_id], |r| {
                 Ok((
-                    r.get::<_, String>(0)?,          // id
-                    r.get::<_, String>(1)?,          // compound
-                    r.get::<_, String>(2)?,          // title
-                    r.get::<_, String>(3)?,          // content
-                    r.get::<_, String>(4)?,          // prescription_id
-                    r.get::<_, Option<String>>(5)?,  // author_name
-                    r.get::<_, Option<String>>(6)?,  // author_email
-                    r.get::<_, String>(7)?,          // created_at
-                    r.get::<_, String>(8)?,          // updated_at
-                    r.get::<_, Option<String>>(9)?,  // deleted_at
+                    r.get::<_, String>(0)?,         // id
+                    r.get::<_, String>(1)?,         // compound
+                    r.get::<_, String>(2)?,         // title
+                    r.get::<_, String>(3)?,         // content
+                    r.get::<_, String>(4)?,         // prescription_id
+                    r.get::<_, Option<String>>(5)?, // author_name
+                    r.get::<_, Option<String>>(6)?, // author_email
+                    r.get::<_, String>(7)?,         // created_at
+                    r.get::<_, String>(8)?,         // updated_at
+                    r.get::<_, Option<String>>(9)?, // deleted_at
                 ))
             })?
             .collect::<rusqlite::Result<_>>()?;

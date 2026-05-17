@@ -311,9 +311,10 @@ async fn main() -> Result<()> {
             None => cmd_sub_help("pill"),
         },
         Some(Command::Capsule { cmd }) => match cmd {
-            Some(CapsuleCommand::List { limit, archived_limit }) => {
-                cmd::capsule::cmd_capsule_list(limit, archived_limit)
-            }
+            Some(CapsuleCommand::List {
+                limit,
+                archived_limit,
+            }) => cmd::capsule::cmd_capsule_list(limit, archived_limit),
             Some(CapsuleCommand::Show { id }) => cmd::capsule::cmd_capsule_show(&id),
             None => cmd_sub_help("capsule"),
         },
@@ -321,12 +322,15 @@ async fn main() -> Result<()> {
             Some(PrescriptionCommand::Open { title }) => {
                 cmd::prescription::cmd_prescription_open(title)
             }
-            Some(PrescriptionCommand::List { limit, archived_limit }) => {
-                cmd::prescription::cmd_prescription_list(limit, archived_limit)
-            }
-            Some(PrescriptionCommand::Show { id, limit, archived_limit }) => {
-                cmd::prescription::cmd_prescription_show(id, limit, archived_limit)
-            }
+            Some(PrescriptionCommand::List {
+                limit,
+                archived_limit,
+            }) => cmd::prescription::cmd_prescription_list(limit, archived_limit),
+            Some(PrescriptionCommand::Show {
+                id,
+                limit,
+                archived_limit,
+            }) => cmd::prescription::cmd_prescription_show(id, limit, archived_limit),
             Some(PrescriptionCommand::Close) => cmd::prescription::cmd_prescription_close(),
             Some(PrescriptionCommand::Reopen { id }) => {
                 cmd::prescription::cmd_prescription_reopen(id)
@@ -448,4 +452,3 @@ fn cmd_skill_status() -> Result<()> {
     output::fmt::component_status_with_help(&pillbox::config::skill_path(), &render_help("skill"));
     Ok(())
 }
-

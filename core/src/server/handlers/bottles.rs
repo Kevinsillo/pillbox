@@ -16,9 +16,9 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use super::{
-    conn_for_bottle, conn_for_bottle_with_id, default_30, err_400_invalid_id,
-    err_400_pagination, err_404_bottle, err_404_registered_bottle, err_409_ambiguous_id, err_422,
-    err_500, ok, ok_created, open_global_conn, ApiResponse, AppState,
+    conn_for_bottle, conn_for_bottle_with_id, default_30, err_400_invalid_id, err_400_pagination,
+    err_404_bottle, err_404_registered_bottle, err_409_ambiguous_id, err_422, err_500, ok,
+    ok_created, open_global_conn, ApiResponse, AppState,
 };
 
 /// Handler `GET /api/bottles/:id` — devuelve un bottle por su UUID.
@@ -85,6 +85,7 @@ pub async fn bottle_list(
                 last_seen_at: reg.last_seen_at,
                 linked: false,
                 reg_id: Some(reg.id),
+                views: 0,
             });
             continue;
         }
@@ -92,7 +93,13 @@ pub async fn bottle_list(
             Ok(c) => c,
             Err(_) => continue,
         };
-        let bottles = match store::bottles::list(&db_conn, &PaginationParams { page: 1, page_size: 100 }) {
+        let bottles = match store::bottles::list(
+            &db_conn,
+            &PaginationParams {
+                page: 1,
+                page_size: 100,
+            },
+        ) {
             Ok(b) => b.items,
             Err(_) => continue,
         };
@@ -279,7 +286,12 @@ pub async fn bottle_prescriptions(
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::prescriptions::list_by_bottle(&conn, &full_id, store::ListFilter::Active, &pagination) {
+    match store::prescriptions::list_by_bottle(
+        &conn,
+        &full_id,
+        store::ListFilter::Active,
+        &pagination,
+    ) {
         Ok(page) => ok(page),
         Err(e) => err_500(e),
     }

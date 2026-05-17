@@ -184,13 +184,25 @@ mod tests {
             PillboxError::BottleAlreadyExists { name: "n".into() }.code(),
             "bottle_already_exists"
         );
-        assert_eq!(PillboxError::InvalidId { id: "abc".into() }.code(), "invalid_id");
         assert_eq!(
-            PillboxError::AmbiguousId { id_prefix: "abc".into(), candidates: vec![] }.code(),
+            PillboxError::InvalidId { id: "abc".into() }.code(),
+            "invalid_id"
+        );
+        assert_eq!(
+            PillboxError::AmbiguousId {
+                id_prefix: "abc".into(),
+                candidates: vec![]
+            }
+            .code(),
             "ambiguous_id"
         );
         assert_eq!(
-            PillboxError::ContentTooLarge { actual: 6000, limit: 5000, operation: ContentOp::Create }.code(),
+            PillboxError::ContentTooLarge {
+                actual: 6000,
+                limit: 5000,
+                operation: ContentOp::Create
+            }
+            .code(),
             "content_too_large"
         );
     }
@@ -220,7 +232,8 @@ mod tests {
 
     #[test]
     fn error_is_std_error() {
-        let err: Box<dyn std::error::Error> = Box::new(PillboxError::PillNotFound { id: "1".into() });
+        let err: Box<dyn std::error::Error> =
+            Box::new(PillboxError::PillNotFound { id: "1".into() });
         assert!(err.to_string().contains("pill_not_found"));
     }
 }

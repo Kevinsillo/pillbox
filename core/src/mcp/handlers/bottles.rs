@@ -1,7 +1,9 @@
 //! Handlers MCP para la entidad Bottle.
 
 use pillbox::{
-    config, db, db::store, db::store::registered_bottles,
+    config, db,
+    db::store,
+    db::store::registered_bottles,
     domain::bottle::{BottleScope, NewBottle},
 };
 use serde_json::{json, Value};
@@ -97,6 +99,7 @@ pub fn list(_conn: &mut Conn, _input: Value) -> Response {
                 last_seen_at: reg.last_seen_at,
                 linked: false,
                 reg_id: Some(reg.id),
+                views: 0,
             });
             continue;
         }
@@ -106,9 +109,15 @@ pub fn list(_conn: &mut Conn, _input: Value) -> Response {
             Err(_) => continue,
         };
 
-        let bottles_in_db = store::bottles::list(&db_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 })
-            .map(|p| p.items)
-            .unwrap_or_default();
+        let bottles_in_db = store::bottles::list(
+            &db_conn,
+            &pillbox::domain::PaginationParams {
+                page: 1,
+                page_size: 100,
+            },
+        )
+        .map(|p| p.items)
+        .unwrap_or_default();
         for mut bottle in bottles_in_db {
             bottle.reg_id = Some(reg.id);
             bottles.push(bottle);
@@ -177,13 +186,22 @@ pub fn vinculate(_conn: &mut Conn, input: Value) -> Response {
         Err(e) => return anyhow_to_response(e),
     };
 
-    let bottle = match store::bottles::list(&local_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 }) {
+    let bottle = match store::bottles::list(
+        &local_conn,
+        &pillbox::domain::PaginationParams {
+            page: 1,
+            page_size: 100,
+        },
+    ) {
         Ok(list) => match list.items.into_iter().next() {
             Some(b) => b,
             None => {
                 return Response::err(
                     "no_bottle",
-                    format!("no bottle found in local database: {}", db_path_canon.display()),
+                    format!(
+                        "no bottle found in local database: {}",
+                        db_path_canon.display()
+                    ),
                 );
             }
         },
@@ -265,10 +283,7 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        assert_eq!(
-            found.db_path,
-            "/home/user/mi-proyecto/.pillbox/pillbox.db"
-        );
+        assert_eq!(found.db_path, "/home/user/mi-proyecto/.pillbox/pillbox.db");
     }
 
     /// Verifica que un fallo al registrar en la DB global no impide que `create`
@@ -300,7 +315,7 @@ mod tests {
 
         // El handler descarta el error — verificamos que create del store fue Ok
         assert!(result.is_err()); // el register sí falla en conn roto
-        // pero el bottle fue creado correctamente
+                                  // pero el bottle fue creado correctamente
         let found = pillbox::db::store::bottles::find_by_id(&local_conn, &b.id)
             .unwrap()
             .unwrap();

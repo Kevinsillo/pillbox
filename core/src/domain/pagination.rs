@@ -43,13 +43,19 @@ pub struct PaginationParams {
     #[serde(default = "default_page", deserialize_with = "u32_from_str_or_int")]
     pub page: u32,
 
-    #[serde(default = "default_page_size", deserialize_with = "u32_from_str_or_int")]
+    #[serde(
+        default = "default_page_size",
+        deserialize_with = "u32_from_str_or_int"
+    )]
     pub page_size: u32,
 }
 
 impl Default for PaginationParams {
     fn default() -> Self {
-        Self { page: 1, page_size: 20 }
+        Self {
+            page: 1,
+            page_size: 20,
+        }
     }
 }
 
@@ -82,31 +88,46 @@ mod tests {
 
     #[test]
     fn validate_rejects_page_zero() {
-        let p = PaginationParams { page: 0, page_size: 20 };
+        let p = PaginationParams {
+            page: 0,
+            page_size: 20,
+        };
         assert!(p.validate().is_err());
     }
 
     #[test]
     fn validate_rejects_page_size_zero() {
-        let p = PaginationParams { page: 1, page_size: 0 };
+        let p = PaginationParams {
+            page: 1,
+            page_size: 0,
+        };
         assert!(p.validate().is_err());
     }
 
     #[test]
     fn validate_rejects_page_size_over_100() {
-        let p = PaginationParams { page: 1, page_size: 101 };
+        let p = PaginationParams {
+            page: 1,
+            page_size: 101,
+        };
         assert!(p.validate().is_err());
     }
 
     #[test]
     fn validate_accepts_page_one_page_size_100() {
-        let p = PaginationParams { page: 1, page_size: 100 };
+        let p = PaginationParams {
+            page: 1,
+            page_size: 100,
+        };
         assert!(p.validate().is_ok());
     }
 
     #[test]
     fn offset_computed_correctly() {
-        let p = PaginationParams { page: 3, page_size: 20 };
+        let p = PaginationParams {
+            page: 3,
+            page_size: 20,
+        };
         assert_eq!(p.offset(), 40);
     }
 

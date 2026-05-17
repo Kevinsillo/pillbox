@@ -64,10 +64,23 @@ pub fn cmd_prescription_list(limit: u32, archived_limit: u32) -> Result<()> {
     let (conn, db_path) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
     let total = prescriptions::count_by_bottle(&conn, &bottle.id)?;
-    let pagination = PaginationParams { page: 1, page_size: limit.max(1).min(100) };
-    let active = prescriptions::list_by_bottle(&conn, &bottle.id, ListFilter::Active, &pagination)?.items;
-    let archived_pagination = PaginationParams { page: 1, page_size: archived_limit.max(1).min(100) };
-    let archived = prescriptions::list_by_bottle(&conn, &bottle.id, ListFilter::Archived, &archived_pagination)?.items;
+    let pagination = PaginationParams {
+        page: 1,
+        page_size: limit.clamp(1, 100),
+    };
+    let active =
+        prescriptions::list_by_bottle(&conn, &bottle.id, ListFilter::Active, &pagination)?.items;
+    let archived_pagination = PaginationParams {
+        page: 1,
+        page_size: archived_limit.clamp(1, 100),
+    };
+    let archived = prescriptions::list_by_bottle(
+        &conn,
+        &bottle.id,
+        ListFilter::Archived,
+        &archived_pagination,
+    )?
+    .items;
     let archived_total = prescriptions::count_archived_by_bottle(&conn, &bottle.id)?;
 
     output::fmt::prescriptions_list(
@@ -103,7 +116,10 @@ pub fn cmd_prescription_show(id: String, limit: u32, archived_limit: u32) -> Res
     let pill_list = pills::list_by_prescription(
         &conn,
         &rx.id,
-        &pillbox::domain::PaginationParams { page: 1, page_size: 100 },
+        &pillbox::domain::PaginationParams {
+            page: 1,
+            page_size: 100,
+        },
     )?
     .items;
     let archived_total = prescriptions::count_archived_pills(&conn, &rx.id)?;
@@ -155,9 +171,7 @@ pub fn cmd_prescription_reopen(id: String) -> Result<()> {
         Err(e) => {
             if let Some(pe) = e.downcast_ref::<PillboxError>() {
                 match pe {
-                    PillboxError::PrescriptionAlreadyOpenInBottle {
-                        existing_id, ..
-                    } => {
+                    PillboxError::PrescriptionAlreadyOpenInBottle { existing_id, .. } => {
                         let short = &existing_id[..existing_id.len().min(8)];
                         anyhow::bail!(
                             "{}",

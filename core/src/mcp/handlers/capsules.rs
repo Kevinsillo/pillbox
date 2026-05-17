@@ -22,7 +22,8 @@ pub fn take(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    if let Err(r) = check_content_size(&req.content, capsule::CONTENT_MAX_CHARS, ContentOp::Create) {
+    if let Err(r) = check_content_size(&req.content, capsule::CONTENT_MAX_CHARS, ContentOp::Create)
+    {
         return r;
     }
     if let Err(r) = validate_input(&req) {
@@ -45,7 +46,13 @@ pub fn read(conn: &mut Conn, input: Value) -> Response {
         Err(r) => return r,
     };
     match store::capsules::read(conn, &req.id) {
-        Ok(Some(c)) => Response::ok(c),
+        Ok(Some(mut c)) => match store::counters::increment_views(conn, "capsules", &c.id) {
+            Ok(v) => {
+                c.views = v;
+                Response::ok(c)
+            }
+            Err(e) => anyhow_to_response(e),
+        },
         Ok(None) => from_pillbox(&PillboxError::CapsuleNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
@@ -64,7 +71,11 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    let patch = CapsulePatch { title: req.title, content: req.content, compound: req.compound };
+    let patch = CapsulePatch {
+        title: req.title,
+        content: req.content,
+        compound: req.compound,
+    };
     if let Some(content) = patch.content.as_deref() {
         if let Err(r) = check_content_size(content, capsule::CONTENT_MAX_CHARS, ContentOp::Update) {
             return r;
@@ -172,7 +183,12 @@ mod tests {
     fn read_resolves_12char_prefix() {
         let mut conn = open_in_memory().unwrap();
         let result = store::capsules::take(&mut conn, &sample()).unwrap();
-        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let short = result
+            .id
+            .replace('-', "")
+            .chars()
+            .take(12)
+            .collect::<String>();
         let response = super::read(&mut conn, json!({ "id": short }));
         assert!(response.ok);
         assert_eq!(response.data.unwrap()["id"].as_str().unwrap(), result.id);
@@ -210,18 +226,72 @@ mod tests {
     fn revise_resolves_short_id() {
         let mut conn = open_in_memory().unwrap();
         let result = store::capsules::take(&mut conn, &sample()).unwrap();
-        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let short = result
+            .id
+            .replace('-', "")
+            .chars()
+            .take(12)
+            .collect::<String>();
         let response = super::revise(&mut conn, json!({ "id": short, "title": "Revisada" }));
         assert!(response.ok);
-        assert_eq!(response.data.unwrap()["title"].as_str().unwrap(), "Revisada");
+        assert_eq!(
+            response.data.unwrap()["title"].as_str().unwrap(),
+            "Revisada"
+        );
     }
 
     #[test]
     fn discard_resolves_short_id() {
         let mut conn = open_in_memory().unwrap();
         let result = store::capsules::take(&mut conn, &sample()).unwrap();
-        let short = result.id.replace('-', "").chars().take(12).collect::<String>();
+        let short = result
+            .id
+            .replace('-', "")
+            .chars()
+            .take(12)
+            .collect::<String>();
         let response = super::discard(&mut conn, json!({ "id": short }));
         assert!(response.ok);
+    }
+
+    /// (2) capsule_read incrementa capsules.views: 0 → 1 → 2.
+    #[test]
+    fn capsule_read_increments_views() {
+        let mut conn = open_in_memory().unwrap();
+        let cap = store::capsules::take(&mut conn, &sample()).unwrap();
+
+        let views0: i64 = conn
+            .query_row(
+                "SELECT views FROM capsules WHERE id = ?1",
+                rusqlite::params![cap.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(views0, 0);
+
+        let r1 = super::read(&mut conn, json!({ "id": cap.id.clone() }));
+        assert!(r1.ok);
+        assert_eq!(r1.data.unwrap()["views"].as_i64().unwrap(), 1);
+
+        let views1: i64 = conn
+            .query_row(
+                "SELECT views FROM capsules WHERE id = ?1",
+                rusqlite::params![cap.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(views1, 1);
+
+        let r2 = super::read(&mut conn, json!({ "id": cap.id.clone() }));
+        assert_eq!(r2.data.unwrap()["views"].as_i64().unwrap(), 2);
+
+        let views2: i64 = conn
+            .query_row(
+                "SELECT views FROM capsules WHERE id = ?1",
+                rusqlite::params![cap.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(views2, 2);
     }
 }

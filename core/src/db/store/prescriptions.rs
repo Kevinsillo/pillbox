@@ -19,10 +19,11 @@ use crate::error::PillboxError;
 pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescription> {
     // Resolver el bottle_id (acepta UUID completo o prefijo ≥8 chars) y validar
     // que existe antes de abrir la prescription.
-    let resolved_bottle_id = resolve_id(conn, "bottles", &input.bottle_id)?
-        .ok_or_else(|| PillboxError::BottleNotFound {
+    let resolved_bottle_id = resolve_id(conn, "bottles", &input.bottle_id)?.ok_or_else(|| {
+        PillboxError::BottleNotFound {
             bottle_id: input.bottle_id.clone(),
-        })?;
+        }
+    })?;
 
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
@@ -77,7 +78,8 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
 
     let prescription = tx
         .query_row(
-            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
+            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at,
+                views
          FROM prescriptions WHERE id = ?1",
             params![id],
             row_to_prescription,
@@ -111,7 +113,8 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
 
     let prescription = tx
         .query_row(
-            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
+            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at,
+                views
          FROM prescriptions WHERE id = ?1",
             params![resolved_id],
             row_to_prescription,
@@ -217,7 +220,8 @@ pub fn reopen(conn: &mut Connection, id: &str) -> Result<Prescription> {
 
     let prescription = tx
         .query_row(
-            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
+            "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at,
+                    views
              FROM prescriptions WHERE id = ?1",
             params![resolved_id],
             row_to_prescription,
@@ -328,8 +332,11 @@ pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<()> {
     .context("failed to delete pills for prescription")?;
 
     // 2. Eliminar la prescription
-    tx.execute("DELETE FROM prescriptions WHERE id = ?1", params![resolved_id])
-        .context("failed to delete prescription")?;
+    tx.execute(
+        "DELETE FROM prescriptions WHERE id = ?1",
+        params![resolved_id],
+    )
+    .context("failed to delete prescription")?;
 
     tx.commit()?;
     Ok(())
@@ -341,7 +348,8 @@ pub fn read_any(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
         return Ok(None);
     };
     match conn.query_row(
-        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
+        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at,
+                views
          FROM prescriptions
          WHERE id = ?1",
         params![resolved_id],
@@ -359,7 +367,8 @@ pub fn read(conn: &Connection, id: &str) -> Result<Option<Prescription>> {
         return Ok(None);
     };
     match conn.query_row(
-        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
+        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at,
+                views
          FROM prescriptions
          WHERE id = ?1 AND deleted_at IS NULL",
         params![resolved_id],
@@ -423,7 +432,8 @@ pub fn list_by_bottle(
     let offset = pagination.offset() as i64;
 
     let select_sql = format!(
-        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at
+        "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at,
+                views
          FROM prescriptions
          WHERE bottle_id = ?1 AND {filter_clause}
          ORDER BY started_at DESC
@@ -483,6 +493,7 @@ fn row_to_prescription(row: &rusqlite::Row<'_>) -> rusqlite::Result<Prescription
         started_at: row.get(5)?,
         ended_at: row.get(6)?,
         deleted_at: row.get(7)?,
+        views: row.get(8)?,
     })
 }
 
@@ -606,7 +617,11 @@ mod tests {
     fn open_resolves_12char_bottle_prefix() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = make_bottle(&mut conn, "short-id-test");
-        let short = bottle_id.replace('-', "").chars().take(12).collect::<String>();
+        let short = bottle_id
+            .replace('-', "")
+            .chars()
+            .take(12)
+            .collect::<String>();
 
         let rx = open(
             &mut conn,
@@ -627,7 +642,11 @@ mod tests {
     fn open_resolves_8char_bottle_prefix() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = make_bottle(&mut conn, "short8-test");
-        let short = bottle_id.replace('-', "").chars().take(8).collect::<String>();
+        let short = bottle_id
+            .replace('-', "")
+            .chars()
+            .take(8)
+            .collect::<String>();
 
         let rx = open(
             &mut conn,
@@ -715,7 +734,16 @@ mod tests {
         )
         .unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 10 }).unwrap();
+        let all = list_by_bottle(
+            &conn,
+            &bottle_id,
+            ListFilter::Active,
+            &PaginationParams {
+                page: 1,
+                page_size: 10,
+            },
+        )
+        .unwrap();
         assert_eq!(all.items.len(), 2);
         let titles: Vec<&str> = all.items.iter().map(|r| r.title.as_str()).collect();
         assert!(titles.contains(&"Sesión 1"));
@@ -741,7 +769,16 @@ mod tests {
             close(&mut conn, &rx.id).unwrap();
         }
 
-        let limited = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 3 }).unwrap();
+        let limited = list_by_bottle(
+            &conn,
+            &bottle_id,
+            ListFilter::Active,
+            &PaginationParams {
+                page: 1,
+                page_size: 3,
+            },
+        )
+        .unwrap();
         assert_eq!(limited.items.len(), 3);
     }
 
@@ -790,10 +827,18 @@ mod tests {
         hard_delete(&mut conn, &rx.id).unwrap();
 
         let rx_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM prescriptions WHERE id = ?1", params![rx.id], |r| r.get(0))
+            .query_row(
+                "SELECT COUNT(*) FROM prescriptions WHERE id = ?1",
+                params![rx.id],
+                |r| r.get(0),
+            )
             .unwrap();
         let pill_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM pills WHERE prescription_id = ?1", params![rx.id], |r| r.get(0))
+            .query_row(
+                "SELECT COUNT(*) FROM pills WHERE prescription_id = ?1",
+                params![rx.id],
+                |r| r.get(0),
+            )
             .unwrap();
 
         assert_eq!(rx_count, 0);
@@ -805,7 +850,10 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let err = hard_delete(&mut conn, "id-inexistente").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>();
-        assert!(matches!(typed, Some(PillboxError::PrescriptionNotFound { .. })));
+        assert!(matches!(
+            typed,
+            Some(PillboxError::PrescriptionNotFound { .. })
+        ));
     }
 
     #[test]
@@ -861,7 +909,16 @@ mod tests {
         .unwrap();
         discard(&mut conn, &rx.id).unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 10 }).unwrap();
+        let all = list_by_bottle(
+            &conn,
+            &bottle_id,
+            ListFilter::Active,
+            &PaginationParams {
+                page: 1,
+                page_size: 10,
+            },
+        )
+        .unwrap();
         assert!(all.items.is_empty());
         assert_eq!(all.total, 0);
     }
@@ -897,7 +954,16 @@ mod tests {
         .unwrap();
         discard(&mut conn, &rx_to_archive.id).unwrap();
 
-        let all = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 10 }).unwrap();
+        let all = list_by_bottle(
+            &conn,
+            &bottle_id,
+            ListFilter::Active,
+            &PaginationParams {
+                page: 1,
+                page_size: 10,
+            },
+        )
+        .unwrap();
         assert_eq!(all.items.len(), 1);
         assert_eq!(all.total, 1);
         assert!(all.items.iter().all(|rx| rx.deleted_at.is_none()));
@@ -967,9 +1033,24 @@ mod tests {
         assert_eq!(found.author_name.as_deref(), Some("Kevin Illanas"));
         assert_eq!(found.author_email.as_deref(), Some("kevin@example.com"));
 
-        let listed = list_by_bottle(&conn, &rx.bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 10 }).unwrap();
-        assert_eq!(listed.items[0].author_name.as_deref(), Some("Kevin Illanas"));
-        assert_eq!(listed.items[0].author_email.as_deref(), Some("kevin@example.com"));
+        let listed = list_by_bottle(
+            &conn,
+            &rx.bottle_id,
+            ListFilter::Active,
+            &PaginationParams {
+                page: 1,
+                page_size: 10,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            listed.items[0].author_name.as_deref(),
+            Some("Kevin Illanas")
+        );
+        assert_eq!(
+            listed.items[0].author_email.as_deref(),
+            Some("kevin@example.com")
+        );
     }
 
     #[test]
@@ -984,7 +1065,16 @@ mod tests {
             let id = make_rx(&mut conn, &bottle_id, &format!("Archived {i}"));
             discard(&mut conn, &id).unwrap();
         }
-        let active = list_by_bottle(&conn, &bottle_id, ListFilter::Active, &PaginationParams { page: 1, page_size: 100 }).unwrap();
+        let active = list_by_bottle(
+            &conn,
+            &bottle_id,
+            ListFilter::Active,
+            &PaginationParams {
+                page: 1,
+                page_size: 100,
+            },
+        )
+        .unwrap();
         assert_eq!(active.items.len(), 3);
         assert_eq!(active.total, 3);
         assert!(active.items.iter().all(|rx| rx.deleted_at.is_none()));
@@ -1135,7 +1225,10 @@ mod tests {
 
         let err = reopen(&mut conn, &rx_id).unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
-        assert!(matches!(typed, PillboxError::PrescriptionAlreadyOpen { .. }));
+        assert!(matches!(
+            typed,
+            PillboxError::PrescriptionAlreadyOpen { .. }
+        ));
     }
 
     #[test]

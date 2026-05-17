@@ -472,11 +472,12 @@ pub fn bottle_context(
         .context("failed to load prescriptions for bottle_context")?;
 
     // Total real en DB — no `prescriptions.len()` (limitado por `limit`).
-    let prescription_count = crate::db::store::prescriptions::count_active_by_bottle(
-        conn,
-        &normalized_bottle,
-    )?;
-    Ok(BottleContextResult { prescriptions, prescription_count })
+    let prescription_count =
+        crate::db::store::prescriptions::count_active_by_bottle(conn, &normalized_bottle)?;
+    Ok(BottleContextResult {
+        prescriptions,
+        prescription_count,
+    })
 }
 
 /// Pills de una prescription concreta, ordenadas de más reciente a más antigua.
@@ -493,7 +494,10 @@ pub fn prescription_context(
          FROM prescriptions
          WHERE (id = ?1 OR id LIKE ?2) AND deleted_at IS NULL
          ORDER BY started_at DESC LIMIT 1",
-        params![normalize_prefix(prescription_id), format!("{}%", normalize_prefix(prescription_id))],
+        params![
+            normalize_prefix(prescription_id),
+            format!("{}%", normalize_prefix(prescription_id))
+        ],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -530,7 +534,7 @@ pub fn prescription_context(
     let pills: Vec<PrescriptionPillEntry> = pill_stmt
         .query_map(params![rx_id, limit], |row| {
             let content: String = row.get(3)?;
-            let flat: String = content.replace("\r\n", "\\n").replace('\n', "\\n").replace('\r', "\\n");
+            let flat: String = content.replace("\r\n", "\\n").replace(['\n', '\r'], "\\n");
             let chars: Vec<char> = flat.chars().collect();
             let snippet = if chars.len() > 300 {
                 format!("{}…", chars[..299].iter().collect::<String>())
@@ -563,7 +567,8 @@ pub fn prescription_context(
 pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Pill>> {
     let mut stmt = conn.prepare(
         "SELECT p.id, p.compound, p.title, p.content, p.prescription_id,
-                p.author_name, p.author_email, p.created_at, p.updated_at, p.deleted_at
+                p.author_name, p.author_email, p.created_at, p.updated_at, p.deleted_at,
+                p.views
          FROM pills p
          JOIN prescriptions rx ON p.prescription_id = rx.id
          WHERE rx.bottle_id = ?1 AND p.deleted_at IS NULL
@@ -584,6 +589,7 @@ pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Ve
                 created_at: row.get(7)?,
                 updated_at: row.get(8)?,
                 deleted_at: row.get(9)?,
+                views: row.get(10)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()
@@ -840,20 +846,34 @@ mod tests {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = setup_with_pills(&mut conn);
         // Primeros 12 hex chars sin guiones
-        let short = bottle_id.replace('-', "").chars().take(12).collect::<String>();
+        let short = bottle_id
+            .replace('-', "")
+            .chars()
+            .take(12)
+            .collect::<String>();
 
         let ctx = bottle_context(&conn, &short, 30).unwrap();
-        assert!(ctx.prescription_count > 0, "debe encontrar prescriptions con prefijo de 12 chars");
+        assert!(
+            ctx.prescription_count > 0,
+            "debe encontrar prescriptions con prefijo de 12 chars"
+        );
     }
 
     #[test]
     fn bottle_context_resolves_8char_prefix() {
         let mut conn = open_in_memory().unwrap();
         let bottle_id = setup_with_pills(&mut conn);
-        let short = bottle_id.replace('-', "").chars().take(8).collect::<String>();
+        let short = bottle_id
+            .replace('-', "")
+            .chars()
+            .take(8)
+            .collect::<String>();
 
         let ctx = bottle_context(&conn, &short, 30).unwrap();
-        assert!(ctx.prescription_count > 0, "debe encontrar prescriptions con prefijo de 8 chars");
+        assert!(
+            ctx.prescription_count > 0,
+            "debe encontrar prescriptions con prefijo de 8 chars"
+        );
     }
 
     #[test]
@@ -913,7 +933,10 @@ mod tests {
         // Primeros 12 hex chars sin guiones
         let short = rx_id.replace('-', "").chars().take(12).collect::<String>();
         let ctx = prescription_context(&conn, &short, 30).unwrap();
-        assert!(ctx.id.is_some(), "debe resolver la prescription con prefijo de 12 chars");
+        assert!(
+            ctx.id.is_some(),
+            "debe resolver la prescription con prefijo de 12 chars"
+        );
         assert!(ctx.pill_count > 0);
     }
 
@@ -1184,7 +1207,6 @@ mod tests {
         assert!(results.items.is_empty());
     }
 
-
     #[test]
     fn pill_find_fuzzy_off_excludes_typo_pill() {
         // fuzzy=false debe ser estricto: solo prefix match.
@@ -1256,7 +1278,10 @@ mod tests {
         );
 
         // fuzzy=true: debe incluir la pill con typo via Jaro-Winkler
-        assert!(on.items.iter().any(|r| r.title == "Typo"), "fuzzy=true debe encontrar 'alfabet'");
+        assert!(
+            on.items.iter().any(|r| r.title == "Typo"),
+            "fuzzy=true debe encontrar 'alfabet'"
+        );
         // y obviamente >= en cantidad
         assert!(on.items.len() >= off.items.len());
     }
@@ -1341,7 +1366,10 @@ mod tests {
                 compound: None,
                 fuzzy: false,
             },
-            &PaginationParams { page: 1, page_size: 2 },
+            &PaginationParams {
+                page: 1,
+                page_size: 2,
+            },
         )
         .unwrap();
         assert_eq!(page1.items.len(), 2);
@@ -1358,7 +1386,10 @@ mod tests {
                 compound: None,
                 fuzzy: false,
             },
-            &PaginationParams { page: 3, page_size: 2 },
+            &PaginationParams {
+                page: 3,
+                page_size: 2,
+            },
         )
         .unwrap();
         // Page 3 with page_size=2 returns items at offset 4 → 1 item if total==5

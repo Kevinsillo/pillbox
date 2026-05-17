@@ -141,5 +141,4 @@ mod tests {
         let path = serve_port_path();
         assert!(path.ends_with(".pillbox/serve.port"));
     }
-
 }

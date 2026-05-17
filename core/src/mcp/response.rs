@@ -77,11 +77,7 @@ pub fn validate_input<T: Validate>(v: &T) -> Result<(), Response> {
 /// Devuelve [`Response`] con código `content_too_large` y datos estructurados
 /// (`actual`, `limit`, `operation`) cuando el contenido excede el límite. El
 /// formatter del cliente decide cómo presentar la información al modelo.
-pub fn check_content_size(
-    content: &str,
-    limit: usize,
-    op: ContentOp,
-) -> Result<(), Response> {
+pub fn check_content_size(content: &str, limit: usize, op: ContentOp) -> Result<(), Response> {
     let actual = content.chars().count();
     if actual <= limit {
         return Ok(());
@@ -133,17 +129,22 @@ pub fn from_pillbox(pe: &PillboxError) -> Response {
             pe.to_string(),
             json!({ "bottle_id": bottle_id, "existing_id": existing_id }),
         ),
-        PillboxError::AmbiguousId { id_prefix, candidates } => Response::err_with_data(
+        PillboxError::AmbiguousId {
+            id_prefix,
+            candidates,
+        } => Response::err_with_data(
             pe.code(),
             pe.to_string(),
             json!({ "id_prefix": id_prefix, "candidates": candidates }),
         ),
-        PillboxError::InvalidId { id } => Response::err_with_data(
-            pe.code(),
-            pe.to_string(),
-            json!({ "id": id }),
-        ),
-        PillboxError::ContentTooLarge { actual, limit, operation } => Response::err_with_data(
+        PillboxError::InvalidId { id } => {
+            Response::err_with_data(pe.code(), pe.to_string(), json!({ "id": id }))
+        }
+        PillboxError::ContentTooLarge {
+            actual,
+            limit,
+            operation,
+        } => Response::err_with_data(
             pe.code(),
             pe.to_string(),
             json!({ "actual": actual, "limit": limit, "operation": operation }),

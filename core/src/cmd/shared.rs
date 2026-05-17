@@ -41,13 +41,19 @@ pub fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
     let mut best: Option<(usize, pillbox::domain::bottle::Bottle)> = None;
 
     // Global-scope bottles: stored directly in the global DB bottles table
-    let bottles_page = bottles::list(&global_conn, &pillbox::domain::PaginationParams { page: 1, page_size: 100 })
-        .map(|p| p.items)
-        .unwrap_or_default();
+    let bottles_page = bottles::list(
+        &global_conn,
+        &pillbox::domain::PaginationParams {
+            page: 1,
+            page_size: 100,
+        },
+    )
+    .map(|p| p.items)
+    .unwrap_or_default();
     for bottle in bottles_page {
         if current.starts_with(&bottle.directory) {
             let len = bottle.directory.len();
-            if best.as_ref().map_or(true, |(l, _)| len > *l) {
+            if best.as_ref().is_none_or(|(l, _)| len > *l) {
                 best = Some((len, bottle));
             }
         }
@@ -63,7 +69,7 @@ pub fn find_current_bottle() -> Result<pillbox::domain::bottle::Bottle> {
         if let Some(dir) = derived_dir {
             if current.starts_with(dir) {
                 let len = dir.to_string_lossy().len();
-                if best.as_ref().map_or(true, |(l, _)| len > *l) {
+                if best.as_ref().is_none_or(|(l, _)| len > *l) {
                     if let Ok(local_conn) = connection::open(db_path) {
                         if let Ok(Some(bottle)) = bottles::find_by_id(&local_conn, &reg.bottle_id) {
                             best = Some((len, bottle));
