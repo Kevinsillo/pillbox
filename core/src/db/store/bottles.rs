@@ -1,7 +1,7 @@
 //! Operaciones de store para la entidad [`Bottle`].
 
 use anyhow::{Context, Result};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, TransactionBehavior};
 use uuid::Uuid;
 
 use crate::{
@@ -16,7 +16,11 @@ use crate::{
 /// Crea un bottle nuevo en la DB.
 pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
     let id = Uuid::now_v7().to_string();
-    let tx = conn.transaction()?;
+    // BEGIN IMMEDIATE: adquiere el RESERVED lock al instante, evitando
+    // "database is locked" cuando varios procesos/conexiones escriben en
+    // paralelo. DEFERRED solo coge el lock al primer write y puede provocar
+    // SQLITE_BUSY si dos transacciones lo intentan a la vez.
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     tx.execute(
         "INSERT INTO bottles (id, name, display_name, directory, scope)
@@ -123,7 +127,10 @@ pub fn delete(conn: &mut Connection, id: &str) -> Result<bool> {
     let Some(resolved_id) = resolve_id(conn, "bottles", id)? else {
         return Ok(false);
     };
-    let tx = conn.transaction()?;
+    // BEGIN IMMEDIATE — ver nota en `create`. El delete encadena varios
+    // DELETE en cascada manual; sin lock inmediato dos procesos podrían
+    // colisionar a mitad de la cascada.
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     tx.execute(
         "DELETE FROM pills WHERE prescription_id IN (SELECT id FROM prescriptions WHERE bottle_id = ?1)",

@@ -11,7 +11,7 @@
 //! Tras la migración, el origen debe eliminarse (ver `delete_bottle`).
 
 use anyhow::{Context, Result};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, TransactionBehavior};
 
 /// Row fetched when copying prescriptions: (id, title, started_at, ended_at, deleted_at).
 type PrescriptionRow = (String, String, String, Option<String>, Option<String>);
@@ -48,7 +48,9 @@ pub fn migrate_bottle(
         )
         .with_context(|| format!("bottle '{}' not found in source", bottle_name))?;
 
-    let tx = dst.transaction()?;
+    // Immediate: bajo concurrencia multi-proceso, DEFERRED puede fallar con
+    // SQLITE_BUSY al promocionar el lock perdiendo el trabajo de lectura.
+    let tx = dst.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     tx.execute(
         "INSERT INTO bottles (id, name, display_name, directory, scope)
@@ -215,7 +217,9 @@ pub fn list_bottles_with_counts(conn: &Connection) -> Result<Vec<(String, String
 ///
 /// Usado tras `migrate_bottle` para completar el corte en la DB origen.
 pub fn delete_bottle(conn: &mut Connection, bottle_name: &str) -> Result<()> {
-    let tx = conn.transaction()?;
+    // Immediate: bajo concurrencia multi-proceso, DEFERRED puede fallar con
+    // SQLITE_BUSY al promocionar el lock perdiendo el trabajo de lectura.
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let bottle_id: String = tx
         .query_row(
