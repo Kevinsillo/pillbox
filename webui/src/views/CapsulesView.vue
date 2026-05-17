@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { usePoll } from '@/composables/usePoll'
 import { usePaginatedList } from '@/composables/usePaginatedList'
 import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesRepository'
@@ -10,9 +9,6 @@ import Paginator from '@/components/Paginator.vue'
 const { items, total, page, pageSize, refresh } = usePaginatedList<CapsuleSummary>({
     fetcher: (p) => capsulesApi.list(p),
 })
-
-const activeCapsules = computed(() => items.value.filter(c => c.deleted_at === null))
-const archivedCapsules = computed(() => items.value.filter(c => c.deleted_at !== null))
 
 const poll = usePoll(refresh, 5000)
 </script>
@@ -34,7 +30,6 @@ const poll = usePoll(refresh, 5000)
                     {{ $t('capsules.empty') }}
                 </div>
 
-                <!-- Active capsules -->
                 <TransitionGroup
                     v-show="items.length > 0"
                     name="list"
@@ -42,32 +37,10 @@ const poll = usePoll(refresh, 5000)
                     class="space-y-2 relative"
                 >
                     <CapsuleCard
-                        v-for="c in activeCapsules"
-                        :key="`active-${c.id}`"
+                        v-for="c in items"
+                        :key="c.id"
                         :capsule="c"
-                    />
-                </TransitionGroup>
-
-                <!-- Archived heading -->
-                <h3
-                    v-show="archivedCapsules.length > 0"
-                    class="text-xs font-semibold text-zinc-600 uppercase tracking-wider mt-4 mb-2"
-                >
-                    {{ $t('capsules.archived_heading') }} ({{ archivedCapsules.length }})
-                </h3>
-
-                <!-- Archived capsules -->
-                <TransitionGroup
-                    v-show="archivedCapsules.length > 0"
-                    name="list"
-                    tag="div"
-                    class="space-y-2 relative"
-                >
-                    <CapsuleCard
-                        v-for="c in archivedCapsules"
-                        :key="`archived-${c.id}`"
-                        :capsule="c"
-                        :archived="true"
+                        :archived="c.deleted_at !== null"
                     />
                 </TransitionGroup>
 

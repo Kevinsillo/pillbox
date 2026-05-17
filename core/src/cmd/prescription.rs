@@ -116,6 +116,7 @@ pub fn cmd_prescription_show(id: String, limit: u32, archived_limit: u32) -> Res
     let pill_list = pills::list_by_prescription(
         &conn,
         &rx.id,
+        pillbox::db::store::ListFilter::All,
         &pillbox::domain::PaginationParams {
             page: 1,
             page_size: 100,

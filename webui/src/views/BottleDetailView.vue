@@ -10,7 +10,7 @@ import { usePaginatedList } from '@/composables/usePaginatedList'
 import { usePoll } from '@/composables/usePoll'
 import type { Bottle, Prescription } from '@/core/domain/types'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
-import { computed, ref, toRef, watch } from 'vue'
+import { ref, toRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
 import IArrowLeft from '~icons/lucide/arrow-left'
@@ -37,9 +37,6 @@ const {
     fetcher: (p) => bottlesApi.prescriptions(bottleIdRef.value, p),
     resetOn: [bottleIdRef],
 })
-
-const activePrescriptions = computed(() => prescriptions.value.filter(rx => rx.deleted_at === null))
-const archivedPrescriptions = computed(() => prescriptions.value.filter(rx => rx.deleted_at !== null))
 
 let currentToken = 0
 
@@ -115,10 +112,18 @@ async function deleteBottle() {
                                 <span class="text-sm text-zinc-600 font-mono">{{ bottle.name }}</span>
                             </div>
                             <div class="flex items-center gap-2 mt-0.5">
-                                <ViewsBadge :views="bottle.views" />
                                 <span class="text-[11px] text-zinc-600 border border-(--border) px-1.5 py-0 rounded shrink-0">{{ bottle.scope }}</span>
                                 <span class="text-xs text-zinc-500 truncate">{{ bottle.directory }}</span>
                             </div>
+                            <p class="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                <ViewsBadge :views="bottle.views" />
+                                <span>
+                                    {{ $t('bottle_detail.created_at') }} {{ new Date(bottle.created_at).toLocaleString() }}
+                                    <span v-if="bottle.last_seen_at && bottle.last_seen_at !== bottle.created_at">
+                                        · {{ $t('bottle_detail.last_seen_at') }} {{ new Date(bottle.last_seen_at).toLocaleString() }}
+                                    </span>
+                                </span>
+                            </p>
                         </div>
                         <HeaderMenu entity="bottle" :bottle-id="props.bottle_id" />
                     </div>
@@ -141,27 +146,13 @@ async function deleteBottle() {
                     <template v-else>
                         <TransitionGroup name="list" tag="div" class="space-y-2 relative">
                             <PrescriptionCard
-                                v-for="rx in activePrescriptions"
-                                :key="`active-${rx.id}`"
+                                v-for="rx in prescriptions"
+                                :key="rx.id"
                                 :prescription="rx"
                                 :bottle-id="props.bottle_id"
+                                :archived="rx.deleted_at !== null"
                             />
                         </TransitionGroup>
-
-                        <template v-if="archivedPrescriptions.length > 0">
-                            <h3 class="text-xs font-semibold text-zinc-600 uppercase tracking-wider mt-4 mb-2">
-                                {{ $t('bottle_detail.archived_heading') }} ({{ archivedPrescriptions.length }})
-                            </h3>
-                            <TransitionGroup name="list" tag="div" class="space-y-2 relative">
-                                <PrescriptionCard
-                                    v-for="rx in archivedPrescriptions"
-                                    :key="`archived-${rx.id}`"
-                                    :prescription="rx"
-                                    :bottle-id="props.bottle_id"
-                                    :archived="true"
-                                />
-                            </TransitionGroup>
-                        </template>
 
                         <div class="pt-4 flex justify-center">
                             <Paginator v-model:current-page="page" :total="total" :page-size="pageSize" />

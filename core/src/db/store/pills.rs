@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::db::store::id_resolver::resolve_id;
 use crate::db::store::prescriptions;
+use crate::db::store::ListFilter;
 use crate::domain::pill::{NewPill, Pill, PillPatch};
 use crate::domain::{Paginated, PaginationParams};
 use crate::error::PillboxError;
@@ -269,27 +270,34 @@ pub fn hard_delete(conn: &mut Connection, id: &str) -> Result<Option<String>> {
 pub fn list_by_prescription(
     conn: &Connection,
     prescription_id: &str,
+    filter: ListFilter,
     pagination: &PaginationParams,
 ) -> Result<Paginated<Pill>> {
-    let total: u64 = conn.query_row(
+    let filter_clause = match filter {
+        ListFilter::Active => "deleted_at IS NULL",
+        ListFilter::Archived => "deleted_at IS NOT NULL",
+        ListFilter::All => "1=1",
+    };
+
+    let count_sql = format!(
         "SELECT COUNT(*) FROM pills
-         WHERE prescription_id = ?1 AND deleted_at IS NULL",
-        params![prescription_id],
-        |r| r.get(0),
-    )?;
+         WHERE prescription_id = ?1 AND {filter_clause}"
+    );
+    let total: u64 = conn.query_row(&count_sql, params![prescription_id], |r| r.get(0))?;
 
     let limit = pagination.limit() as i64;
     let offset = pagination.offset() as i64;
 
-    let mut stmt = conn.prepare(
+    let select_sql = format!(
         "SELECT id, compound, title, content, prescription_id,
                 author_name, author_email, created_at, updated_at, deleted_at,
                 views
          FROM pills
-         WHERE prescription_id = ?1 AND deleted_at IS NULL
+         WHERE prescription_id = ?1 AND {filter_clause}
          ORDER BY created_at DESC, id DESC
-         LIMIT ?2 OFFSET ?3",
-    )?;
+         LIMIT ?2 OFFSET ?3"
+    );
+    let mut stmt = conn.prepare(&select_sql)?;
     let items = stmt
         .query_map(params![prescription_id, limit, offset], row_to_pill)?
         .collect::<rusqlite::Result<Vec<_>>>()
@@ -719,7 +727,9 @@ mod tests {
         )
         .unwrap();
 
-        let pills = list_by_prescription(&conn, &rx_id, &PaginationParams::default()).unwrap();
+        let pills =
+            list_by_prescription(&conn, &rx_id, ListFilter::Active, &PaginationParams::default())
+                .unwrap();
         assert_eq!(pills.items.len(), 2);
         assert_eq!(pills.items[0].title, "Segunda pill");
         assert_eq!(pills.items[1].title, "Decisión de diseño");
@@ -728,8 +738,13 @@ mod tests {
     #[test]
     fn list_by_prescription_empty_for_unknown() {
         let conn = open_in_memory(DbScope::Local).unwrap();
-        let pills =
-            list_by_prescription(&conn, "rx-inexistente", &PaginationParams::default()).unwrap();
+        let pills = list_by_prescription(
+            &conn,
+            "rx-inexistente",
+            ListFilter::Active,
+            &PaginationParams::default(),
+        )
+        .unwrap();
         assert!(pills.items.is_empty());
         assert_eq!(pills.total, 0);
     }
@@ -781,9 +796,17 @@ mod tests {
         let pill = take(&mut conn, &sample_pill(&rx_id)).unwrap();
         discard(&mut conn, &pill.id).unwrap();
 
-        let pills = list_by_prescription(&conn, &rx_id, &PaginationParams::default()).unwrap();
+        let pills =
+            list_by_prescription(&conn, &rx_id, ListFilter::Active, &PaginationParams::default())
+                .unwrap();
         assert!(pills.items.is_empty());
         assert_eq!(pills.total, 0);
+
+        let all = list_by_prescription(&conn, &rx_id, ListFilter::All, &PaginationParams::default())
+            .unwrap();
+        assert_eq!(all.items.len(), 1);
+        assert_eq!(all.total, 1);
+        assert!(all.items[0].deleted_at.is_some());
     }
 
     #[test]
@@ -809,7 +832,9 @@ mod tests {
         .unwrap();
         discard(&mut conn, &pill2.id).unwrap();
 
-        let pills = list_by_prescription(&conn, &rx_id, &PaginationParams::default()).unwrap();
+        let pills =
+            list_by_prescription(&conn, &rx_id, ListFilter::Active, &PaginationParams::default())
+                .unwrap();
         assert_eq!(pills.items.len(), 1);
         assert_eq!(pills.total, 1);
         assert!(pills.items.iter().all(|p| p.deleted_at.is_none()));

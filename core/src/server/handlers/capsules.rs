@@ -203,7 +203,7 @@ pub async fn capsule_list(
     };
     match store::capsules::list(
         &conn,
-        store::ListFilter::Active,
+        store::ListFilter::All,
         params.compound.as_deref(),
         &params.pagination,
     ) {

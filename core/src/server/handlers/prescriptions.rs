@@ -238,7 +238,7 @@ pub async fn prescription_pills(
         Ok(None) => return err_404_prescription(&rx_id),
         Err(e) => return err_500(e),
     };
-    match store::pills::list_by_prescription(&conn, &rx.id, &pagination) {
+    match store::pills::list_by_prescription(&conn, &rx.id, store::ListFilter::All, &pagination) {
         Ok(page) => ok(page),
         Err(e) => err_500(e),
     }

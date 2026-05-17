@@ -76,9 +76,6 @@ const authorDisplay = computed(() =>
     rx.value ? formatAuthor(rx.value.author_name, rx.value.author_email) : null
 )
 
-const activePills = computed(() => sortedPills.value.filter(p => p.deleted_at === null))
-const archivedPills = computed(() => sortedPills.value.filter(p => p.deleted_at !== null))
-
 async function closeRx() {
     try {
         await confirm(
@@ -228,28 +225,18 @@ async function purgeRx() {
                     <div v-if="pills.length === 0" class="text-zinc-500 text-sm">{{ $t('prescription_detail.empty') }}</div>
                     <template v-else>
                         <TransitionGroup name="list" tag="div" class="space-y-3 relative">
-                            <PillCard
-                                v-for="pill in activePills"
-                                :key="`active-${pill.id}`"
-                                :pill="pill"
-                                :bottle-id="props.bottle_id"
-                            />
+                            <div
+                                v-for="pill in sortedPills"
+                                :key="pill.id"
+                                :class="{ 'opacity-50 relative': pill.deleted_at }"
+                            >
+                                <PillCard :pill="pill" :bottle-id="props.bottle_id" />
+                                <span
+                                    v-if="pill.deleted_at"
+                                    class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text) pointer-events-none"
+                                >{{ $t('prescription_detail.archived_badge') }}</span>
+                            </div>
                         </TransitionGroup>
-
-                        <template v-if="archivedPills.length > 0">
-                            <h3 class="text-xs font-semibold text-zinc-600 uppercase tracking-wider mt-4 mb-2">
-                                {{ $t('prescription_detail.archived_pills_heading') }} ({{ archivedPills.length }})
-                            </h3>
-                            <TransitionGroup name="list" tag="div" class="space-y-3 relative">
-                                <div v-for="pill in archivedPills" :key="`archived-${pill.id}`" class="opacity-50 relative">
-                                    <PillCard
-                                        :pill="pill"
-                                        :bottle-id="props.bottle_id"
-                                    />
-                                    <span class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-(--badge-zinc-bg) text-(--badge-zinc-text) pointer-events-none">{{ $t('prescription_detail.archived_badge') }}</span>
-                                </div>
-                            </TransitionGroup>
-                        </template>
 
                         <div class="pt-4 flex justify-center">
                             <Paginator v-model:current-page="page" :total="total" :page-size="pageSize" />

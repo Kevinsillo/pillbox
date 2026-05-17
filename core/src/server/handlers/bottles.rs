@@ -294,7 +294,7 @@ pub async fn bottle_prescriptions(
     match store::prescriptions::list_by_bottle(
         &conn,
         &full_id,
-        store::ListFilter::Active,
+        store::ListFilter::All,
         &pagination,
     ) {
         Ok(page) => ok(page),
