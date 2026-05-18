@@ -85,59 +85,42 @@ async function runSearch() {
     const effectiveQuery = q
     const effectiveCompound = compound.value || undefined
 
-    const runPills = (fuzzy: boolean) =>
+    const runPills = () =>
         pillsApi.search({
             query: effectiveQuery,
             bottle_id: activeBottleId.value ?? undefined,
             compound: effectiveCompound,
             page: pillsPage.value,
             page_size: pillsPageSize.value,
-            fuzzy,
         })
-    const runCaps = (fuzzy: boolean) =>
+    const runCaps = () =>
         capsulesApi.search({
             query: effectiveQuery,
             compound: effectiveCompound,
             page: capsPage.value,
             page_size: capsPageSize.value,
-            fuzzy,
         })
 
     try {
-        // First pass: fuzzy=false
-        let pillsRes: { items: PillSearchResult[]; total: number } = { items: [], total: 0 }
-        let capsRes: { items: CapsuleSearchResult[]; total: number } = { items: [], total: 0 }
+        // El backend decide internamente si reintenta con fuzzy y nos
+        // devuelve `used_fuzzy` en la respuesta paginada.
+        let pillsRes: { items: PillSearchResult[]; total: number; used_fuzzy?: boolean } = {
+            items: [],
+            total: 0,
+        }
+        let capsRes: { items: CapsuleSearchResult[]; total: number; used_fuzzy?: boolean } = {
+            items: [],
+            total: 0,
+        }
         if (scope.value === "all") {
-            ;[pillsRes, capsRes] = await Promise.all([runPills(false), runCaps(false)])
+            ;[pillsRes, capsRes] = await Promise.all([runPills(), runCaps()])
         } else if (scope.value === "pills") {
-            pillsRes = await runPills(false)
+            pillsRes = await runPills()
         } else {
-            capsRes = await runCaps(false)
+            capsRes = await runCaps()
         }
 
-        let total = 0
-        if (scope.value === "all") total = pillsRes.total + capsRes.total
-        else if (scope.value === "pills") total = pillsRes.total
-        else total = capsRes.total
-
-        // Second pass: fuzzy=true if no results and query is long enough
-        if (total === 0 && effectiveQuery.length > 4) {
-            if (scope.value === "all") {
-                ;[pillsRes, capsRes] = await Promise.all([runPills(true), runCaps(true)])
-            } else if (scope.value === "pills") {
-                pillsRes = await runPills(true)
-            } else {
-                capsRes = await runCaps(true)
-            }
-            const total2 =
-                scope.value === "all"
-                    ? pillsRes.total + capsRes.total
-                    : scope.value === "pills"
-                      ? pillsRes.total
-                      : capsRes.total
-            isFuzzy.value = total2 > 0
-        }
-
+        isFuzzy.value = Boolean(pillsRes.used_fuzzy || capsRes.used_fuzzy)
         pillItems.value = pillsRes.items
         pillsTotal.value = pillsRes.total
         capItems.value = capsRes.items

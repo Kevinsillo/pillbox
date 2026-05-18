@@ -283,6 +283,7 @@ pub async fn pill_search(
             };
             let mut all_results = vec![];
             let mut total: u64 = 0;
+            let mut used_fuzzy = false;
             for reg in &registered {
                 let path = std::path::PathBuf::from(&reg.db_path);
                 if !path.exists() {
@@ -298,6 +299,7 @@ pub async fn pill_search(
                 };
                 if let Ok(page) = store::search::pill_find(&conn, &params, &wide) {
                     total = total.saturating_add(page.total);
+                    used_fuzzy |= page.used_fuzzy;
                     all_results.extend(page.items);
                 }
             }
@@ -314,6 +316,7 @@ pub async fn pill_search(
                 total,
                 page: pagination.page,
                 page_size: pagination.page_size,
+                used_fuzzy,
             })
         }
     })

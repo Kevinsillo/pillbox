@@ -81,6 +81,7 @@ pub fn list(conn: &Connection, pagination: &PaginationParams) -> Result<Paginate
         total,
         page: pagination.page,
         page_size: pagination.page_size,
+        used_fuzzy: false,
     })
 }
 

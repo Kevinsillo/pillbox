@@ -451,6 +451,7 @@ pub fn list_by_bottle(
         total,
         page: pagination.page,
         page_size: pagination.page_size,
+        used_fuzzy: false,
     })
 }
 

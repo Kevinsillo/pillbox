@@ -146,4 +146,8 @@ pub struct Paginated<T: Serialize> {
     pub total: u64,
     pub page: u32,
     pub page_size: u32,
+    /// Indica si los resultados provienen de la pasada fuzzy (Jaro-Winkler).
+    /// Solo aplica a búsquedas FTS; en otros listados es `false`.
+    #[serde(default)]
+    pub used_fuzzy: bool,
 }

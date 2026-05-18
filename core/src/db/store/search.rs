@@ -26,13 +26,30 @@ const FUZZY_MAX_LEN_DIFF: usize = 2;
 
 // ─── Pipeline de query FTS5 + fuzzy ─────────────────────────────────────────
 
-/// Extrae los términos individuales de la query del usuario, limpiando comillas.
+/// Extrae los términos individuales de la query del usuario.
+///
+/// Normaliza separadores comunes de identificadores de código (`-`, `_`, `/`,
+/// `.`, `:`) a espacios antes de dividir, de modo que `el-select` o
+/// `auth.middleware` se conviertan en términos independientes. Pasa a
+/// minúsculas y elimina duplicados preservando el orden.
 fn extract_terms(query: &str) -> Vec<String> {
-    query
-        .split_whitespace()
-        .map(|t| t.replace('"', ""))
-        .filter(|t| !t.is_empty())
-        .collect()
+    let normalized: String = query
+        .chars()
+        .map(|c| match c {
+            '-' | '_' | '/' | '.' | ':' | '"' => ' ',
+            _ => c,
+        })
+        .collect();
+
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for tok in normalized.split_whitespace() {
+        let lower = tok.to_lowercase();
+        if seen.insert(lower.clone()) {
+            out.push(lower);
+        }
+    }
+    out
 }
 
 /// Obtiene todos los términos únicos del índice FTS5 indicado.
@@ -91,47 +108,31 @@ fn fuzzy_expand<'a>(terms: &'a [String], vocab: &[String]) -> HashMap<&'a str, V
 
 /// Construye la expresión FTS5 final combinando prefix search y expansión fuzzy.
 ///
-/// Cada término genera un grupo OR: `("term"* OR "fuzzy1" OR "fuzzy2")`
-/// Los grupos se unen con AND implícito (espacio).
-///
-/// Ejemplo: query "hexagnol auth" con fuzzy "hexagonal" →
-/// `("hexagnol"* OR "hexagonal") AND "auth"*`
+/// Cada término genera `"term"*` y, si hay expansión fuzzy, también
+/// `"fuzzy1" OR "fuzzy2"`. Todos los fragmentos se unen con `OR`, de modo
+/// que documentos que contengan cualquier término matchean; el ranker
+/// (bm25) prioriza los que tienen más coincidencias.
 fn build_fts_query(terms: &[String], fuzzy_map: &HashMap<&str, Vec<String>>) -> String {
-    terms
-        .iter()
-        .map(|term| {
-            let prefix = format!("\"{}\"*", term);
-            let fuzzy = fuzzy_map
-                .get(term.as_str())
-                .map(|v| v.as_slice())
-                .unwrap_or(&[]);
-
-            if fuzzy.is_empty() {
-                prefix
-            } else {
-                let fuzzy_parts: String = fuzzy
-                    .iter()
-                    .map(|t| format!("\"{}\"", t))
-                    .collect::<Vec<_>>()
-                    .join(" OR ");
-                format!("({prefix} OR {fuzzy_parts})")
+    let mut parts: Vec<String> = Vec::new();
+    for term in terms {
+        parts.push(format!("\"{}\"*", term));
+        if let Some(fuzzy) = fuzzy_map.get(term.as_str()) {
+            for f in fuzzy {
+                parts.push(format!("\"{}\"", f));
             }
-        })
-        .collect::<Vec<_>>()
-        .join(" AND ")
+        }
+    }
+    parts.join(" OR ")
 }
 
-// ─── Sanitización simple (modo no-fuzzy: prefix-only AND-joined) ─────────────
-
-/// Construye una expresión FTS5 de prefix-match estricto a partir de los
-/// términos ya extraídos. Cada término se envuelve como `"term"*` y se
-/// unen con `AND` explícito.
+/// Construye una expresión FTS5 de prefix-match a partir de los términos ya
+/// extraídos. Cada término se envuelve como `"term"*` y se unen con `OR`.
 fn build_prefix_only_query(terms: &[String]) -> String {
     terms
         .iter()
         .map(|t| format!("\"{}\"*", t))
         .collect::<Vec<_>>()
-        .join(" AND ")
+        .join(" OR ")
 }
 
 // ─── Listado por compound (sin texto) ────────────────────────────────────────
@@ -184,6 +185,7 @@ fn pill_list_by_compound(
         total,
         page: pagination.page,
         page_size: pagination.page_size,
+        used_fuzzy: false,
     })
 }
 
@@ -228,41 +230,25 @@ fn capsule_list_by_compound(
         total,
         page: pagination.page,
         page_size: pagination.page_size,
+        used_fuzzy: false,
     })
 }
 
 // ─── Pills ────────────────────────────────────────────────────────────────────
 
-/// Busca pills mediante FTS5 con expansión fuzzy (Jaro-Winkler).
-///
-/// Devuelve resultados ordenados por relevancia (rank FTS5 ascendente,
-/// más cercano a 0 = más relevante). Una query vacía devuelve `vec![]`.
-pub fn pill_find(
+/// Longitud mínima del query original (sin separadores) para que el
+/// fallback fuzzy automático se active. Evita disparar la pasada fuzzy
+/// para queries muy cortas donde Jaro-Winkler genera ruido.
+const FUZZY_FALLBACK_MIN_QUERY_LEN: usize = 5;
+
+/// Ejecuta una consulta FTS5 sobre `pills_fts` ya construida y devuelve
+/// `(total, items)`.
+fn pill_fts_exec(
     conn: &Connection,
+    fts_query: &str,
     params_in: &SearchParams,
     pagination: &PaginationParams,
-) -> Result<Paginated<SearchResult>> {
-    let terms = extract_terms(&params_in.query);
-    if terms.is_empty() {
-        if params_in.compound.is_some() {
-            return pill_list_by_compound(conn, params_in, pagination);
-        }
-        return Ok(Paginated {
-            items: vec![],
-            total: 0,
-            page: pagination.page,
-            page_size: pagination.page_size,
-        });
-    }
-
-    let fts_query = if params_in.fuzzy {
-        let vocab = fetch_vocab(conn, "pills_fts")?;
-        let fuzzy_map = fuzzy_expand(&terms, &vocab);
-        build_fts_query(&terms, &fuzzy_map)
-    } else {
-        build_prefix_only_query(&terms)
-    };
-
+) -> Result<(u64, Vec<SearchResult>)> {
     let total: u64 = conn.query_row(
         "SELECT COUNT(*)
          FROM pills_fts
@@ -314,21 +300,22 @@ pub fn pill_find(
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("FTS5 pill search failed")?;
 
-    Ok(Paginated {
-        items,
-        total,
-        page: pagination.page,
-        page_size: pagination.page_size,
-    })
+    Ok((total, items))
 }
 
-// ─── Capsules ─────────────────────────────────────────────────────────────────
-
-/// Busca capsules mediante FTS5, con expansión fuzzy opcional.
+/// Busca pills mediante FTS5.
 ///
-/// Las capsules son globales (no pertenecen a ningún bottle), por lo que
-/// el campo `params_in.bottle_id` se ignora.
-pub fn capsule_find(
+/// Semántica: los términos se unen con `OR` y el ranker bm25 prioriza
+/// documentos que contienen más coincidencias. Si la pasada estricta
+/// devuelve 0 resultados (y la query es suficientemente larga), se
+/// reintenta con expansión fuzzy Jaro-Winkler como último recurso.
+///
+/// Pasar `params_in.fuzzy = true` fuerza la pasada fuzzy directamente,
+/// saltando el intento estricto.
+///
+/// Devuelve resultados ordenados por relevancia (rank FTS5 ascendente,
+/// más cercano a 0 = más relevante). Una query vacía devuelve `vec![]`.
+pub fn pill_find(
     conn: &Connection,
     params_in: &SearchParams,
     pagination: &PaginationParams,
@@ -336,24 +323,57 @@ pub fn capsule_find(
     let terms = extract_terms(&params_in.query);
     if terms.is_empty() {
         if params_in.compound.is_some() {
-            return capsule_list_by_compound(conn, params_in, pagination);
+            return pill_list_by_compound(conn, params_in, pagination);
         }
         return Ok(Paginated {
             items: vec![],
             total: 0,
             page: pagination.page,
             page_size: pagination.page_size,
+            used_fuzzy: false,
         });
     }
 
-    let fts_query = if params_in.fuzzy {
-        let vocab = fetch_vocab(conn, "capsules_fts")?;
-        let fuzzy_map = fuzzy_expand(&terms, &vocab);
-        build_fts_query(&terms, &fuzzy_map)
+    // Pasada 1: prefix-only OR (salvo que se fuerce fuzzy desde el caller).
+    let mut used_fuzzy = false;
+    let (mut total, mut items) = if params_in.fuzzy {
+        (0u64, Vec::new())
     } else {
-        build_prefix_only_query(&terms)
+        pill_fts_exec(conn, &build_prefix_only_query(&terms), params_in, pagination)?
     };
 
+    // Pasada 2: fallback fuzzy si la estricta devolvió 0 y la query es
+    // suficientemente larga (o si el caller forzó fuzzy).
+    if total == 0 && (params_in.fuzzy || params_in.query.len() >= FUZZY_FALLBACK_MIN_QUERY_LEN) {
+        let vocab = fetch_vocab(conn, "pills_fts")?;
+        let fuzzy_map = fuzzy_expand(&terms, &vocab);
+        let fuzzy_query = build_fts_query(&terms, &fuzzy_map);
+        let (t, i) = pill_fts_exec(conn, &fuzzy_query, params_in, pagination)?;
+        if t > 0 {
+            total = t;
+            items = i;
+            used_fuzzy = true;
+        }
+    }
+
+    Ok(Paginated {
+        items,
+        total,
+        page: pagination.page,
+        page_size: pagination.page_size,
+        used_fuzzy,
+    })
+}
+
+// ─── Capsules ─────────────────────────────────────────────────────────────────
+
+/// Ejecuta una consulta FTS5 sobre `capsules_fts` ya construida.
+fn capsule_fts_exec(
+    conn: &Connection,
+    fts_query: &str,
+    params_in: &SearchParams,
+    pagination: &PaginationParams,
+) -> Result<(u64, Vec<SearchResult>)> {
     let total: u64 = conn.query_row(
         "SELECT COUNT(*)
          FROM capsules_fts
@@ -393,11 +413,63 @@ pub fn capsule_find(
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("FTS5 capsule search failed")?;
 
+    Ok((total, items))
+}
+
+/// Busca capsules mediante FTS5.
+///
+/// Misma semántica que [`pill_find`]: OR entre términos con bm25, y
+/// fallback fuzzy automático si la pasada estricta devuelve 0. Las
+/// capsules son globales, por lo que `params_in.bottle_id` se ignora.
+pub fn capsule_find(
+    conn: &Connection,
+    params_in: &SearchParams,
+    pagination: &PaginationParams,
+) -> Result<Paginated<SearchResult>> {
+    let terms = extract_terms(&params_in.query);
+    if terms.is_empty() {
+        if params_in.compound.is_some() {
+            return capsule_list_by_compound(conn, params_in, pagination);
+        }
+        return Ok(Paginated {
+            items: vec![],
+            total: 0,
+            page: pagination.page,
+            page_size: pagination.page_size,
+            used_fuzzy: false,
+        });
+    }
+
+    let mut used_fuzzy = false;
+    let (mut total, mut items) = if params_in.fuzzy {
+        (0u64, Vec::new())
+    } else {
+        capsule_fts_exec(
+            conn,
+            &build_prefix_only_query(&terms),
+            params_in,
+            pagination,
+        )?
+    };
+
+    if total == 0 && (params_in.fuzzy || params_in.query.len() >= FUZZY_FALLBACK_MIN_QUERY_LEN) {
+        let vocab = fetch_vocab(conn, "capsules_fts")?;
+        let fuzzy_map = fuzzy_expand(&terms, &vocab);
+        let fuzzy_query = build_fts_query(&terms, &fuzzy_map);
+        let (t, i) = capsule_fts_exec(conn, &fuzzy_query, params_in, pagination)?;
+        if t > 0 {
+            total = t;
+            items = i;
+            used_fuzzy = true;
+        }
+    }
+
     Ok(Paginated {
         items,
         total,
         page: pagination.page,
         page_size: pagination.page_size,
+        used_fuzzy,
     })
 }
 
@@ -998,12 +1070,13 @@ mod tests {
         let terms = extract_terms("fix auth bug");
         assert_eq!(
             build_prefix_only_query(&terms),
-            "\"fix\"* AND \"auth\"* AND \"bug\"*"
+            "\"fix\"* OR \"auth\"* OR \"bug\"*"
         );
         let terms = extract_terms("AND OR NOT");
+        // extract_terms lowercases; FTS5 quoting evita conflictos con operadores.
         assert_eq!(
             build_prefix_only_query(&terms),
-            "\"AND\"* AND \"OR\"* AND \"NOT\"*"
+            "\"and\"* OR \"or\"* OR \"not\"*"
         );
         let terms: Vec<String> = extract_terms("");
         assert_eq!(build_prefix_only_query(&terms), "");
@@ -1017,7 +1090,22 @@ mod tests {
         fuzzy_map.insert("auth", vec![]);
 
         let query = build_fts_query(&terms, &fuzzy_map);
-        assert_eq!(query, "(\"hexagnol\"* OR \"hexagonal\") AND \"auth\"*");
+        assert_eq!(query, "\"hexagnol\"* OR \"hexagonal\" OR \"auth\"*");
+    }
+
+    #[test]
+    fn extract_terms_splits_identifier_separators() {
+        let terms = extract_terms("navbar el-select popover");
+        assert_eq!(terms, vec!["navbar", "el", "select", "popover"]);
+
+        let terms = extract_terms("auth.middleware/session_store");
+        assert_eq!(terms, vec!["auth", "middleware", "session", "store"]);
+    }
+
+    #[test]
+    fn extract_terms_dedupes_and_lowercases() {
+        let terms = extract_terms("Auth auth AUTH-token");
+        assert_eq!(terms, vec!["auth", "token"]);
     }
 
     #[test]

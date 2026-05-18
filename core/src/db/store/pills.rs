@@ -308,6 +308,7 @@ pub fn list_by_prescription(
         total,
         page: pagination.page,
         page_size: pagination.page_size,
+        used_fuzzy: false,
     })
 }
 

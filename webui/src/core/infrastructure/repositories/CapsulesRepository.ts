@@ -17,14 +17,13 @@ export const capsulesApi = {
         api.patch<Capsule>(`/capsules/${id}`, body),
     delete: (id: string) => api.delete<Capsule>(`/capsules/${id}`),
     purge: (id: string) => api.delete<{ purged: boolean }>(`/capsules/${id}/purge`),
-    search: (params: { query: string; compound?: string; fuzzy?: boolean; page: number; page_size: number }) => {
+    search: (params: { query: string; compound?: string; page: number; page_size: number }) => {
         const qs = new URLSearchParams({
             query: params.query,
             page: String(params.page),
             page_size: String(params.page_size),
         })
         if (params.compound) qs.set('compound', params.compound)
-        if (params.fuzzy !== undefined) qs.set('fuzzy', String(params.fuzzy))
         return api.get<Paginated<CapsuleSearchResult>>(`/capsules/search?${qs}`)
     },
     getCompounds: (limit?: number) => {

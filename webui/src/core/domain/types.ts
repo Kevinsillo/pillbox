@@ -124,4 +124,6 @@ export interface Paginated<T> {
     total: number
     page: number
     page_size: number
+    /** Solo en respuestas de búsqueda: indica si vinieron de la pasada fuzzy. */
+    used_fuzzy?: boolean
 }
