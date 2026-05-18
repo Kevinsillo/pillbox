@@ -123,7 +123,13 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
         return r;
     }
     match store::pills::revise(conn, &req.id, &patch) {
-        Ok(Some(p)) => Response::ok(p),
+        Ok(Some(mut p)) => match store::counters::increment_views(conn, "pills", &p.id) {
+            Ok(v) => {
+                p.views = v;
+                Response::ok(p)
+            }
+            Err(e) => anyhow_to_response(e),
+        },
         Ok(None) => from_pillbox(&PillboxError::PillNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }

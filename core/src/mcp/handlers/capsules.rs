@@ -85,7 +85,13 @@ pub fn revise(conn: &mut Conn, input: Value) -> Response {
         return r;
     }
     match store::capsules::revise(conn, &req.id, &patch) {
-        Ok(Some(c)) => Response::ok(c),
+        Ok(Some(mut c)) => match store::counters::increment_views(conn, "capsules", &c.id) {
+            Ok(v) => {
+                c.views = v;
+                Response::ok(c)
+            }
+            Err(e) => anyhow_to_response(e),
+        },
         Ok(None) => from_pillbox(&PillboxError::CapsuleNotFound { id: req.id }),
         Err(e) => anyhow_to_response(e),
     }
