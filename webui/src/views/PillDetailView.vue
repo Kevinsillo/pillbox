@@ -16,8 +16,10 @@ import { computed, ref, watchEffect } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
+import IEye from "~icons/lucide/eye"
 import IFileText from "~icons/lucide/file-text"
 import ILock from "~icons/lucide/lock"
+import IFileCode from "~icons/lucide/file-code"
 import ITrash2 from "~icons/lucide/trash-2"
 
 const { t } = useI18n()
@@ -81,6 +83,8 @@ const renderedContent = ref("")
 watchEffect(async () => {
     renderedContent.value = pill.value ? await parse(pill.value.content) : ""
 })
+
+const view = ref<"rendered" | "raw">("rendered")
 </script>
 
 <template>
@@ -156,8 +160,35 @@ watchEffect(async () => {
                 </div>
             </div>
 
-            <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-5">
-                <div class="markdown" v-html="renderedContent" />
+            <div class="space-y-3">
+                <div class="flex gap-1 border-b border-(--border)">
+                    <button
+                        type="button"
+                        class="flex items-center gap-1.5 px-3 py-2 text-xs border-b-2 -mb-px transition-colors"
+                        :class="view === 'rendered'
+                            ? 'border-(--text-h) text-(--text-h)'
+                            : 'border-transparent text-zinc-500 hover:text-zinc-300'"
+                        @click="view = 'rendered'"
+                    >
+                        <IEye class="w-3.5 h-3.5" />
+                        {{ $t("pill_detail.view_rendered") }}
+                    </button>
+                    <button
+                        type="button"
+                        class="flex items-center gap-1.5 px-3 py-2 text-xs border-b-2 -mb-px transition-colors"
+                        :class="view === 'raw'
+                            ? 'border-(--text-h) text-(--text-h)'
+                            : 'border-transparent text-zinc-500 hover:text-zinc-300'"
+                        @click="view = 'raw'"
+                    >
+                        <IFileCode class="w-3.5 h-3.5" />
+                        {{ $t("pill_detail.view_raw") }}
+                    </button>
+                </div>
+                <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-5">
+                    <div v-if="view === 'rendered'" class="markdown" v-html="renderedContent" />
+                    <pre v-else class="text-sm font-mono text-(--text-h) whitespace-pre-wrap wrap-break-word">{{ pill.content }}</pre>
+                </div>
             </div>
         </template>
     </div>

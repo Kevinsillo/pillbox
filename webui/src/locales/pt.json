@@ -184,7 +184,9 @@
     "updated_at": "Atualizada",
     "archived_badge": "Arquivada",
     "author": "Autor",
-    "closed_rx_hint": "A prescription pai está fechada. Reabra-a para editar ou arquivar esta pill."
+    "closed_rx_hint": "A prescription pai está fechada. Reabra-a para editar ou arquivar esta pill.",
+    "view_rendered": "Renderizado",
+    "view_raw": "Raw"
   },
   "pill_edit": {
     "heading": "Editando pill",

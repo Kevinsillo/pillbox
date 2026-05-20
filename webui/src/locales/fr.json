@@ -184,7 +184,9 @@
     "updated_at": "Mise à jour",
     "archived_badge": "Archivée",
     "author": "Auteur",
-    "closed_rx_hint": "La prescription parente est fermée. Rouvrez-la pour modifier ou archiver cette pill."
+    "closed_rx_hint": "La prescription parente est fermée. Rouvrez-la pour modifier ou archiver cette pill.",
+    "view_rendered": "Rendu",
+    "view_raw": "Raw"
   },
   "pill_edit": {
     "heading": "Modifier la pill",

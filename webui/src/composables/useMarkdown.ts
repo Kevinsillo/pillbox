@@ -67,7 +67,7 @@ const renderer = {
   },
 }
 
-const marked = new Marked({ renderer })
+const marked = new Marked({ renderer, breaks: true })
 
 export function useMarkdown() {
   async function parse(content: string): Promise<string> {

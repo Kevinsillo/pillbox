@@ -184,7 +184,9 @@
     "updated_at": "Actualizada",
     "archived_badge": "Archivada",
     "author": "Autor",
-    "closed_rx_hint": "La prescription padre está cerrada. Reábrela para editar o archivar esta pill."
+    "closed_rx_hint": "La prescription padre está cerrada. Reábrela para editar o archivar esta pill.",
+    "view_rendered": "Renderizado",
+    "view_raw": "Raw"
   },
   "pill_edit": {
     "heading": "Editando pill",

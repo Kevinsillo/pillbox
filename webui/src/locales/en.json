@@ -184,7 +184,9 @@
     "updated_at": "Updated",
     "archived_badge": "Archived",
     "author": "Author",
-    "closed_rx_hint": "The parent prescription is closed. Reopen it to edit or archive this pill."
+    "closed_rx_hint": "The parent prescription is closed. Reopen it to edit or archive this pill.",
+    "view_rendered": "Rendered",
+    "view_raw": "Raw"
   },
   "pill_edit": {
     "heading": "Editing pill",

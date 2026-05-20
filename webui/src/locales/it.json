@@ -184,7 +184,9 @@
     "updated_at": "Aggiornata",
     "archived_badge": "Archiviata",
     "author": "Autore",
-    "closed_rx_hint": "La prescription padre è chiusa. Riaprila per modificare o archiviare questa pill."
+    "closed_rx_hint": "La prescription padre è chiusa. Riaprila per modificare o archiviare questa pill.",
+    "view_rendered": "Renderizzato",
+    "view_raw": "Raw"
   },
   "pill_edit": {
     "heading": "Modifica pill",
