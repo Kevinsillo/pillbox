@@ -17,6 +17,7 @@
     "loading": "Laden",
     "views_label": "{count} Ansichten",
     "copy_id": "ID kopieren",
+    "copy_markdown": "Markdown kopieren",
     "copied": "Kopiert",
     "coming_soon": "(demnächst)",
     "prompts_header": "Prompts für KI-Agent",
@@ -185,7 +186,7 @@
     "archived_badge": "Archiviert",
     "author": "Autor",
     "closed_rx_hint": "Die übergeordnete Prescription ist geschlossen. Öffne sie wieder, um diese Pill zu bearbeiten oder zu archivieren.",
-    "view_rendered": "Gerendert",
+    "view_rendered": "Markdown",
     "view_raw": "Raw"
   },
   "pill_edit": {

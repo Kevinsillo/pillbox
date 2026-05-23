@@ -17,6 +17,7 @@
     "loading": "Caricamento",
     "views_label": "{count} visualizzazioni",
     "copy_id": "Copia ID",
+    "copy_markdown": "Copia markdown",
     "copied": "Copiato",
     "coming_soon": "(prossimamente)",
     "prompts_header": "Prompt per agente IA",
@@ -185,7 +186,7 @@
     "archived_badge": "Archiviata",
     "author": "Autore",
     "closed_rx_hint": "La prescription padre è chiusa. Riaprila per modificare o archiviare questa pill.",
-    "view_rendered": "Renderizzato",
+    "view_rendered": "Markdown",
     "view_raw": "Raw"
   },
   "pill_edit": {

@@ -17,6 +17,7 @@
     "loading": "Chargement",
     "views_label": "{count} vues",
     "copy_id": "Copier l'ID",
+    "copy_markdown": "Copier le markdown",
     "copied": "Copié",
     "coming_soon": "(bientôt disponible)",
     "prompts_header": "Prompts pour agent IA",
@@ -185,7 +186,7 @@
     "archived_badge": "Archivée",
     "author": "Auteur",
     "closed_rx_hint": "La prescription parente est fermée. Rouvrez-la pour modifier ou archiver cette pill.",
-    "view_rendered": "Rendu",
+    "view_rendered": "Markdown",
     "view_raw": "Raw"
   },
   "pill_edit": {

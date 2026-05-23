@@ -17,6 +17,7 @@
     "loading": "Loading",
     "views_label": "{count} views",
     "copy_id": "Copy ID",
+    "copy_markdown": "Copy markdown",
     "copied": "Copied",
     "coming_soon": "(coming soon)",
     "prompts_header": "AI agent prompts",
@@ -185,7 +186,7 @@
     "archived_badge": "Archived",
     "author": "Author",
     "closed_rx_hint": "The parent prescription is closed. Reopen it to edit or archive this pill.",
-    "view_rendered": "Rendered",
+    "view_rendered": "Markdown",
     "view_raw": "Raw"
   },
   "pill_edit": {

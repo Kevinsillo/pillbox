@@ -17,6 +17,7 @@
     "loading": "Carregando",
     "views_label": "{count} visualizações",
     "copy_id": "Copiar ID",
+    "copy_markdown": "Copiar markdown",
     "copied": "Copiado",
     "coming_soon": "(em breve)",
     "prompts_header": "Prompts para agente IA",
@@ -185,7 +186,7 @@
     "archived_badge": "Arquivada",
     "author": "Autor",
     "closed_rx_hint": "A prescription pai está fechada. Reabra-a para editar ou arquivar esta pill.",
-    "view_rendered": "Renderizado",
+    "view_rendered": "Markdown",
     "view_raw": "Raw"
   },
   "pill_edit": {
