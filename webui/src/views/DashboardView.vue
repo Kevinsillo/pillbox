@@ -87,10 +87,13 @@ const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !==
 
 const pillCountTarget = computed(() => ctx.value?.pill_count ?? 0)
 const rxCountTarget = computed(() => ctx.value?.prescription_count ?? 0)
+const openRxCountTarget = computed(() => ctx.value?.open_prescription_count ?? 0)
 const pillCountTween = useTween(pillCountTarget, 600)
 const rxCountTween = useTween(rxCountTarget, 600)
+const openRxCountTween = useTween(openRxCountTarget, 600)
 const displayPillCount = computed(() => Math.round(pillCountTween.value))
 const displayRxCount = computed(() => Math.round(rxCountTween.value))
+const displayOpenRxCount = computed(() => Math.round(openRxCountTween.value))
 const displayDbSize = computed(() => formatBytes(ctx.value?.db_size_bytes ?? 0))
 </script>
 
@@ -137,10 +140,13 @@ const displayDbSize = computed(() => formatBytes(ctx.value?.db_size_bytes ?? 0))
                             <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_prescriptions') }}</p>
                         </div>
                         <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center">
+                            <p class="text-2xl font-bold text-(--accent) tabular-nums">{{ displayOpenRxCount }}</p>
+                            <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_open_prescriptions') }}</p>
+                        </div>
+                        <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center">
                             <p class="text-2xl font-bold text-(--accent) tabular-nums">{{ displayDbSize }}</p>
                             <p class="text-xs text-zinc-500 mt-1">{{ $t('dashboard.stat_db_size') }}</p>
                         </div>
-                        <div class="bg-(--bg-surface) border border-(--border) rounded-lg p-4 flex flex-col items-center justify-center text-center"></div>
                         <div class="col-span-2 sm:col-span-2 sm:row-span-2 sm:col-start-3 sm:row-start-1">
                             <PillsActivityChart
                                 :stats="stats"

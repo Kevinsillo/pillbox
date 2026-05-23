@@ -328,6 +328,17 @@ pub fn count_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
     Ok(n)
 }
 
+/// Cuenta las prescriptions abiertas (sin `ended_at`, no descartadas) de un bottle.
+pub fn count_open_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
+    let n: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM prescriptions
+         WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL",
+        params![bottle_id],
+        |r| r.get(0),
+    )?;
+    Ok(n)
+}
+
 /// Cuenta las prescriptions activas (no descartadas) de un bottle.
 ///
 /// Acepta el `bottle_id` resuelto (UUID completo) o el `bottle_pattern`

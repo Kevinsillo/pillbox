@@ -85,6 +85,7 @@ export interface CapsuleSearchResult extends CapsuleSummary {
 export interface Context {
     context: Pill[]
     prescription_count: number
+    open_prescription_count: number
     pill_count: number
     db_size_bytes: number
 }

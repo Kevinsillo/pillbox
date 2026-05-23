@@ -63,15 +63,21 @@ pub async fn context_get(
             Ok(n) => n,
             Err(e) => return err_500(e),
         };
+        let open_prescription_count =
+            match store::prescriptions::count_open_by_bottle(&conn, &full_id) {
+                Ok(n) => n,
+                Err(e) => return err_500(e),
+            };
         let recent_pills = match store::pills::list_recent(&conn, &full_id, params.pill_limit) {
             Ok(v) => v,
             Err(e) => return err_500(e),
         };
         ok(serde_json::json!({
-            "context":            recent_pills,
-            "pill_count":         pill_count,
-            "prescription_count": prescription_count,
-            "db_size_bytes":      db_size_bytes,
+            "context":                 recent_pills,
+            "pill_count":              pill_count,
+            "prescription_count":      prescription_count,
+            "open_prescription_count": open_prescription_count,
+            "db_size_bytes":           db_size_bytes,
         }))
     })
     .await
