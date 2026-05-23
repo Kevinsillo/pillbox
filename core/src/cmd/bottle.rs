@@ -213,7 +213,8 @@ pub fn cmd_bottle_init() -> Result<()> {
 pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
     use inquire::Text;
     use owo_colors::OwoColorize;
-    use pillbox::db::{connection, store::registered_bottles, DbScope};
+    use pillbox::db::{cleanup, connection, store::registered_bottles, DbScope};
+    use std::path::PathBuf;
 
     let global_path = pillbox::config::global_db_path();
     if !global_path.exists() {
@@ -278,6 +279,8 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
     }
 
     registered_bottles::unregister(&global_conn, reg.id)?;
+
+    cleanup::cleanup_if_last_bottle(&global_conn, &PathBuf::from(&reg.db_path))?;
 
     println!("\n{}  {}", "✓".green().bold(), t!("bottle.delete.done"));
     println!(

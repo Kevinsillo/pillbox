@@ -5,13 +5,14 @@
 //! queries de SQLite son síncronas — ver cutover Fase 2, riesgo r2).
 
 use crate::{
-    db::{store, store::registered_bottles, DbScope},
+    db::{cleanup, store, store::registered_bottles, DbScope},
     domain::{
         bottle::{Bottle, NewBottle},
         PaginationParams,
     },
     error::PillboxError,
 };
+use std::path::PathBuf;
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -272,7 +273,12 @@ pub async fn bottle_delete(State(s): State<AppState>, Path(id): Path<String>) ->
                 if let Ok(global_conn) = open_global_conn(&s) {
                     if let Ok(Some(reg)) = registered_bottles::find_by_bottle_id(&global_conn, &id)
                     {
+                        let path = PathBuf::from(reg.db_path.clone());
                         let _ = registered_bottles::unregister(&global_conn, reg.id);
+                        s.bottle_pools.lock().unwrap().pop(&path);
+                        if let Err(e) = cleanup::cleanup_if_last_bottle(&global_conn, &path) {
+                            eprintln!("warning: cleanup_if_last_bottle failed for {}: {}", path.display(), e);
+                        }
                     }
                 }
                 ok(serde_json::Value::Null)
