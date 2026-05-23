@@ -95,17 +95,19 @@ pub fn cmd_bottle_status() -> Result<()> {
         |r| r.get(0),
     )?;
 
-    let open_rx: Option<(String, String)> = conn
-        .query_row(
-            "SELECT id, title FROM prescriptions
-             WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
-             LIMIT 1",
-            rusqlite::params![bottle.id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        )
-        .ok();
+    let mut stmt = conn.prepare(
+        "SELECT id, title FROM prescriptions
+         WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
+         ORDER BY started_at DESC",
+    )?;
+    let open_rxs: Vec<(String, String)> = stmt
+        .query_map(rusqlite::params![bottle.id], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    drop(stmt);
 
-    output::fmt::bottle_status(&bottle, pill_count, open_rx);
+    output::fmt::bottle_status(&bottle, pill_count, open_rxs);
     Ok(())
 }
 

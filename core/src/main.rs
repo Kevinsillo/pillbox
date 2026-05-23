@@ -187,8 +187,12 @@ enum PrescriptionCommand {
         #[arg(long, default_value_t = pillbox::config::ARCHIVED_LIMIT_DEFAULT)]
         archived_limit: u32,
     },
-    /// Cierra la prescripción abierta del bottle actual.
-    Close,
+    /// Cierra una prescripción abierta del bottle actual.
+    Close {
+        /// ID (o prefijo) de la prescription a cerrar. Si se omite y solo hay
+        /// una abierta, se cierra esa; si hay varias, se exige especificarla.
+        id: Option<String>,
+    },
     /// Reabre una prescription cerrada (limpia su `ended_at`).
     Reopen {
         /// ID (o prefijo ≥8 chars) de la prescription a reabrir.
@@ -337,7 +341,9 @@ async fn main() -> Result<()> {
                 limit,
                 archived_limit,
             }) => cmd::prescription::cmd_prescription_show(id, limit, archived_limit),
-            Some(PrescriptionCommand::Close) => cmd::prescription::cmd_prescription_close(),
+            Some(PrescriptionCommand::Close { id }) => {
+                cmd::prescription::cmd_prescription_close(id)
+            }
             Some(PrescriptionCommand::Reopen { id }) => {
                 cmd::prescription::cmd_prescription_reopen(id)
             }

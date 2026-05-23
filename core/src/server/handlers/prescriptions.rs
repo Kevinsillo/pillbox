@@ -17,8 +17,8 @@ use validator::Validate;
 
 use super::{
     blocking, conn_for_bottle, conn_for_bottle_with_id, err_400_invalid_id, err_400_pagination,
-    err_404_prescription, err_409, err_409_ambiguous_id, err_422, err_500, ok, ok_created,
-    ApiResponse, AppState,
+    err_404_prescription, err_409_ambiguous_id, err_422, err_500, ok, ok_created, ApiResponse,
+    AppState,
 };
 
 /// Cuerpo JSON para abrir una prescripción nueva via REST API.
@@ -30,7 +30,7 @@ pub struct NewPrescriptionBody {
 
 /// Handler `POST /api/bottles/:id/prescriptions` — abre una prescripción nueva.
 ///
-/// Retorna 409 si ya existe una prescripción abierta en el bottle.
+/// Múltiples prescriptions abiertas en el mismo bottle están permitidas.
 pub async fn prescription_open(
     State(s): State<AppState>,
     Path(bottle_id): Path<String>,
@@ -52,25 +52,7 @@ pub async fn prescription_open(
         };
         match store::prescriptions::open(&mut conn, &new_rx) {
             Ok(rx) => ok_created(rx),
-            Err(e) => match e.downcast::<PillboxError>() {
-                Ok(PillboxError::PrescriptionAlreadyOpen {
-                    ref id,
-                    ref title,
-                    ref started_at,
-                    pill_count,
-                }) => err_409(
-                    "prescription_already_open",
-                    "prescription_already_open",
-                    json!({
-                        "id": id,
-                        "title": title,
-                        "started_at": started_at,
-                        "pill_count": pill_count,
-                    }),
-                ),
-                Ok(other) => err_500(other.into()),
-                Err(e) => err_500(e),
-            },
+            Err(e) => err_500(e),
         }
     })
     .await
@@ -131,8 +113,8 @@ pub async fn prescription_close(
 
 /// Handler `POST /api/bottles/:id/prescriptions/:rx_id/reopen` — reabre una prescription cerrada.
 ///
-/// Retorna 409 si ya está abierta, si está descartada o si hay colisión con otra
-/// prescription abierta del mismo bottle. 404 si la prescription no existe.
+/// Idempotente: si la prescription ya está abierta, devuelve 200 OK con la rx
+/// sin modificar. 404 si la prescription no existe (o está descartada).
 pub async fn prescription_reopen(
     State(s): State<AppState>,
     Path((bottle_id, rx_id)): Path<(String, String)>,
@@ -146,32 +128,6 @@ pub async fn prescription_reopen(
             Ok(rx) => ok(rx),
             Err(e) => match e.downcast::<PillboxError>() {
                 Ok(PillboxError::PrescriptionNotFound { .. }) => err_404_prescription(&rx_id),
-                Ok(PillboxError::PrescriptionAlreadyOpen {
-                    ref id,
-                    ref title,
-                    ref started_at,
-                    pill_count,
-                }) => err_409(
-                    "prescription_already_open",
-                    "prescription_already_open",
-                    json!({
-                        "id": id,
-                        "title": title,
-                        "started_at": started_at,
-                        "pill_count": pill_count,
-                    }),
-                ),
-                Ok(PillboxError::PrescriptionAlreadyOpenInBottle {
-                    ref bottle_id,
-                    ref existing_id,
-                }) => err_409(
-                    "prescription_collision",
-                    "prescription_collision",
-                    json!({
-                        "bottle_id": bottle_id,
-                        "existing_id": existing_id,
-                    }),
-                ),
                 Ok(PillboxError::AmbiguousId {
                     ref id_prefix,
                     ref candidates,

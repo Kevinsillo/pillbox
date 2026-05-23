@@ -14,8 +14,9 @@ use crate::error::PillboxError;
 
 /// Abre una nueva prescription para el bottle dado.
 ///
-/// Falla con `PillboxError::PrescriptionAlreadyOpen` si ya hay una prescription activa
-/// (no cerrada ni descartada) para ese bottle.
+/// Múltiples prescriptions abiertas simultáneamente para el mismo bottle son
+/// válidas: cada `prescription_open` crea una nueva fila sin colisionar con
+/// otras prescriptions activas.
 pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescription> {
     // Resolver el bottle_id (acepta UUID completo o prefijo ≥8 chars) y validar
     // que existe antes de abrir la prescription.
@@ -26,40 +27,6 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
     })?;
 
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-
-    // Verificar si ya hay una prescription abierta para este bottle
-    let existing = match tx.query_row(
-        "SELECT rx.id, rx.title, rx.started_at,
-                (SELECT COUNT(*) FROM pills p
-                 WHERE p.prescription_id = rx.id AND p.deleted_at IS NULL) AS pill_count
-         FROM prescriptions rx
-         WHERE rx.bottle_id = ?1
-           AND rx.ended_at IS NULL
-           AND rx.deleted_at IS NULL",
-        params![resolved_bottle_id],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, i64>(3)?,
-            ))
-        },
-    ) {
-        Ok(row) => Some(row),
-        Err(rusqlite::Error::QueryReturnedNoRows) => None,
-        Err(e) => return Err(e).context("failed to check for open prescription"),
-    };
-
-    if let Some((id, title, started_at, pill_count)) = existing {
-        return Err(PillboxError::PrescriptionAlreadyOpen {
-            id,
-            title,
-            started_at,
-            pill_count,
-        }
-        .into());
-    }
 
     let id = Uuid::now_v7().to_string();
 
@@ -129,23 +96,22 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
 ///
 /// Acepta UUID completo o prefijo ≥8 chars.
 ///
+/// Reopen sobre una prescription ya abierta es un no-op idempotente: devuelve
+/// la prescription tal cual sin modificar timestamps.
+///
 /// # Errores
 /// - [`PillboxError::PrescriptionNotFound`] si no existe (incluye prefijo no resoluble).
 /// - [`PillboxError::PrescriptionNotFound`] si está descartada (`deleted_at IS NOT NULL`).
-/// - [`PillboxError::PrescriptionAlreadyOpen`] si ya está abierta (`ended_at IS NULL`).
-/// - [`PillboxError::PrescriptionAlreadyOpenInBottle`] si otra prescription del mismo
-///   bottle está abierta (colisión).
 pub fn reopen(conn: &mut Connection, id: &str) -> Result<Prescription> {
     let resolved_id = resolve_id(conn, "prescriptions", id)?
         .ok_or_else(|| PillboxError::PrescriptionNotFound { id: id.to_string() })?;
 
     // Pre-check fuera de tx: existencia + estado actual.
-    let (ended_at, deleted_at, bottle_id): (Option<String>, Option<String>, String) = match conn
-        .query_row(
-            "SELECT ended_at, deleted_at, bottle_id FROM prescriptions WHERE id = ?1",
-            params![resolved_id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        ) {
+    let (ended_at, deleted_at): (Option<String>, Option<String>) = match conn.query_row(
+        "SELECT ended_at, deleted_at FROM prescriptions WHERE id = ?1",
+        params![resolved_id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    ) {
         Ok(t) => t,
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
@@ -159,51 +125,21 @@ pub fn reopen(conn: &mut Connection, id: &str) -> Result<Prescription> {
     }
 
     if ended_at.is_none() {
-        // Ya está abierta — devolvemos PrescriptionAlreadyOpen con los datos completos.
-        let (title, started_at, pill_count) = conn.query_row(
-            "SELECT title, started_at,
-                    (SELECT COUNT(*) FROM pills p
-                     WHERE p.prescription_id = ?1 AND p.deleted_at IS NULL) AS pill_count
-             FROM prescriptions WHERE id = ?1",
-            params![resolved_id],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, i64>(2)?,
-                ))
-            },
-        )?;
-        return Err(PillboxError::PrescriptionAlreadyOpen {
-            id: resolved_id,
-            title,
-            started_at,
-            pill_count,
-        }
-        .into());
+        // Ya está abierta — no-op idempotente: devolvemos la rx tal cual sin tocar timestamps.
+        let prescription = conn
+            .query_row(
+                "SELECT id, bottle_id, title, author_name, author_email, started_at, ended_at, deleted_at,
+                        views
+                 FROM prescriptions WHERE id = ?1",
+                params![resolved_id],
+                row_to_prescription,
+            )
+            .context("failed to read already-open prescription")?;
+        return Ok(prescription);
     }
 
-    // Tx IMMEDIATE: comprobación de colisión + UPDATE + lectura final.
+    // Tx IMMEDIATE: UPDATE + lectura final.
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-
-    let collision: Option<String> = match tx.query_row(
-        "SELECT id FROM prescriptions
-         WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL",
-        params![bottle_id],
-        |row| row.get::<_, String>(0),
-    ) {
-        Ok(existing) => Some(existing),
-        Err(rusqlite::Error::QueryReturnedNoRows) => None,
-        Err(e) => return Err(e).context("failed to check bottle for open prescription"),
-    };
-
-    if let Some(existing_id) = collision {
-        return Err(PillboxError::PrescriptionAlreadyOpenInBottle {
-            bottle_id,
-            existing_id,
-        }
-        .into());
-    }
 
     let affected = tx
         .execute(
@@ -281,7 +217,9 @@ pub fn discard(conn: &mut Connection, id: &str) -> Result<()> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
     let affected = tx.execute(
-        "UPDATE prescriptions SET deleted_at = datetime('now')
+        "UPDATE prescriptions
+         SET deleted_at = datetime('now'),
+             ended_at = COALESCE(ended_at, datetime('now'))
          WHERE id = ?1 AND deleted_at IS NULL",
         params![resolved_id],
     )?;
@@ -559,11 +497,11 @@ mod tests {
     }
 
     #[test]
-    fn collision_returns_typed_error() {
+    fn multiple_open_prescriptions_per_bottle_allowed() {
         let mut conn = open_in_memory(DbScope::Local).unwrap();
-        let bottle_id = make_bottle(&mut conn, "colision");
+        let bottle_id = make_bottle(&mut conn, "multi-open");
 
-        open(
+        let rx_a = open(
             &mut conn,
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
@@ -574,7 +512,7 @@ mod tests {
         )
         .unwrap();
 
-        let err = open(
+        let rx_b = open(
             &mut conn,
             &NewPrescription {
                 bottle_id: bottle_id.clone(),
@@ -583,20 +521,61 @@ mod tests {
                 author_email: None,
             },
         )
-        .unwrap_err();
+        .unwrap();
 
-        let already_open = err.downcast_ref::<PillboxError>();
-        assert!(matches!(
-            already_open,
-            Some(PillboxError::PrescriptionAlreadyOpen { .. })
-        ));
-        if let Some(PillboxError::PrescriptionAlreadyOpen {
-            title, pill_count, ..
-        }) = already_open
-        {
-            assert_eq!(title, "Primera sesión");
-            assert_eq!(*pill_count, 0);
-        }
+        assert_ne!(rx_a.id, rx_b.id);
+        assert!(rx_a.ended_at.is_none());
+        assert!(rx_b.ended_at.is_none());
+
+        // Ambas deben aparecer listadas como activas.
+        let listed = list_by_bottle(
+            &conn,
+            &bottle_id,
+            ListFilter::Active,
+            &PaginationParams {
+                page: 1,
+                page_size: 10,
+            },
+        )
+        .unwrap();
+        assert_eq!(listed.items.len(), 2);
+        assert!(listed.items.iter().all(|rx| rx.ended_at.is_none()));
+    }
+
+    #[test]
+    fn multiple_open_prescriptions_per_bottle_allowed_global() {
+        // Regresión: el schema global tenía un UNIQUE index parcial (idx_rx_open)
+        // que rechazaba la segunda prescription abierta por bottle. Este test
+        // garantiza que bottles registrados en la DB global también soportan
+        // múltiples prescriptions abiertas simultáneamente.
+        let mut conn = open_in_memory(DbScope::Global).unwrap();
+        let bottle_id = make_bottle(&mut conn, "multi-open-global");
+
+        let rx_a = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "Primera sesión".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        let rx_b = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "Segunda sesión".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        assert_ne!(rx_a.id, rx_b.id);
+        assert!(rx_a.ended_at.is_none());
+        assert!(rx_b.ended_at.is_none());
     }
 
     #[test]
@@ -801,6 +780,59 @@ mod tests {
 
         discard(&mut conn, &rx.id).unwrap();
         assert!(discard(&mut conn, &rx.id).is_err());
+    }
+
+    #[test]
+    fn discard_open_prescription_also_closes_it() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let bottle_id = make_bottle(&mut conn, "discard-open");
+        let rx = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id,
+                title: "Abierta a descartar".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        assert!(rx.ended_at.is_none());
+
+        discard(&mut conn, &rx.id).unwrap();
+
+        let stored = read_any(&conn, &rx.id).unwrap().unwrap();
+        assert!(stored.deleted_at.is_some());
+        assert!(
+            stored.ended_at.is_some(),
+            "discard sobre rx abierta debe marcar ended_at",
+        );
+    }
+
+    #[test]
+    fn discard_closed_prescription_preserves_ended_at() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let bottle_id = make_bottle(&mut conn, "discard-closed");
+        let rx = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id,
+                title: "Cerrada antes de descartar".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        let closed = close(&mut conn, &rx.id).unwrap();
+        let original_ended_at = closed.ended_at.clone().unwrap();
+
+        discard(&mut conn, &rx.id).unwrap();
+
+        let stored = read_any(&conn, &rx.id).unwrap().unwrap();
+        assert_eq!(
+            stored.ended_at.as_deref(),
+            Some(original_ended_at.as_str()),
+            "discard no debe reescribir ended_at si ya estaba cerrada",
+        );
     }
 
     #[test]
@@ -1152,11 +1184,11 @@ mod tests {
     fn read_ambiguous_returns_ambiguous_id() {
         let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "amb-rx");
-        // Primera rx cerrada (ended_at != NULL) para no violar el índice UNIQUE parcial
-        // que solo aplica a prescriptions con ended_at IS NULL.
+        // Dos prescriptions con el mismo prefijo (12 hex). Múltiples rx abiertas
+        // por bottle están permitidas tras eliminar el índice idx_rx_open.
         conn.execute(
-            "INSERT INTO prescriptions (id, bottle_id, title, ended_at)
-             VALUES ('01234567-aaaa-7000-8000-000000000001', ?1, 'A', datetime('now'))",
+            "INSERT INTO prescriptions (id, bottle_id, title)
+             VALUES ('01234567-aaaa-7000-8000-000000000001', ?1, 'A')",
             params![bottle_id],
         )
         .unwrap();
@@ -1189,48 +1221,39 @@ mod tests {
     }
 
     #[test]
-    fn reopen_collision_in_bottle() {
+    fn reopen_with_another_open_in_same_bottle_succeeds() {
         let mut conn = open_in_memory(DbScope::Local).unwrap();
-        let bottle_id = make_bottle(&mut conn, "reopen-collision");
+        let bottle_id = make_bottle(&mut conn, "reopen-multi");
 
         // Prescription A: abierta y luego cerrada
         let rx_a = make_rx(&mut conn, &bottle_id, "A");
         close(&mut conn, &rx_a).unwrap();
 
-        // Prescription B: abierta (única abierta actualmente)
+        // Prescription B: abierta (coexiste con A reabierta)
         let rx_b = make_rx(&mut conn, &bottle_id, "B");
 
-        // Intentar reabrir A → colisión con B
-        let err = reopen(&mut conn, &rx_a).unwrap_err();
-        let typed = err.downcast_ref::<PillboxError>().unwrap();
-        match typed {
-            PillboxError::PrescriptionAlreadyOpenInBottle {
-                bottle_id: bid,
-                existing_id,
-            } => {
-                assert_eq!(bid, &bottle_id);
-                assert_eq!(existing_id, &rx_b);
-            }
-            other => panic!("expected PrescriptionAlreadyOpenInBottle, got {:?}", other),
-        }
+        // Reabrir A debe funcionar incluso con B abierta en el mismo bottle.
+        let reopened = reopen(&mut conn, &rx_a).unwrap();
+        assert_eq!(reopened.id, rx_a);
+        assert!(reopened.ended_at.is_none());
 
-        // Verificar que A sigue cerrada
-        let a_found = read(&conn, &rx_a).unwrap().unwrap();
-        assert!(a_found.ended_at.is_some());
+        // B sigue abierta.
+        let b_found = read(&conn, &rx_b).unwrap().unwrap();
+        assert!(b_found.ended_at.is_none());
     }
 
     #[test]
-    fn reopen_already_open() {
+    fn reopen_already_open_is_noop() {
         let mut conn = open_in_memory(DbScope::Local).unwrap();
         let bottle_id = make_bottle(&mut conn, "reopen-already-open");
         let rx_id = make_rx(&mut conn, &bottle_id, "Already open");
 
-        let err = reopen(&mut conn, &rx_id).unwrap_err();
-        let typed = err.downcast_ref::<PillboxError>().unwrap();
-        assert!(matches!(
-            typed,
-            PillboxError::PrescriptionAlreadyOpen { .. }
-        ));
+        let before = read(&conn, &rx_id).unwrap().unwrap();
+        let reopened = reopen(&mut conn, &rx_id).unwrap();
+        assert_eq!(reopened.id, rx_id);
+        assert!(reopened.ended_at.is_none());
+        // No-op: no toca started_at.
+        assert_eq!(reopened.started_at, before.started_at);
     }
 
     #[test]
@@ -1239,6 +1262,80 @@ mod tests {
         let err = reopen(&mut conn, "00000000-0000-0000-0000-000000000000").unwrap_err();
         let typed = err.downcast_ref::<PillboxError>().unwrap();
         assert!(matches!(typed, PillboxError::PrescriptionNotFound { .. }));
+    }
+
+    /// Fase 7.4 — reopen sobre rx descartada (`deleted_at IS NOT NULL`) debe
+    /// devolver `PrescriptionNotFound`. La papelera no se reabre.
+    #[test]
+    fn reopen_discarded_returns_not_found() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let bottle_id = make_bottle(&mut conn, "reopen-discarded");
+        let rx_id = make_rx(&mut conn, &bottle_id, "Descartar y reabrir");
+
+        // Cierra y descarta para garantizar deleted_at IS NOT NULL.
+        discard(&mut conn, &rx_id).unwrap();
+        // Sanity check: la rx existe y tiene deleted_at != NULL.
+        let raw = read_any(&conn, &rx_id).unwrap().unwrap();
+        assert!(raw.deleted_at.is_some());
+
+        let err = reopen(&mut conn, &rx_id).unwrap_err();
+        let typed = err.downcast_ref::<PillboxError>().unwrap();
+        assert!(matches!(typed, PillboxError::PrescriptionNotFound { .. }));
+
+        // El estado no debe haber cambiado.
+        let after = read_any(&conn, &rx_id).unwrap().unwrap();
+        assert!(after.deleted_at.is_some());
+    }
+
+    /// Fase 7.1 — variante explícita: dos `open()` consecutivas en el mismo
+    /// bottle devuelven ids distintos y ambas están `ended_at IS NULL`. La
+    /// query directa por "abiertas" devuelve 2 filas.
+    #[test]
+    fn two_opens_same_bottle_both_open_distinct_ids() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let bottle_id = make_bottle(&mut conn, "two-opens");
+
+        let rx_a = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "A".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+        let rx_b = open(
+            &mut conn,
+            &NewPrescription {
+                bottle_id: bottle_id.clone(),
+                title: "B".into(),
+                author_name: None,
+                author_email: None,
+            },
+        )
+        .unwrap();
+
+        assert_ne!(rx_a.id, rx_b.id);
+        assert!(rx_a.ended_at.is_none());
+        assert!(rx_b.ended_at.is_none());
+
+        // La query "abiertas en este bottle" (la que usa cmd_prescription_close
+        // cuando no se pasa id) devuelve exactamente 2 filas con ids distintos.
+        let mut stmt = conn
+            .prepare(
+                "SELECT id FROM prescriptions
+                 WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL",
+            )
+            .unwrap();
+        let open_ids: Vec<String> = stmt
+            .query_map(params![bottle_id], |r| r.get::<_, String>(0))
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(open_ids.len(), 2);
+        assert!(open_ids.contains(&rx_a.id));
+        assert!(open_ids.contains(&rx_b.id));
     }
 
     #[test]

@@ -74,7 +74,7 @@
     "stat_pills": "Pills totales",
     "stat_prescriptions": "Prescriptions",
     "stat_db_size": "Tamaño de BD",
-    "open_rx_label": "Prescription abierta",
+    "open_rxs_label": "Prescriptions abiertas",
     "last_prescriptions": "Últimas prescriptions",
     "view_all": "Ver todas",
     "recent_context": "Pills recientes",
@@ -203,16 +203,12 @@
     "pill_not_found": "La pill no existe o fue eliminada.",
     "prescription_not_found": "La prescription no existe o fue eliminada.",
     "capsule_not_found": "La capsule no existe o fue eliminada.",
-    "prescription_already_open": "Ya hay una prescription abierta. Ciérrala antes de abrir una nueva.",
     "prescription_closed": "La prescription está cerrada. Reábrela antes de editar sus pills.",
-    "prescription_collision": "El bottle ya tiene otra prescription abierta. Ciérrala antes de reabrir esta.",
     "validation_error": "Los datos enviados no son válidos.",
     "unknown": "Ha ocurrido un error inesperado."
   },
   "errors": {
-    "prescription_closed": "La prescription está cerrada. Reábrela antes de editar sus pills.",
-    "prescription_collision": "El bottle ya tiene otra prescription abierta (id={existing_id}). Ciérrala antes de reabrir esta.",
-    "prescription_already_open": "Ya hay una prescription abierta. Ciérrala antes de abrir una nueva."
+    "prescription_closed": "La prescription está cerrada. Reábrela antes de editar sus pills."
   },
   "pagination": {
     "total": "Total: {total}"

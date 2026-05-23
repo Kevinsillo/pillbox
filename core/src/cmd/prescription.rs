@@ -13,12 +13,11 @@ use super::shared::open_resolved_db;
 pub fn cmd_prescription_open(title: String) -> Result<()> {
     use pillbox::db::store::prescriptions;
     use pillbox::domain::prescription::NewPrescription;
-    use pillbox::error::PillboxError;
 
     let (mut conn, _) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
 
-    match prescriptions::open(
+    let rx = prescriptions::open(
         &mut conn,
         &NewPrescription {
             bottle_id: bottle.id,
@@ -26,29 +25,8 @@ pub fn cmd_prescription_open(title: String) -> Result<()> {
             author_name: None,
             author_email: None,
         },
-    ) {
-        Ok(rx) => output::fmt::prescription_opened(&rx.id, &rx.title),
-        Err(e) => {
-            if let Some(PillboxError::PrescriptionAlreadyOpen {
-                ref id,
-                ref title,
-                pill_count,
-                ..
-            }) = e.downcast_ref::<PillboxError>()
-            {
-                anyhow::bail!(
-                    "{}",
-                    t!(
-                        "prescriptions.error.already_open",
-                        title = title,
-                        pills = pill_count,
-                        id = &id[..id.len().min(8)]
-                    )
-                );
-            }
-            return Err(e);
-        }
-    }
+    )?;
+    output::fmt::prescription_opened(&rx.id, &rx.title);
     Ok(())
 }
 
@@ -128,36 +106,65 @@ pub fn cmd_prescription_show(id: String, limit: u32, archived_limit: u32) -> Res
     Ok(())
 }
 
-/// Cierra la prescription abierta del bottle actual.
-pub fn cmd_prescription_close() -> Result<()> {
+/// Cierra una prescription del bottle actual.
+///
+/// Si `id` se provee, cierra esa rx. Si no:
+/// - 0 abiertas → error `none_open`.
+/// - 1 abierta → cierra automáticamente.
+/// - ≥2 abiertas → error `multiple_open` con la lista de candidatas.
+pub fn cmd_prescription_close(id: Option<String>) -> Result<()> {
+    use pillbox::db::store::id_resolver::display_id;
     use pillbox::db::store::prescriptions;
 
     let (mut conn, _) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
 
-    let open_rx: Option<(String, String)> = conn
-        .query_row(
+    let rx_title = if let Some(id) = id {
+        let rx = prescriptions::close(&mut conn, &id)?;
+        rx.title
+    } else {
+        let mut stmt = conn.prepare(
             "SELECT id, title FROM prescriptions
              WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
-             LIMIT 1",
-            rusqlite::params![bottle.id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        )
-        .ok();
+             ORDER BY started_at DESC",
+        )?;
+        let open_list: Vec<(String, String)> = stmt
+            .query_map(rusqlite::params![bottle.id], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        drop(stmt);
 
-    let (rx_id, rx_title) = open_rx.ok_or_else(|| {
-        anyhow::anyhow!(
-            "{}",
-            t!("prescriptions.error.none_open", name = bottle.name)
-        )
-    })?;
+        match open_list.len() {
+            0 => {
+                anyhow::bail!(
+                    "{}",
+                    t!("prescriptions.error.none_open", name = bottle.name)
+                );
+            }
+            1 => {
+                let (rx_id, rx_title) = open_list.into_iter().next().unwrap();
+                prescriptions::close(&mut conn, &rx_id)?;
+                rx_title
+            }
+            _ => {
+                let list = open_list
+                    .iter()
+                    .map(|(id, title)| format!("  - {}  {}", display_id(id), title))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                anyhow::bail!("{}", t!("prescriptions.error.multiple_open", list = list));
+            }
+        }
+    };
 
-    prescriptions::close(&mut conn, &rx_id)?;
     output::fmt::prescription_closed(&rx_title);
     Ok(())
 }
 
 /// Reabre una prescription cerrada del bottle actual.
+///
+/// Idempotente: si la rx ya está abierta, devuelve éxito sin cambios.
 pub fn cmd_prescription_reopen(id: String) -> Result<()> {
     use pillbox::db::store::prescriptions;
     use pillbox::error::PillboxError;
@@ -170,37 +177,16 @@ pub fn cmd_prescription_reopen(id: String) -> Result<()> {
             Ok(())
         }
         Err(e) => {
-            if let Some(pe) = e.downcast_ref::<PillboxError>() {
-                match pe {
-                    PillboxError::PrescriptionAlreadyOpenInBottle { existing_id, .. } => {
-                        let short = &existing_id[..existing_id.len().min(8)];
-                        anyhow::bail!(
-                            "{}",
-                            t!("prescriptions.error.reopen_collision", existing_id = short)
-                        );
-                    }
-                    PillboxError::PrescriptionAlreadyOpen { title, id, .. } => {
-                        let short = &id[..id.len().min(8)];
-                        anyhow::bail!(
-                            "{}",
-                            t!(
-                                "prescriptions.error.reopen_already_open",
-                                title = title,
-                                id = short
-                            )
-                        );
-                    }
-                    PillboxError::PrescriptionNotFound { id } => {
-                        let short = &id[..id.len().min(8)];
-                        eprintln!(
-                            "\n{} {}\n",
-                            "✗".red(),
-                            t!("prescriptions.error.not_found", id = short)
-                        );
-                        return Ok(());
-                    }
-                    _ => {}
-                }
+            if let Some(PillboxError::PrescriptionNotFound { id }) =
+                e.downcast_ref::<PillboxError>()
+            {
+                let short = &id[..id.len().min(8)];
+                eprintln!(
+                    "\n{} {}\n",
+                    "✗".red(),
+                    t!("prescriptions.error.not_found", id = short)
+                );
+                return Ok(());
             }
             Err(e)
         }

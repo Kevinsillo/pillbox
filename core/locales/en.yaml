@@ -187,11 +187,9 @@ prescriptions:
     closed: "Prescription closed"
     reopened: "Prescription reopened"
   error:
-    already_open: "A prescription is already open: \"%{title}\" (%{pills} pills, id=%{id}).\nClose it with 'pillbox prescription close' before opening a new one."
     none_open: "No open prescription for bottle '%{name}'."
+    multiple_open: "Multiple prescriptions are open. Specify the ID: pillbox prescription close <id>\nOpen:\n%{list}"
     not_found: "Prescription '%{id}' not found."
-    reopen_already_open: "Prescription \"%{title}\" (id=%{id}) is already open."
-    reopen_collision: "The bottle already has another open prescription (id=%{existing_id}). Close it before reopening this one."
 
 prescription:
   show:

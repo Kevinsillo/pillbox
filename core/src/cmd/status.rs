@@ -75,16 +75,20 @@ pub fn run() -> Result<()> {
                 .ok()
                 .flatten()
                 .map(|b| {
-                    let open_rx = conn
-                        .query_row(
+                    let open_rxs: Vec<String> = conn
+                        .prepare(
                             "SELECT title FROM prescriptions
                              WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
-                             LIMIT 1",
-                            rusqlite::params![b.id],
-                            |r| r.get(0),
+                             ORDER BY started_at DESC",
                         )
-                        .ok();
-                    StatusBottle { open_rx }
+                        .and_then(|mut stmt| {
+                            let rows = stmt
+                                .query_map(rusqlite::params![b.id], |r| r.get::<_, String>(0))?
+                                .collect::<rusqlite::Result<Vec<_>>>()?;
+                            Ok(rows)
+                        })
+                        .unwrap_or_default();
+                    StatusBottle { open_rxs }
                 })
         });
 

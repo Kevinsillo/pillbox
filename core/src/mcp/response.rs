@@ -98,36 +98,13 @@ pub fn anyhow_to_response(e: anyhow::Error) -> Response {
 }
 
 /// Convierte un [`PillboxError`] tipado en [`Response`], incluyendo datos adicionales
-/// para la variante `PrescriptionAlreadyOpen`.
+/// cuando aplica.
 pub fn from_pillbox(pe: &PillboxError) -> Response {
     match pe {
-        PillboxError::PrescriptionAlreadyOpen {
-            id,
-            title,
-            started_at,
-            pill_count,
-        } => Response::err_with_data(
-            pe.code(),
-            pe.to_string(),
-            json!({
-                "id": id,
-                "title": title,
-                "started_at": started_at,
-                "pill_count": pill_count,
-            }),
-        ),
         PillboxError::PrescriptionClosed { prescription_id } => Response::err_with_data(
             pe.code(),
             pe.to_string(),
             json!({ "prescription_id": prescription_id }),
-        ),
-        PillboxError::PrescriptionAlreadyOpenInBottle {
-            bottle_id,
-            existing_id,
-        } => Response::err_with_data(
-            pe.code(),
-            pe.to_string(),
-            json!({ "bottle_id": bottle_id, "existing_id": existing_id }),
         ),
         PillboxError::AmbiguousId {
             id_prefix,

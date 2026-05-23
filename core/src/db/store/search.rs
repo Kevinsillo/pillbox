@@ -339,7 +339,12 @@ pub fn pill_find(
     let (mut total, mut items) = if params_in.fuzzy {
         (0u64, Vec::new())
     } else {
-        pill_fts_exec(conn, &build_prefix_only_query(&terms), params_in, pagination)?
+        pill_fts_exec(
+            conn,
+            &build_prefix_only_query(&terms),
+            params_in,
+            pagination,
+        )?
     };
 
     // Pasada 2: fallback fuzzy si la estricta devolvió 0 y la query es

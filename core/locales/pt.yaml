@@ -187,11 +187,9 @@ prescriptions:
     closed: "Prescription fechada"
     reopened: "Prescription reaberta"
   error:
-    already_open: "Uma prescription já está aberta: \"%{title}\" (%{pills} pills, id=%{id}).\nFeche-a com 'pillbox prescription close' antes de abrir uma nova."
     none_open: "Nenhuma prescription aberta para a bottle '%{name}'."
+    multiple_open: "Várias prescriptions estão abertas. Especifique o ID: pillbox prescription close <id>\nAbertas:\n%{list}"
     not_found: "Prescription '%{id}' não encontrada."
-    reopen_already_open: "A prescription \"%{title}\" (id=%{id}) já está aberta."
-    reopen_collision: "A bottle já tem outra prescription aberta (id=%{existing_id}). Feche-a antes de reabrir esta."
 
 prescription:
   show:

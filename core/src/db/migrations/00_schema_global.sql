@@ -54,9 +54,6 @@ CREATE TABLE IF NOT EXISTS prescriptions (
 
 CREATE INDEX IF NOT EXISTS idx_rx_bottle  ON prescriptions(bottle_id);
 CREATE INDEX IF NOT EXISTS idx_rx_started ON prescriptions(started_at DESC);
--- Garantiza que solo puede haber una prescripción abierta (no cerrada ni descartada) por bottle.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_rx_open ON prescriptions(bottle_id)
-    WHERE ended_at IS NULL AND deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS pills (
     id              TEXT PRIMARY KEY,              -- UUID v7, generado en Rust antes del INSERT

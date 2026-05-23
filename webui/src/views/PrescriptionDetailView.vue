@@ -7,7 +7,6 @@ import { usePoll } from '@/composables/usePoll'
 import { usePaginatedList } from '@/composables/usePaginatedList'
 import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
 import { ApiError } from '@/core/infrastructure/managers/httpClient'
-import { shortId } from '@/core/utils/id'
 import type { Prescription, Pill } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
 import PillCard from '@/components/PillCard.vue'
@@ -104,11 +103,7 @@ async function reopenRx() {
         rx.value = updated
         poll.restart()
     } catch (e) {
-        if (e instanceof ApiError && e.code === 'prescription_collision') {
-            const data = e.data as { existing_id?: string } | null
-            const existing = data?.existing_id ? shortId(data.existing_id) : ''
-            reopenError.value = t('errors.prescription_collision', { existing_id: existing })
-        } else if (e instanceof ApiError) {
+        if (e instanceof ApiError) {
             reopenError.value = e.message
         } else {
             reopenError.value = t('common.error')

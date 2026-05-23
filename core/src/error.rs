@@ -25,16 +25,6 @@ pub enum PillboxError {
     #[error("prescription_required: prescription '{prescription_id}' does not exist or is closed")]
     PrescriptionRequired { prescription_id: String },
 
-    #[error(
-        "prescription_already_open: '{title}' (id={id}, started={started_at}, {pill_count} pills)"
-    )]
-    PrescriptionAlreadyOpen {
-        id: String,
-        title: String,
-        started_at: String,
-        pill_count: i64,
-    },
-
     #[error("prescription_not_found_or_closed: {id}")]
     PrescriptionNotFoundOrClosed { id: String },
 
@@ -43,14 +33,6 @@ pub enum PillboxError {
 
     #[error("prescription_closed: prescription '{prescription_id}' is closed; reopen it before editing pills")]
     PrescriptionClosed { prescription_id: String },
-
-    #[error(
-        "prescription_collision: bottle '{bottle_id}' already has an open prescription (id={existing_id})"
-    )]
-    PrescriptionAlreadyOpenInBottle {
-        bottle_id: String,
-        existing_id: String,
-    },
 
     // ── Bottle ────────────────────────────────────────────────────────────────
     #[error("bottle_not_found: no bottle exists with id={bottle_id}")]
@@ -105,11 +87,9 @@ impl PillboxError {
             Self::PillNotFound { .. } => "pill_not_found",
             Self::CapsuleNotFound { .. } => "capsule_not_found",
             Self::PrescriptionRequired { .. } => "prescription_required",
-            Self::PrescriptionAlreadyOpen { .. } => "prescription_already_open",
             Self::PrescriptionNotFoundOrClosed { .. } => "prescription_not_found_or_closed",
             Self::PrescriptionNotFound { .. } => "prescription_not_found",
             Self::PrescriptionClosed { .. } => "prescription_closed",
-            Self::PrescriptionAlreadyOpenInBottle { .. } => "prescription_collision",
             Self::BottleNotFound { .. } => "bottle_not_found",
             Self::BottleAlreadyExists { .. } => "bottle_already_exists",
             Self::InvalidId { .. } => "invalid_id",
@@ -141,16 +121,6 @@ mod tests {
             "prescription_required"
         );
         assert_eq!(
-            PillboxError::PrescriptionAlreadyOpen {
-                id: "x".into(),
-                title: "t".into(),
-                started_at: "2026-01-01".into(),
-                pill_count: 0,
-            }
-            .code(),
-            "prescription_already_open"
-        );
-        assert_eq!(
             PillboxError::PrescriptionNotFoundOrClosed { id: "x".into() }.code(),
             "prescription_not_found_or_closed"
         );
@@ -164,14 +134,6 @@ mod tests {
             }
             .code(),
             "prescription_closed"
-        );
-        assert_eq!(
-            PillboxError::PrescriptionAlreadyOpenInBottle {
-                bottle_id: "b".into(),
-                existing_id: "rx".into(),
-            }
-            .code(),
-            "prescription_collision"
         );
         assert_eq!(
             PillboxError::BottleNotFound {
@@ -218,16 +180,6 @@ mod tests {
         };
         assert!(err.to_string().contains("bottle_already_exists"));
         assert!(err.to_string().contains("my-proj"));
-
-        let err = PillboxError::PrescriptionAlreadyOpen {
-            id: "abc".into(),
-            title: "Mi sesión".into(),
-            started_at: "2026-01-01".into(),
-            pill_count: 3,
-        };
-        assert!(err.to_string().contains("prescription_already_open"));
-        assert!(err.to_string().contains("Mi sesión"));
-        assert!(err.to_string().contains('3'));
     }
 
     #[test]

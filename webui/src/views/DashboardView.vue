@@ -82,7 +82,7 @@ function onPeriodChange(days: number, key: Period) {
     poll.restart()
 }
 
-const openRx = computed(() => prescriptions.value.find(rx => rx.ended_at === null))
+const openRxs = computed(() => prescriptions.value.filter(rx => rx.ended_at === null))
 const closedRx = computed(() => prescriptions.value.filter(rx => rx.ended_at !== null))
 
 const pillCountTarget = computed(() => ctx.value?.pill_count ?? 0)
@@ -150,13 +150,19 @@ const displayDbSize = computed(() => formatBytes(ctx.value?.db_size_bytes ?? 0))
                         </div>
                     </div>
 
-                    <!-- Rx abierta -->
-                    <RouterLink v-if="openRx && activeBottleId" :to="`/bottles/${shortId(activeBottleId)}/prescriptions/${shortId(openRx.id)}`"
-                                class="block bg-(--bg-surface) border border-green-900/40 rounded-lg p-4 hover:border-green-700/60">
-                        <p class="text-xs text-green-500 uppercase tracking-wider mb-1">{{ $t('dashboard.open_rx_label') }}</p>
-                        <TruncatedTitle tag="p" :title="openRx.title" class="text-(--text-h) font-medium" />
-                        <p class="text-xs text-zinc-500 mt-0.5">{{ new Date(openRx.started_at).toLocaleString() }}</p>
-                    </RouterLink>
+                    <!-- Rx abiertas -->
+                    <TransitionGroup v-if="openRxs.length > 0 && activeBottleId" name="list" tag="div" class="space-y-2 relative">
+                        <RouterLink
+                            v-for="rx in openRxs"
+                            :key="rx.id"
+                            :to="`/bottles/${shortId(activeBottleId)}/prescriptions/${shortId(rx.id)}`"
+                            class="block bg-(--bg-surface) border border-green-900/40 rounded-lg p-4 hover:border-green-700/60 transition-colors"
+                        >
+                            <p class="text-xs text-green-500 uppercase tracking-wider mb-1">{{ $t('dashboard.open_rxs_label') }}</p>
+                            <TruncatedTitle tag="p" :title="rx.title" class="text-(--text-h) font-medium" />
+                            <p class="text-xs text-zinc-500 mt-0.5">{{ new Date(rx.started_at).toLocaleString() }}</p>
+                        </RouterLink>
+                    </TransitionGroup>
 
                     <!-- Últimas Rx -->
                     <div v-if="closedRx.length > 0">

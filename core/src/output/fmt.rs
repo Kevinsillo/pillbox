@@ -153,18 +153,18 @@ pub fn bottles_registered_list(rows: &[BottleListRow], total: u32) {
     println!();
 }
 
-/// Muestra el estado actual de un bottle: nombre, scope, directorio, pills y prescripción abierta.
-pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rx: Option<(String, String)>) {
-    let rx_val = match open_rx {
-        Some((id, title)) => format!(
-            "{}",
-            t!(
-                "bottle.status.rx_open",
-                title = title,
-                id = &display_id(&id)
-            )
-        ),
-        None => t!("bottle.status.rx_none").dimmed().to_string(),
+/// Muestra el estado actual de un bottle: nombre, scope, directorio, pills y prescripciones abiertas.
+pub fn bottle_status(bottle: &Bottle, pill_count: i64, open_rxs: Vec<(String, String)>) {
+    let rx_val = if open_rxs.is_empty() {
+        t!("bottle.status.rx_none").dimmed().to_string()
+    } else {
+        open_rxs
+            .iter()
+            .map(|(id, title)| {
+                t!("bottle.status.rx_open", title = title, id = &display_id(id)).to_string()
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     };
     println!(
         "\n{}",
@@ -217,7 +217,7 @@ pub struct StatusDb {
 
 /// Información del bottle activo para mostrar en el panel de estado.
 pub struct StatusBottle {
-    pub open_rx: Option<String>,
+    pub open_rxs: Vec<String>,
 }
 
 /// Muestra el panel de estado completo del sistema: binario, DBs, servidor, MCP y skill.
@@ -256,7 +256,7 @@ pub fn status(
             Some(Err(e)) => format!("{}\n{} {}", s.path, "●".red(), e),
         };
         if let Some(b) = bottle {
-            if let Some(title) = b.open_rx {
+            for title in &b.open_rxs {
                 val.push_str(&format!(
                     "\n{}  \"{}\"",
                     t!("status.db.rx").bold(),
