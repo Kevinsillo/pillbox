@@ -16,7 +16,6 @@
     "highlight.js": "^11.11.1",
     "marked": "^18.0.0",
     "marked-highlight": "^2.2.4",
-    "pinia": "^2.3.1",
     "tailwindcss": "^4.2.2",
     "vue": "^3.5.32",
     "vue-chartjs": "^5.3.3",
