@@ -111,6 +111,27 @@ pub(crate) fn is_installed() -> bool {
     }
 }
 
+/// Verifica que el proceso corre con privilegios de Administrador.
+///
+/// En Windows, instalar/desinstalar el servicio del SCM y escribir el fichero
+/// `hosts` requieren elevación. Esta guarda se llama incondicionalmente al
+/// inicio de `cmd_serve_install`/`cmd_serve_uninstall`; ambas variantes (`cfg`)
+/// existen para que el call site compile limpio en todas las plataformas.
+#[cfg(target_os = "windows")]
+fn require_elevated() -> Result<()> {
+    if !is_elevated::is_elevated() {
+        anyhow::bail!("{}", t!("serve.error.requires_admin"));
+    }
+    Ok(())
+}
+
+/// No-op en plataformas distintas de Windows: systemd/launchd operan a nivel
+/// de usuario y no requieren elevación.
+#[cfg(not(target_os = "windows"))]
+fn require_elevated() -> Result<()> {
+    Ok(())
+}
+
 // ─── Helpers de hosts file ────────────────────────────────────────────────────
 
 /// Ruta del fichero `hosts` por plataforma.
@@ -237,6 +258,7 @@ pub async fn cmd_serve_run(port: u16) -> Result<()> {
 /// 2. Persiste el puerto en `~/.pillbox/serve.port`.
 /// 3. Intenta añadir la entrada al fichero `hosts` (no fatal si falla).
 pub fn cmd_serve_install(port: u16) -> Result<()> {
+    require_elevated()?;
     if is_installed() {
         anyhow::bail!("{}", t!("serve.error.already_installed"));
     }
@@ -304,6 +326,7 @@ pub fn cmd_serve_install(port: u16) -> Result<()> {
 /// 2. Llama a `ServiceManager::uninstall` (error si no estaba instalado).
 /// 3. Borra `~/.pillbox/serve.port`.
 pub fn cmd_serve_uninstall() -> Result<()> {
+    require_elevated()?;
     if !is_installed() {
         anyhow::bail!("{}", t!("serve.error.not_installed"));
     }

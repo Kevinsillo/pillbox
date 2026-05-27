@@ -44,6 +44,36 @@ make test    # Rust tests
 make check   # test + lint + fmt-check
 ```
 
+## Windows builds
+
+Native Windows binaries are built with the MSVC toolchain. Run these from the `pillbox/` directory:
+
+```bash
+make build-win-msvc-x64     # x86_64-pc-windows-msvc
+make build-win-msvc-arm64   # aarch64-pc-windows-msvc
+```
+
+Prerequisites:
+
+- A Windows host with the MSVC toolchain (Visual Studio Build Tools)
+- The matching rustup targets installed: `rustup target add x86_64-pc-windows-msvc` and `rustup target add aarch64-pc-windows-msvc`
+
+These targets are excluded from `build-all`, which only covers the Linux/CI builds. They will not run in CI.
+
+### Releasing Windows assets
+
+The release upload is manual. After building, rename the produced `pillbox.exe` and upload it as a GitHub Release asset using the names `install.ps1` expects:
+
+- `core/target/x86_64-pc-windows-msvc/release/pillbox.exe` → `pillbox-windows-x86_64.exe`
+- `core/target/aarch64-pc-windows-msvc/release/pillbox.exe` → `pillbox-windows-aarch64.exe`
+
+### Verifying Windows-only behavior
+
+The CI gate runs on Linux only, so Windows-specific behavior is not covered automatically. Verify it manually on a Windows host before release:
+
+- The `install.ps1` user-scope installer (downloads the binary, updates user `PATH`)
+- The elevation guard on `pillbox serve install` and `pillbox serve uninstall` (must require an elevated PowerShell)
+
 ## Commit convention
 
 This project follows [Conventional Commits](https://www.conventionalcommits.org):

@@ -1,5 +1,5 @@
 .PHONY: dev dev-webui webui-build build build-full test lint check fmt fmt-check \
-        build-linux build-mac build-win build-all \
+        build-linux build-mac build-win build-win-msvc-x64 build-win-msvc-arm64 build-all \
         db-shell db-reset install
 
 # ─── Desarrollo ───────────────────────────────────────────────────────────────
@@ -62,6 +62,18 @@ build-mac:
 
 build-win:
 	cargo build --release --target x86_64-pc-windows-gnu --manifest-path core/Cargo.toml
+
+## Compila el binario Windows x64 con el toolchain MSVC.
+## Salida: core/target/x86_64-pc-windows-msvc/release/pillbox.exe
+## Subir como asset de release con el nombre: pillbox-windows-x86_64.exe (lo espera install.ps1)
+build-win-msvc-x64:
+	cargo build --release --target x86_64-pc-windows-msvc --manifest-path core/Cargo.toml
+
+## Compila el binario Windows ARM64 con el toolchain MSVC.
+## Salida: core/target/aarch64-pc-windows-msvc/release/pillbox.exe
+## Subir como asset de release con el nombre: pillbox-windows-aarch64.exe (lo espera install.ps1)
+build-win-msvc-arm64:
+	cargo build --release --target aarch64-pc-windows-msvc --manifest-path core/Cargo.toml
 
 build-all: build-linux build-mac build-win
 

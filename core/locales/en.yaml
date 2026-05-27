@@ -118,6 +118,7 @@ serve:
     not_installed: "Service is not installed. Run 'pillbox serve install' first."
     hosts_write: "Could not write to hosts file (permission denied). Access via http://localhost instead."
     already_installed: "Service is already installed. Run 'pillbox serve uninstall' first."
+    requires_admin: "This action requires Administrator privileges. Re-run it from an elevated terminal."
 
 db:
   not_found: "No Pillbox found. Run the install script."
