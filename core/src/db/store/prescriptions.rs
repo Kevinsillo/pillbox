@@ -62,7 +62,7 @@ pub fn open(conn: &mut Connection, input: &NewPrescription) -> Result<Prescripti
 /// Acepta UUID completo o prefijo ≥8 chars.
 pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
     let resolved_id = resolve_id(conn, "prescriptions", id)?
-        .ok_or_else(|| PillboxError::PrescriptionNotFoundOrClosed { id: id.to_string() })?;
+        .ok_or_else(|| PillboxError::PrescriptionNotFound { id: id.to_string() })?;
 
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
@@ -75,7 +75,7 @@ pub fn close(conn: &mut Connection, id: &str) -> Result<Prescription> {
         .context("failed to close prescription")?;
 
     if affected == 0 {
-        return Err(PillboxError::PrescriptionNotFoundOrClosed { id: id.to_string() }.into());
+        return Err(PillboxError::PrescriptionNotFound { id: id.to_string() }.into());
     }
 
     let prescription = tx

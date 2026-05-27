@@ -12,12 +12,12 @@ use crate::{
     },
     error::PillboxError,
 };
-use std::path::PathBuf;
 use axum::{
     extract::{Path, Query, State},
     Json,
 };
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use validator::Validate;
 
 use super::{
@@ -277,7 +277,11 @@ pub async fn bottle_delete(State(s): State<AppState>, Path(id): Path<String>) ->
                         let _ = registered_bottles::unregister(&global_conn, reg.id);
                         s.bottle_pools.lock().unwrap().pop(&path);
                         if let Err(e) = cleanup::cleanup_if_last_bottle(&global_conn, &path) {
-                            eprintln!("warning: cleanup_if_last_bottle failed for {}: {}", path.display(), e);
+                            eprintln!(
+                                "warning: cleanup_if_last_bottle failed for {}: {}",
+                                path.display(),
+                                e
+                            );
                         }
                     }
                 }

@@ -20,7 +20,8 @@ use crate::config;
 /// el `.db` principal como en los sidecars; cualquier otro error se propaga
 /// con contexto.
 pub fn remove_local_db_files(path: &Path) -> Result<()> {
-    remove_if_exists(path).with_context(|| format!("failed to remove db file: {}", path.display()))?;
+    remove_if_exists(path)
+        .with_context(|| format!("failed to remove db file: {}", path.display()))?;
 
     for suffix in ["-wal", "-shm"] {
         let sidecar = sidecar_path(path, suffix);

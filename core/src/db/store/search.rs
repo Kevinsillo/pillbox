@@ -10,7 +10,6 @@ use rayon::prelude::*;
 use rusqlite::{params, Connection};
 
 use crate::db::store::id_resolver::normalize_prefix;
-use crate::domain::pill::Pill;
 use crate::domain::search::{SearchParams, SearchResult};
 use crate::domain::{Paginated, PaginationParams};
 
@@ -638,41 +637,6 @@ pub fn prescription_context(
         pills,
         pill_count,
     })
-}
-
-/// Devuelve las `limit` pills más recientes de un bottle, ordenadas por fecha de creación descendente.
-pub fn recent_pills(conn: &Connection, bottle_id: &str, limit: u32) -> Result<Vec<Pill>> {
-    let mut stmt = conn.prepare(
-        "SELECT p.id, p.compound, p.title, p.content, p.prescription_id,
-                p.author_name, p.author_email, p.created_at, p.updated_at, p.deleted_at,
-                p.views
-         FROM pills p
-         JOIN prescriptions rx ON p.prescription_id = rx.id
-         WHERE rx.bottle_id = ?1 AND p.deleted_at IS NULL
-         ORDER BY p.created_at DESC
-         LIMIT ?2",
-    )?;
-
-    let pills = stmt
-        .query_map(params![bottle_id, limit], |row| {
-            Ok(Pill {
-                id: row.get(0)?,
-                compound: row.get(1)?,
-                title: row.get(2)?,
-                content: row.get(3)?,
-                prescription_id: row.get(4)?,
-                author_name: row.get(5)?,
-                author_email: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
-                deleted_at: row.get(9)?,
-                views: row.get(10)?,
-            })
-        })?
-        .collect::<rusqlite::Result<Vec<_>>>()
-        .context("failed to load recent pills")?;
-
-    Ok(pills)
 }
 
 /// Mapea una fila de SQLite al tipo [`SearchResult`].
@@ -1492,21 +1456,5 @@ mod tests {
         assert_eq!(page3.items.len(), expected.min(2));
         assert_eq!(page3.total, total);
         assert_eq!(page3.page, 3);
-    }
-
-    #[test]
-    fn recent_pills_returns_pills_for_bottle() {
-        let mut conn = open_in_memory(DbScope::Global).unwrap();
-        let bottle_id = setup_with_pills(&mut conn);
-
-        let recent = recent_pills(&conn, &bottle_id, 10).unwrap();
-        assert!(!recent.is_empty());
-    }
-
-    #[test]
-    fn recent_pills_empty_for_unknown_bottle() {
-        let conn = open_in_memory(DbScope::Global).unwrap();
-        let recent = recent_pills(&conn, "uuid-inexistente", 10).unwrap();
-        assert!(recent.is_empty());
     }
 }

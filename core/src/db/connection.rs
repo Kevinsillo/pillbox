@@ -81,7 +81,6 @@ pub fn build_pool(path: &Path, scope: DbScope) -> Result<Pool<SqliteConnectionMa
 /// Abre una conexión SQLite y aplica las migraciones pendientes para el `scope` indicado.
 ///
 /// Usado por `pillbox exec` (proceso pasivo, una operación por ejecución).
-/// Para `pillbox serve` se usará un pool — pendiente Fase 3.
 pub fn open(path: &Path, scope: DbScope) -> Result<Connection> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {

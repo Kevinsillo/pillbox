@@ -25,9 +25,6 @@ pub enum PillboxError {
     #[error("prescription_required: prescription '{prescription_id}' does not exist or is closed")]
     PrescriptionRequired { prescription_id: String },
 
-    #[error("prescription_not_found_or_closed: {id}")]
-    PrescriptionNotFoundOrClosed { id: String },
-
     #[error("prescription_not_found: {id}")]
     PrescriptionNotFound { id: String },
 
@@ -87,7 +84,6 @@ impl PillboxError {
             Self::PillNotFound { .. } => "pill_not_found",
             Self::CapsuleNotFound { .. } => "capsule_not_found",
             Self::PrescriptionRequired { .. } => "prescription_required",
-            Self::PrescriptionNotFoundOrClosed { .. } => "prescription_not_found_or_closed",
             Self::PrescriptionNotFound { .. } => "prescription_not_found",
             Self::PrescriptionClosed { .. } => "prescription_closed",
             Self::BottleNotFound { .. } => "bottle_not_found",
@@ -119,10 +115,6 @@ mod tests {
             }
             .code(),
             "prescription_required"
-        );
-        assert_eq!(
-            PillboxError::PrescriptionNotFoundOrClosed { id: "x".into() }.code(),
-            "prescription_not_found_or_closed"
         );
         assert_eq!(
             PillboxError::PrescriptionNotFound { id: "x".into() }.code(),
