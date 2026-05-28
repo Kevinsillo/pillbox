@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import type { Pill } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
 import { shortId } from '@/core/utils/id'
+import { formatDateTime } from '@/core/utils/date'
 import CompoundBadge from './CompoundBadge.vue'
 import TruncatedTitle from './TruncatedTitle.vue'
 import ViewsBadge from './ViewsBadge.vue'
@@ -36,7 +37,7 @@ defineEmits<{ delete: [] }>()
                     <CompoundBadge :compound="pill.compound" />
                     <TruncatedTitle tag="p" :title="pill.title" class="text-(--text-h) font-medium text-sm" />
                 </div>
-                <p class="text-xs text-zinc-600 flex items-center gap-2 flex-wrap"><ViewsBadge :views="pill.views" /><span>{{ new Date(pill.updated_at).toLocaleString() }}<template v-if="formatAuthor(pill.author_name, pill.author_email)"> · {{ formatAuthor(pill.author_name, pill.author_email) }}</template></span></p>
+                <p class="text-xs text-zinc-600 flex items-center gap-2 flex-wrap"><ViewsBadge :views="pill.views" /><span>{{ formatDateTime(pill.updated_at) }}<template v-if="formatAuthor(pill.author_name, pill.author_email)"> · {{ formatAuthor(pill.author_name, pill.author_email) }}</template></span></p>
             </div>
         </div>
         <div v-if="editable && pill.prescription_id" class="flex gap-2 shrink-0" @click.prevent>
@@ -47,7 +48,7 @@ defineEmits<{ delete: [] }>()
                 {{ $t('pill_card.edit') }}
             </RouterLink>
             <button
-                class="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 border border-red-900/40 px-2.5 py-1.5 rounded-lg"
+                class="flex items-center gap-1 text-xs btn-danger px-2.5 py-1.5"
                 @click.stop="$emit('delete')">
                 <ITrash2 class="w-3 h-3" />
                 {{ $t('pill_card.delete') }}

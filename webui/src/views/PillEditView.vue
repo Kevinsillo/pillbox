@@ -2,6 +2,8 @@
 import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { prescriptionsApi } from "@/core/infrastructure/repositories/PrescriptionsRepository"
+import type { Compound } from "@/core/domain/types"
+import LoadingState from "@/components/LoadingState.vue"
 import { onMounted, ref, computed } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
@@ -15,21 +17,19 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 
-const COMPOUNDS: string[] = [
-    "decision",
-    "architecture",
-    "bugfix",
-    "specification",
-    "discovery",
-    "learning",
-    "feedback",
-    "summary",
-    "task",
-]
+const compounds = ref<Compound[]>([])
 
-const form = ref({ title: "", content: "", compound: "task" })
+const form = ref({ title: "", content: "", compound: "" })
 const rxClosed = ref(false)
 const locked = computed(() => rxClosed.value)
+
+async function loadCompounds() {
+    try {
+        compounds.value = await pillsApi.getCompounds(props.bottle_id ?? undefined)
+    } catch {
+        compounds.value = []
+    }
+}
 
 async function load() {
     loading.value = true
@@ -45,7 +45,10 @@ async function load() {
     }
 }
 
-onMounted(load)
+onMounted(() => {
+    load()
+    loadCompounds()
+})
 
 async function save() {
     saving.value = true
@@ -67,7 +70,7 @@ async function save() {
             <IArrowLeft class="w-3 h-3" /> {{ $t("common.back") }}
         </button>
 
-        <div v-if="loading" class="text-center py-16 text-zinc-500">{{ $t("common.loading") }}…</div>
+        <LoadingState v-if="loading" />
 
         <template v-else>
             <h1 class="text-xl font-bold text-(--text-h)">{{ $t("pill_edit.heading") }}</h1>
@@ -79,8 +82,8 @@ async function save() {
             <form class="space-y-3" @submit.prevent="save">
                 <div>
                     <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.compound") }}</label>
-                    <el-select v-model="form.compound" class="w-full">
-                        <el-option v-for="c in COMPOUNDS" :key="c" :value="c" :label="c" />
+                    <el-select v-model="form.compound" filterable allow-create class="w-full">
+                        <el-option v-for="c in compounds" :key="c.compound" :value="c.compound" :label="c.compound" />
                     </el-select>
                 </div>
                 <div>

@@ -1,6 +1,8 @@
 export type PillCompound = string
 export type CapsuleCompound = string
 
+export type Period = '1d' | '1w' | '1m' | '1y'
+
 export interface Compound {
     compound: string
     count: number

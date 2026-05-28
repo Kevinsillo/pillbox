@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import type { Prescription } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
 import { shortId } from '@/core/utils/id'
+import { formatDateTime } from '@/core/utils/date'
 import PrescriptionStatusBadge from './PrescriptionStatusBadge.vue'
 import TruncatedTitle from './TruncatedTitle.vue'
 import ViewsBadge from './ViewsBadge.vue'
@@ -39,7 +40,7 @@ const isOpen = computed(() =>
                 </div>
                 <p class="text-xs text-zinc-600 flex items-center gap-2 flex-wrap">
                     <ViewsBadge :views="prescription.views" />
-                    <span>{{ new Date(prescription.started_at).toLocaleString() }}<template v-if="formatAuthor(prescription.author_name, prescription.author_email)"> · {{ formatAuthor(prescription.author_name, prescription.author_email) }}</template></span>
+                    <span>{{ formatDateTime(prescription.started_at) }}<template v-if="formatAuthor(prescription.author_name, prescription.author_email)"> · {{ formatAuthor(prescription.author_name, prescription.author_email) }}</template></span>
                 </p>
             </div>
         </RouterLink>

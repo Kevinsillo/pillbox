@@ -4,24 +4,26 @@ import PillCard from '@/components/PillCard.vue'
 import PillsActivityChart from '@/components/PillsActivityChart.vue'
 import { useActiveBottle } from '@/composables/useActiveBottle'
 import { usePoll } from '@/composables/usePoll'
+import { useStaleGuard } from '@/composables/useStaleGuard'
 import { useTween } from '@/composables/useTween'
-import type { Bottle, BottleStats, Context, Prescription } from '@/core/domain/types'
+import type { Bottle, BottleStats, Context, Period, Prescription } from '@/core/domain/types'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
 import { contextApi } from '@/core/infrastructure/repositories/ContextRepository'
 import { ApiError } from '@/core/infrastructure/managers/httpClient'
 import { shortId } from '@/core/utils/id'
 import { formatBytes } from '@/core/utils/bytes'
+import { formatDateTime } from '@/core/utils/date'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import IArrowRight from '~icons/lucide/arrow-right'
 import PrescriptionCard from '@/components/PrescriptionCard.vue'
 import TruncatedTitle from '@/components/TruncatedTitle.vue'
+import LoadingState from '@/components/LoadingState.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
 const { activeBottleId } = useActiveBottle()
-
-type Period = '1d' | '1w' | '1m' | '1y'
 
 const ctx = ref<Context | null>(null)
 const bottle = ref<Bottle | null>(null)
@@ -32,12 +34,12 @@ const error = ref<string | null>(null)
 const activePeriod = ref<Period>('1m')
 const periodDays = ref<number>(30)
 
-let currentToken = 0
+const staleGuard = useStaleGuard()
 
 async function load() {
     if (!activeBottleId.value) return
     const id = activeBottleId.value
-    const token = ++currentToken
+    const isCurrent = staleGuard.next()
     error.value = null
     try {
         const [c, b, rx, s] = await Promise.all([
@@ -46,13 +48,13 @@ async function load() {
             bottlesApi.prescriptions(id, { page: 1, page_size: 5 }),
             bottlesApi.stats(id, periodDays.value),
         ])
-        if (token !== currentToken) return
+        if (!isCurrent()) return
         ctx.value = c
         bottle.value = b
         prescriptions.value = rx.items
         stats.value = s
     } catch (e: unknown) {
-        if (token !== currentToken) return
+        if (!isCurrent()) return
         if (e instanceof ApiError && e.code === 'bottle_not_found') {
             activeBottleId.value = null
             return
@@ -105,16 +107,16 @@ const displayDbSize = computed(() => formatBytes(ctx.value?.db_size_bytes ?? 0))
             <p v-if="bottle" class="text-sm text-zinc-500 mt-0.5">{{ bottle.display_name }} · {{ bottle.directory }}</p>
         </div>
 
-        <div v-if="!activeBottleId" class="text-center py-16 text-zinc-500">
+        <EmptyState v-if="!activeBottleId">
             <p class="text-4xl mb-3">⬢</p>
             <p>{{ $t('dashboard.no_bottle_hint') }}</p>
             <RouterLink to="/bottles" class="text-sm text-zinc-400 hover:text-(--text-h) underline mt-2 inline-block">
                 {{ $t('dashboard.manage_bottles') }} <IArrowRight class="w-3 h-3 inline" />
             </RouterLink>
-        </div>
+        </EmptyState>
 
         <template v-else>
-            <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
+            <LoadingState v-if="!poll.loaded.value" />
             <el-alert
                 v-else-if="error"
                 :title="$t('common.error_loading_title')"
@@ -166,7 +168,7 @@ const displayDbSize = computed(() => formatBytes(ctx.value?.db_size_bytes ?? 0))
                         >
                             <p class="text-xs text-green-500 uppercase tracking-wider mb-1">{{ $t('dashboard.open_rxs_label') }}</p>
                             <TruncatedTitle tag="p" :title="rx.title" class="text-(--text-h) font-medium" />
-                            <p class="text-xs text-zinc-500 mt-0.5">{{ new Date(rx.started_at).toLocaleString() }}</p>
+                            <p class="text-xs text-zinc-500 mt-0.5">{{ formatDateTime(rx.started_at) }}</p>
                         </RouterLink>
                     </TransitionGroup>
 

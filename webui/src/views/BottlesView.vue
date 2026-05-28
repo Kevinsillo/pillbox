@@ -8,6 +8,8 @@ import type { Bottle } from '@/core/domain/types'
 import { useConfirm } from '@/composables/useConfirm'
 import Paginator from '@/components/Paginator.vue'
 import BottleCard from '@/components/BottleCard.vue'
+import LoadingState from '@/components/LoadingState.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import IAlertTriangle from '~icons/lucide/alert-triangle'
 import ITrash2 from '~icons/lucide/trash-2'
 
@@ -59,11 +61,11 @@ async function deleteRegistration(b: Bottle) {
             <h1 class="text-2xl font-bold text-(--text-h)">{{ $t('nav.bottles') }}</h1>
         </div>
 
-        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
+        <LoadingState v-if="!poll.loaded.value" />
 
-        <div v-else-if="items.length === 0" class="text-center py-16 text-zinc-500">
+        <EmptyState v-else-if="items.length === 0">
             <p>{{ $t('bottles.empty') }}</p>
-        </div>
+        </EmptyState>
 
         <template v-else>
             <TransitionGroup
@@ -106,7 +108,7 @@ async function deleteRegistration(b: Bottle) {
                                 {{ $t('bottles.update_registration_btn') }}
                             </button>
                             <button
-                                class="flex items-center gap-1 border border-red-900/40 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-300"
+                                class="flex items-center gap-1 px-2.5 py-1.5 text-xs btn-danger"
                                 @click="deleteRegistration(b)">
                                 <ITrash2 class="w-3 h-3" />
                                 {{ $t('bottles.delete_registration_btn') }}

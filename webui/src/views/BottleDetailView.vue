@@ -4,12 +4,15 @@ import HeaderMenu from '@/components/HeaderMenu.vue'
 import ViewsBadge from '@/components/ViewsBadge.vue'
 import Paginator from '@/components/Paginator.vue'
 import PrescriptionCard from '@/components/PrescriptionCard.vue'
+import LoadingState from '@/components/LoadingState.vue'
 import { useActiveBottle } from '@/composables/useActiveBottle'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePaginatedList } from '@/composables/usePaginatedList'
 import { usePoll } from '@/composables/usePoll'
+import { useStaleGuard } from '@/composables/useStaleGuard'
 import type { Bottle, Prescription } from '@/core/domain/types'
 import { bottlesApi } from '@/core/infrastructure/repositories/BottlesRepository'
+import { formatDateTime } from '@/core/utils/date'
 import { ref, toRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
@@ -38,15 +41,15 @@ const {
     resetOn: [bottleIdRef],
 })
 
-let currentToken = 0
+const staleGuard = useStaleGuard()
 
 async function load() {
-    const token = ++currentToken
+    const isCurrent = staleGuard.next()
     const [b] = await Promise.all([
         bottlesApi.get(props.bottle_id),
         refreshPrescriptions(),
     ])
-    if (token !== currentToken) return
+    if (!isCurrent()) return
     bottle.value = b
 }
 
@@ -92,7 +95,7 @@ async function deleteBottle() {
     <div class="p-6 max-w-4xl mx-auto space-y-5">
         <RouterLink to="/bottles" class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"><IArrowLeft class="w-3 h-3" /> {{ $t('bottle_detail.back') }}</RouterLink>
 
-        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
+        <LoadingState v-if="!poll.loaded.value" />
 
         <template v-else-if="bottle">
             <div
@@ -118,9 +121,9 @@ async function deleteBottle() {
                             <p class="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
                                 <ViewsBadge :views="bottle.views" />
                                 <span>
-                                    {{ $t('bottle_detail.created_at') }} {{ new Date(bottle.created_at).toLocaleString() }}
+                                    {{ $t('bottle_detail.created_at') }} {{ formatDateTime(bottle.created_at) }}
                                     <span v-if="bottle.last_seen_at && bottle.last_seen_at !== bottle.created_at">
-                                        · {{ $t('bottle_detail.last_seen_at') }} {{ new Date(bottle.last_seen_at).toLocaleString() }}
+                                        · {{ $t('bottle_detail.last_seen_at') }} {{ formatDateTime(bottle.last_seen_at) }}
                                     </span>
                                 </span>
                             </p>
@@ -130,7 +133,7 @@ async function deleteBottle() {
                     <div class="flex gap-2">
                         <button
                             @click="deleteBottle"
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
+                            class="flex items-center gap-1.5 text-sm btn-danger px-3 py-2"
                         >
                             <ITrash2 class="w-3.5 h-3.5" />
                             {{ $t('common.delete') }}

@@ -4,17 +4,20 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePoll } from '@/composables/usePoll'
+import { useStaleGuard } from '@/composables/useStaleGuard'
 import { usePaginatedList } from '@/composables/usePaginatedList'
 import { prescriptionsApi } from '@/core/infrastructure/repositories/PrescriptionsRepository'
 import { ApiError } from '@/core/infrastructure/managers/httpClient'
 import type { Prescription, Pill } from '@/core/domain/types'
 import { formatAuthor } from '@/core/domain/author'
+import { formatDateTime } from '@/core/utils/date'
 import PillCard from '@/components/PillCard.vue'
 import PrescriptionStatusBadge from '@/components/PrescriptionStatusBadge.vue'
 import Paginator from '@/components/Paginator.vue'
 import CopyableId from '@/components/CopyableId.vue'
 import HeaderMenu from '@/components/HeaderMenu.vue'
 import ViewsBadge from '@/components/ViewsBadge.vue'
+import LoadingState from '@/components/LoadingState.vue'
 import IArrowLeft from '~icons/lucide/arrow-left'
 import IClipboard from '~icons/lucide/clipboard'
 import ILock from '~icons/lucide/lock'
@@ -45,15 +48,15 @@ const sortedPills = computed(() =>
     [...pills.value].sort((a, b) => b.created_at.localeCompare(a.created_at))
 )
 
-let currentToken = 0
+const staleGuard = useStaleGuard()
 
 async function load() {
-    const token = ++currentToken
+    const isCurrent = staleGuard.next()
     const [r] = await Promise.all([
         prescriptionsApi.get(props.bottle_id, props.rx_id),
         refreshPills(),
     ])
-    if (token !== currentToken) return
+    if (!isCurrent()) return
     rx.value = r
 }
 
@@ -142,7 +145,7 @@ async function purgeRx() {
             <IArrowLeft class="w-3 h-3" /> {{ $t('common.back') }}
         </button>
 
-        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
+        <LoadingState v-if="!poll.loaded.value" />
 
         <template v-else-if="rx">
             <div
@@ -168,8 +171,8 @@ async function purgeRx() {
                                 <p class="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
                                     <ViewsBadge :views="rx.views" />
                                     <span>
-                                        {{ $t('prescription_detail.started_at') }} {{ new Date(rx.started_at).toLocaleString() }}
-                                        <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ new Date(rx.ended_at).toLocaleString() }}</span>
+                                        {{ $t('prescription_detail.started_at') }} {{ formatDateTime(rx.started_at) }}
+                                        <span v-if="rx.ended_at"> · {{ $t('prescription_detail.closed_at') }} {{ formatDateTime(rx.ended_at) }}</span>
                                     </span>
                                 </p>
                                 <p v-if="authorDisplay" class="text-xs text-zinc-600 mt-0.5">{{ authorDisplay }}</p>
@@ -190,14 +193,14 @@ async function purgeRx() {
                         </button>
                         <button
                             v-if="!isArchived"
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
+                            class="flex items-center gap-1.5 text-sm btn-danger px-3 py-2"
                             @click="archiveRx">
                             <ITrash2 class="w-3.5 h-3.5" />
                             {{ $t('common.archive') }}
                         </button>
                         <button
                             v-if="isArchived"
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
+                            class="flex items-center gap-1.5 text-sm btn-danger px-3 py-2"
                             @click="purgeRx">
                             <ITrash2 class="w-3.5 h-3.5" />
                             {{ $t('common.delete_permanent') }}

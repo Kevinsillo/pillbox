@@ -5,6 +5,8 @@ import { capsulesApi } from '@/core/infrastructure/repositories/CapsulesReposito
 import type { CapsuleSummary } from '@/core/domain/types'
 import CapsuleCard from '@/components/CapsuleCard.vue'
 import Paginator from '@/components/Paginator.vue'
+import LoadingState from '@/components/LoadingState.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 const { items, total, page, pageSize, refresh } = usePaginatedList<CapsuleSummary>({
     fetcher: (p) => capsulesApi.list(p),
@@ -19,16 +21,14 @@ const poll = usePoll(refresh, 5000)
             <h1 class="text-2xl font-bold text-(--text-h)">{{ $t('nav.capsules') }}</h1>
         </div>
 
-        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t('common.loading') }}…</div>
+        <LoadingState v-if="!poll.loaded.value" />
 
         <template v-else>
             <div
                 class="transition-opacity duration-300"
                 :class="poll.loaded.value ? 'opacity-100' : 'opacity-0'"
             >
-                <div v-show="items.length === 0" class="text-center py-16 text-zinc-500">
-                    {{ $t('capsules.empty') }}
-                </div>
+                <EmptyState v-show="items.length === 0" :text="$t('capsules.empty')" />
 
                 <TransitionGroup
                     v-show="items.length > 0"

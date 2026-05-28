@@ -3,6 +3,7 @@ import CompoundBadge from "@/components/CompoundBadge.vue"
 import CopyableId from "@/components/CopyableId.vue"
 import HeaderMenu from "@/components/HeaderMenu.vue"
 import ViewsBadge from "@/components/ViewsBadge.vue"
+import LoadingState from "@/components/LoadingState.vue"
 import { useConfirm } from "@/composables/useConfirm"
 import { useMarkdown } from "@/composables/useMarkdown"
 import { usePoll } from "@/composables/usePoll"
@@ -11,6 +12,7 @@ import type { Pill, Prescription } from "@/core/domain/types"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { prescriptionsApi } from "@/core/infrastructure/repositories/PrescriptionsRepository"
 import { shortId } from "@/core/utils/id"
+import { formatDateTime } from "@/core/utils/date"
 import { useClipboard } from "@vueuse/core"
 import { computed, ref, watchEffect } from "vue"
 import { useI18n } from "vue-i18n"
@@ -95,7 +97,7 @@ const { copy, copied } = useClipboard({ source: rawSource, copiedDuring: 1500, l
             <IArrowLeft class="w-3 h-3" /> {{ $t("common.back") }}
         </button>
 
-        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t("common.loading") }}…</div>
+        <LoadingState v-if="!poll.loaded.value" />
 
         <template v-else-if="pill">
             <div class="space-y-3">
@@ -122,9 +124,9 @@ const { copy, copied } = useClipboard({ source: rawSource, copiedDuring: 1500, l
                             <p class="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
                                 <ViewsBadge :views="pill.views" />
                                 <span>
-                                    {{ $t("pill_detail.created_at") }} {{ new Date(pill.created_at).toLocaleString() }}
+                                    {{ $t("pill_detail.created_at") }} {{ formatDateTime(pill.created_at) }}
                                     <span v-if="pill.updated_at !== pill.created_at">
-                                        · {{ $t("pill_detail.updated_at") }} {{ new Date(pill.updated_at).toLocaleString() }}
+                                        · {{ $t("pill_detail.updated_at") }} {{ formatDateTime(pill.updated_at) }}
                                     </span>
                                 </span>
                             </p>
@@ -148,7 +150,7 @@ const { copy, copied } = useClipboard({ source: rawSource, copiedDuring: 1500, l
                             {{ $t("common.edit") }}
                         </button>
                         <button
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
+                            class="flex items-center gap-1.5 text-sm btn-danger px-3 py-2"
                             @click="archivePill"
                         >
                             <ITrash2 class="w-3.5 h-3.5" />
@@ -157,7 +159,7 @@ const { copy, copied } = useClipboard({ source: rawSource, copiedDuring: 1500, l
                     </template>
                     <button
                         v-if="isArchived"
-                        class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
+                        class="flex items-center gap-1.5 text-sm btn-danger px-3 py-2"
                         @click="purgePill"
                     >
                         <ITrash2 class="w-3.5 h-3.5" />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BottleStats } from "@/core/domain/types"
+import type { BottleStats, Period } from "@/core/domain/types"
 import { BarElement, CategoryScale, Chart as ChartJS, LinearScale, Tooltip } from "chart.js"
 import { computed } from "vue"
 import { Bar } from "vue-chartjs"
@@ -9,8 +9,6 @@ import { useTheme } from "@/composables/useTheme"
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip)
 
 const { t } = useI18n()
-
-type Period = "1d" | "1w" | "1m" | "1y"
 
 const PERIODS: { key: Period; days: number; labelKey: string }[] = [
     { key: "1d", days: 1, labelKey: "dashboard.chart_period_1d" },

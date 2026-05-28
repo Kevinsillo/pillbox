@@ -157,6 +157,13 @@ button {
   cursor: pointer;
 }
 
+/* Destructive action button — shared color/border/radius; padding stays inline per call-site. */
+@layer components {
+  .btn-danger {
+    @apply text-red-400 hover:text-red-300 border border-red-900/40 rounded-lg;
+  }
+}
+
 /* Markdown rendered content */
 .markdown {
   color: var(--text);

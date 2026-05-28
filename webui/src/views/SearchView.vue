@@ -2,11 +2,14 @@
 import CompoundBadge from "@/components/CompoundBadge.vue"
 import TruncatedTitle from "@/components/TruncatedTitle.vue"
 import Paginator from "@/components/Paginator.vue"
+import LoadingState from "@/components/LoadingState.vue"
+import EmptyState from "@/components/EmptyState.vue"
 import { useActiveBottle } from "@/composables/useActiveBottle"
 import type { CapsuleSearchResult, Compound, PillSearchResult } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
 import { pillsApi } from "@/core/infrastructure/repositories/PillsRepository"
 import { shortId } from "@/core/utils/id"
+import { formatDate } from "@/core/utils/date"
 import { ElAlert, ElInput, ElOption, ElRadioButton, ElRadioGroup, ElSelect } from "element-plus"
 import { onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n"
@@ -224,7 +227,7 @@ onMounted(() => {
             :closable="false"
         />
 
-        <div v-if="loading" class="text-center py-12 text-zinc-500">{{ $t("search.searching") }}…</div>
+        <LoadingState v-if="loading" :text="$t('search.searching')" padding="py-12" />
 
         <template v-else-if="searched">
             <!-- Capsules -->
@@ -248,7 +251,7 @@ onMounted(() => {
                                 <TruncatedTitle :title="c.title" class="text-sm text-(--text-h) font-medium" />
                             </div>
                             <p class="text-xs text-zinc-500 line-clamp-2" v-html="c.snippet" />
-                            <p class="text-xs text-zinc-600 mt-1">{{ new Date(c.updated_at).toLocaleDateString() }}</p>
+                            <p class="text-xs text-zinc-600 mt-1">{{ formatDate(c.updated_at) }}</p>
                         </div>
                     </RouterLink>
                 </div>
@@ -279,7 +282,7 @@ onMounted(() => {
                                 <TruncatedTitle :title="p.title" class="text-sm text-(--text-h) font-medium" />
                             </div>
                             <p class="text-xs text-zinc-500 line-clamp-2" v-html="p.snippet" />
-                            <p class="text-xs text-zinc-600 mt-1">{{ new Date(p.updated_at).toLocaleDateString() }}</p>
+                            <p class="text-xs text-zinc-600 mt-1">{{ formatDate(p.updated_at) }}</p>
                         </div>
                     </component>
                 </div>
@@ -288,16 +291,15 @@ onMounted(() => {
                 </div>
             </div>
 
-            <div
+            <EmptyState
                 v-if="
                     (scope === 'all' && pillItems.length === 0 && capItems.length === 0) ||
                     (scope === 'pills' && pillItems.length === 0) ||
                     (scope === 'capsules' && capItems.length === 0)
                 "
-                class="text-center py-12 text-zinc-500"
-            >
-                {{ $t("search.no_results", { query }) }}
-            </div>
+                padding="py-12"
+                :text="$t('search.no_results', { query })"
+            />
         </template>
 
         <div v-else class="text-center py-12 text-zinc-600 text-sm">

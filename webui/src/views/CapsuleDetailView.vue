@@ -3,13 +3,15 @@ import CompoundBadge from "@/components/CompoundBadge.vue"
 import CopyableId from "@/components/CopyableId.vue"
 import HeaderMenu from "@/components/HeaderMenu.vue"
 import ViewsBadge from "@/components/ViewsBadge.vue"
-import type { Capsule } from "@/core/domain/types"
+import LoadingState from "@/components/LoadingState.vue"
+import type { Capsule, Compound } from "@/core/domain/types"
 import { capsulesApi } from "@/core/infrastructure/repositories/CapsulesRepository"
+import { formatDateTime } from "@/core/utils/date"
 import { useConfirm } from "@/composables/useConfirm"
 import { ElAlert, ElInput, ElOption, ElSelect } from "element-plus"
 import { useMarkdown } from "@/composables/useMarkdown"
 import { usePoll } from "@/composables/usePoll"
-import { computed, ref, watchEffect } from "vue"
+import { computed, onMounted, ref, watchEffect } from "vue"
 import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 import IArrowLeft from "~icons/lucide/arrow-left"
@@ -26,9 +28,9 @@ const editing = ref(false)
 const saving = ref(false)
 const formError = ref<string | null>(null)
 
-const CAPSULE_COMPOUNDS: string[] = ["convention", "workflow", "environment", "context", "goal", "feedback", "manual"]
+const compounds = ref<Compound[]>([])
 
-const form = ref({ title: "", content: "", compound: "convention" })
+const form = ref({ title: "", content: "", compound: "" })
 
 const isArchived = computed(() => !!capsule.value?.deleted_at)
 
@@ -36,7 +38,17 @@ async function load() {
     capsule.value = await capsulesApi.get(props.id)
 }
 
+async function loadCompounds() {
+    try {
+        compounds.value = await capsulesApi.getCompounds()
+    } catch {
+        compounds.value = []
+    }
+}
+
 const poll = usePoll(load, 5000)
+
+onMounted(loadCompounds)
 
 function startEdit() {
     if (!capsule.value) return
@@ -100,7 +112,7 @@ watchEffect(async () => {
             ><IArrowLeft class="w-3 h-3" /> {{ $t("capsule_detail.back") }}</button
         >
 
-        <div v-if="!poll.loaded.value" class="text-center py-16 text-zinc-500">{{ $t("common.loading") }}…</div>
+        <LoadingState v-if="!poll.loaded.value" />
 
         <template v-else-if="capsule">
             <!-- View mode -->
@@ -124,7 +136,7 @@ watchEffect(async () => {
                                 </div>
                                 <p class="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
                                     <ViewsBadge :views="capsule.views" />
-                                    <span>{{ $t("capsule_detail.updated_at") }} {{ new Date(capsule.updated_at).toLocaleString() }}</span>
+                                    <span>{{ $t("capsule_detail.updated_at") }} {{ formatDateTime(capsule.updated_at) }}</span>
                                 </p>
                             </div>
                         </div>
@@ -139,7 +151,7 @@ watchEffect(async () => {
                                 {{ $t("common.edit") }}
                             </button>
                             <button
-                                class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
+                                class="flex items-center gap-1.5 text-sm btn-danger px-3 py-2"
                                 @click="deleteCapsule"
                             >
                                 <ITrash2 class="w-3.5 h-3.5" />
@@ -148,7 +160,7 @@ watchEffect(async () => {
                         </template>
                         <button
                             v-if="isArchived"
-                            class="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-900/40 px-3 py-2 rounded-lg"
+                            class="flex items-center gap-1.5 text-sm btn-danger px-3 py-2"
                             @click="purgeCapsule"
                         >
                             <ITrash2 class="w-3.5 h-3.5" />
@@ -168,8 +180,8 @@ watchEffect(async () => {
                 <form class="space-y-3" @submit.prevent="save">
                     <div>
                         <label class="block text-xs text-zinc-400 mb-1">{{ $t("common.compound") }}</label>
-                        <el-select v-model="form.compound" class="w-full">
-                            <el-option v-for="c in CAPSULE_COMPOUNDS" :key="c" :value="c" :label="c" />
+                        <el-select v-model="form.compound" filterable allow-create class="w-full">
+                            <el-option v-for="c in compounds" :key="c.compound" :value="c.compound" :label="c.compound" />
                         </el-select>
                     </div>
                     <div>

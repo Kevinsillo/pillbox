@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import type { CapsuleSummary } from '@/core/domain/types'
 import { shortId } from '@/core/utils/id'
+import { formatDateTime } from '@/core/utils/date'
 import CompoundBadge from './CompoundBadge.vue'
 import TruncatedTitle from './TruncatedTitle.vue'
 import ViewsBadge from './ViewsBadge.vue'
@@ -32,7 +33,7 @@ defineProps<{
                 </div>
                 <p class="text-xs text-zinc-600 flex items-center gap-2 flex-wrap">
                     <ViewsBadge :views="capsule.views" />
-                    <span>{{ new Date(capsule.updated_at).toLocaleString() }}</span>
+                    <span>{{ formatDateTime(capsule.updated_at) }}</span>
                 </p>
             </div>
         </RouterLink>
