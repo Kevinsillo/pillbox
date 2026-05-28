@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import ConfirmDialog from "@/components/ConfirmDialog.vue"
-import { useActiveBottle } from "@/composables/useActiveBottle"
+import { useBottleSelector } from "@/composables/useBottleSelector"
+import { useBugReporter } from "@/composables/useBugReporter"
 import { useLocale } from "@/composables/useLocale"
 import { useTheme } from "@/composables/useTheme"
-import type { Bottle } from "@/core/domain/types"
-import { bottlesApi } from "@/core/infrastructure/repositories/BottlesRepository"
-import { metaApi, type AppInfo } from "@/core/infrastructure/repositories/MetaRepository"
 import { ElDropdown, ElDropdownItem, ElDropdownMenu, ElOption, ElSelect } from "element-plus"
-import { computed, onMounted, ref } from "vue"
+import { computed } from "vue"
 import { useI18n } from "vue-i18n"
-import { RouterLink, RouterView, useRoute, useRouter } from "vue-router"
+import { RouterLink, RouterView, useRoute } from "vue-router"
 import IBox from "~icons/lucide/box"
 import IBug from "~icons/lucide/bug"
 import ILayoutDashboard from "~icons/lucide/layout-dashboard"
@@ -23,52 +21,8 @@ const { availableLocales, currentLocale, setLocale } = useLocale()
 const { theme, toggleTheme } = useTheme()
 
 const route = useRoute()
-const router = useRouter()
-const { activeBottleId } = useActiveBottle()
-
-const onBottleChange = () => {
-    router.push("/")
-}
-
-const bottles = ref<Bottle[]>([])
-const info = ref<AppInfo | null>(null)
-
-const linkedBottles = computed(() => bottles.value.filter(b => b.linked))
-
-onMounted(async () => {
-    try {
-        const result = await bottlesApi.list({ page: 1, page_size: 100 })
-        bottles.value = result.items
-        // Si el bottle activo ya no existe entre los vinculados, limpiar localStorage
-        if (activeBottleId.value !== null && !linkedBottles.value.find(b => b.id === activeBottleId.value)) {
-            activeBottleId.value = null
-        }
-        if (activeBottleId.value === null && linkedBottles.value.length > 0) {
-            activeBottleId.value = linkedBottles.value[0].id
-        }
-    } catch {}
-    try {
-        info.value = await metaApi.info()
-    } catch {}
-})
-
-const handleReportBug = () => {
-    if (!info.value) return
-    const { version, os, arch, family } = info.value
-    const params = new URLSearchParams({
-        template: "bug_report.yml",
-        version: `v${version}`,
-        platform: `${os}/${arch} (${family})`,
-        browser: navigator.userAgent,
-        page: route.fullPath,
-        surface: "WebUI",
-    })
-    window.open(
-        `https://github.com/kevinsillo/pillbox/issues/new?${params.toString()}`,
-        "_blank",
-        "noopener",
-    )
-}
+const { linkedBottles, activeBottleId, switchBottle } = useBottleSelector()
+const { info, reportBug } = useBugReporter()
 
 const navItems = [
     { path: "/search", label: "nav.search", icon: ISearch },
@@ -165,7 +119,7 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                         :disabled="linkedBottles.length === 0"
                         class="w-full"
                         size="small"
-                        @change="onBottleChange"
+                        @change="switchBottle"
                     >
                         <el-option v-for="b in linkedBottles" :key="b.id" :value="b.id" :label="b.display_name" />
                     </el-select>
@@ -196,7 +150,7 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                         :aria-label="t('sidebar.report_bug')"
                         :title="t('sidebar.report_bug')"
                         :disabled="!info"
-                        @click="handleReportBug"
+                        @click="reportBug"
                         class="flex items-center p-1 rounded-md text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                     >
                         <IBug class="w-4 h-4" />
