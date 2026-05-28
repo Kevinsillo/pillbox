@@ -14,6 +14,7 @@ const routes: RouteRecordRaw[] = [
             { path: 'bottles/:bottle_id/prescriptions/:rx_id/pills/:pill_id/edit', component: () => import('@/views/PillEditView.vue'), props: true },
             { path: 'capsules', component: () => import('@/views/CapsulesView.vue') },
             { path: 'capsules/:id', component: () => import('@/views/CapsuleDetailView.vue'), props: true },
+            { path: 'capsules/:id/edit', component: () => import('@/views/CapsuleEditView.vue'), props: true },
             { path: 'search', component: () => import('@/views/SearchView.vue') },
         ],
     },
