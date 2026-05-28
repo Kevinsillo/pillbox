@@ -71,8 +71,9 @@ The installer configures the MCP server automatically. Once connected, the agent
 
 ## CLI reference
 
-<!-- screenshot: terminal running `pillbox status` showing all components active -->
-<!-- replace with: resources/screenshots/cli-status.png -->
+<p align="center">
+  <img src="resources/screenshots/demo.gif" alt="Pillbox CLI demo" width="900">
+</p>
 
 ```bash
 pillbox status                    # Global status
