@@ -84,6 +84,8 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
 
 /// Muestra el estado del bottle del directorio actual: pills, prescription abierta, scope.
 pub fn cmd_bottle_status() -> Result<()> {
+    use pillbox::db::store::prescriptions;
+
     let (conn, _) = open_resolved_db()?;
     let bottle = find_current_bottle()?;
 
@@ -95,17 +97,7 @@ pub fn cmd_bottle_status() -> Result<()> {
         |r| r.get(0),
     )?;
 
-    let mut stmt = conn.prepare(
-        "SELECT id, title FROM prescriptions
-         WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
-         ORDER BY started_at DESC",
-    )?;
-    let open_rxs: Vec<(String, String)> = stmt
-        .query_map(rusqlite::params![bottle.id], |r| {
-            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
-        })?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    drop(stmt);
+    let open_rxs = prescriptions::list_open_by_bottle(&conn, &bottle.id)?;
 
     output::fmt::bottle_status(&bottle, pill_count, open_rxs);
     Ok(())
@@ -558,7 +550,11 @@ pub fn cmd_migrate_help(help: &str) -> Result<()> {
 /// Pide confirmación antes de proceder. Tras la migración elimina la DB local.
 pub fn cmd_migrate_global() -> Result<()> {
     use inquire::Confirm;
-    use pillbox::db::{connection, migrate, DbScope};
+    use pillbox::db::{
+        connection, migrate,
+        store::{bottles, registered_bottles},
+        DbScope,
+    };
 
     let global_path = pillbox::config::global_db_path();
     let local_path = pillbox::config::local_db_path();
@@ -616,17 +612,11 @@ pub fn cmd_migrate_global() -> Result<()> {
     let result = migrate::migrate_bottle(&src_conn, &mut dst_conn, &bottle_name)?;
     drop(src_conn);
 
-    dst_conn.execute(
-        "UPDATE bottles SET scope = 'global' WHERE name = ?1",
-        rusqlite::params![bottle_name],
-    )?;
+    bottles::set_scope_by_name(&dst_conn, &bottle_name, "global")?;
     let global_path_str = global_path
         .to_str()
         .context("global DB path contains non-UTF-8 characters")?;
-    dst_conn.execute(
-        "UPDATE registered_bottles SET db_path = ?1 WHERE name = ?2",
-        rusqlite::params![global_path_str, bottle_name],
-    )?;
+    registered_bottles::update_db_path_by_name(&dst_conn, &bottle_name, global_path_str)?;
 
     std::fs::remove_file(&local_path)
         .with_context(|| "failed to remove local DB after migration")?;
@@ -641,7 +631,11 @@ pub fn cmd_migrate_global() -> Result<()> {
 /// confirmación antes de proceder. Tras la migración elimina los datos del global.
 pub fn cmd_migrate_local() -> Result<()> {
     use inquire::{Confirm, Select};
-    use pillbox::db::{connection, migrate, store::bottles, DbScope};
+    use pillbox::db::{
+        connection, migrate,
+        store::{bottles, registered_bottles},
+        DbScope,
+    };
 
     let global_path = pillbox::config::global_db_path();
     let local_path = pillbox::config::local_db_path();
@@ -706,10 +700,7 @@ pub fn cmd_migrate_local() -> Result<()> {
     let mut dst_conn = connection::open(&local_path, DbScope::Local)?;
     let result = migrate::migrate_bottle(&global_conn, &mut dst_conn, &bottle_name)?;
 
-    dst_conn.execute(
-        "UPDATE bottles SET scope = 'local' WHERE name = ?1",
-        rusqlite::params![bottle_name],
-    )?;
+    bottles::set_scope_by_name(&dst_conn, &bottle_name, "local")?;
 
     drop(global_conn);
 
@@ -722,10 +713,7 @@ pub fn cmd_migrate_local() -> Result<()> {
     let local_path_str = local_path_abs
         .to_str()
         .context("local DB path contains non-UTF-8 characters")?;
-    global_conn_mut.execute(
-        "UPDATE registered_bottles SET db_path = ?1 WHERE name = ?2",
-        rusqlite::params![local_path_str, bottle_name],
-    )?;
+    registered_bottles::update_db_path_by_name(&global_conn_mut, &bottle_name, local_path_str)?;
 
     output::fmt::migrate_result_local(result.prescriptions, result.pills);
     Ok(())

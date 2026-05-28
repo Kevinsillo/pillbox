@@ -55,6 +55,21 @@ pub fn update_db_path(conn: &Connection, id: i64, new_db_path: &str) -> Result<b
     Ok(count > 0)
 }
 
+/// Actualiza la ruta de DB de un registro identificado por su `name`.
+///
+/// A diferencia de [`update_db_path`] (que filtra por `id`), esta variante
+/// localiza el registro por `name`. Devuelve `Ok(true)` si se actualizó,
+/// `Ok(false)` si no existe ninguna fila con ese nombre.
+pub fn update_db_path_by_name(conn: &Connection, name: &str, new_path: &str) -> Result<bool> {
+    let count = conn
+        .execute(
+            "UPDATE registered_bottles SET db_path = ?1 WHERE name = ?2",
+            params![new_path, name],
+        )
+        .context("failed to update registered bottle path by name")?;
+    Ok(count > 0)
+}
+
 /// Elimina un registro de la tabla `registered_bottles` por su `id` interno.
 ///
 /// Devuelve `Ok(true)` si se eliminó, `Ok(false)` si no existía.

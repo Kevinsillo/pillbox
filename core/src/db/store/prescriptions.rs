@@ -339,6 +339,21 @@ pub fn count_open_by_bottle(conn: &Connection, bottle_id: &str) -> Result<u32> {
     Ok(n)
 }
 
+/// Lista las prescriptions abiertas (sin `ended_at`, no descartadas) de un
+/// bottle como pares `(id, title)`, más recientes primero.
+pub fn list_open_by_bottle(conn: &Connection, bottle_id: &str) -> Result<Vec<(String, String)>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, title FROM prescriptions
+         WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
+         ORDER BY started_at DESC",
+    )?;
+    let rows = stmt
+        .query_map(params![bottle_id], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("failed to list open prescriptions by bottle")?;
+    Ok(rows)
+}
+
 /// Cuenta las prescriptions activas (no descartadas) de un bottle.
 ///
 /// Acepta el `bottle_id` resuelto (UUID completo) o el `bottle_pattern`

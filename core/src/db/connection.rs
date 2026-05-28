@@ -25,19 +25,25 @@ pub const POOL_MAX_SIZE: u32 = 8;
 /// través de su `PooledConnection`.
 pub const MAX_BOTTLE_POOLS: usize = 16;
 
+/// PRAGMA de configuración aplicados a cada conexión SQLite.
+///
+/// Fuente única de verdad compartida por `pragma_init` (pool, vía
+/// `with_init`) y `configure` (conexiones directas). Los PRAGMA no
+/// persisten entre conexiones en SQLite, así que se reaplican en cada
+/// apertura.
+const PRAGMA_SQL: &str = "PRAGMA journal_mode  = WAL;
+         PRAGMA busy_timeout  = 5000;
+         PRAGMA synchronous   = NORMAL;
+         PRAGMA foreign_keys  = ON;
+         PRAGMA auto_vacuum   = INCREMENTAL;
+         PRAGMA cache_size    = -32768;";
+
 /// Closure de inicialización aplicada a cada nueva conexión del pool.
 ///
 /// Centraliza los PRAGMA en un sólo sitio (DRY frente a `configure`) y
 /// permite que `SqliteConnectionManager::with_init` los aplique.
 fn pragma_init(conn: &mut Connection) -> rusqlite::Result<()> {
-    conn.execute_batch(
-        "PRAGMA journal_mode  = WAL;
-         PRAGMA busy_timeout  = 5000;
-         PRAGMA synchronous   = NORMAL;
-         PRAGMA foreign_keys  = ON;
-         PRAGMA auto_vacuum   = INCREMENTAL;
-         PRAGMA cache_size    = -32768;",
-    )
+    conn.execute_batch(PRAGMA_SQL)
 }
 
 /// Construye un pool r2d2 sobre la DB en `path` y ejecuta las migraciones
@@ -128,15 +134,8 @@ pub fn open_in_memory(scope: DbScope) -> Result<Connection> {
 /// Se llama antes de cualquier operación — los PRAGMA no persisten
 /// entre conexiones en SQLite.
 fn configure(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
-        "PRAGMA journal_mode  = WAL;
-         PRAGMA busy_timeout  = 5000;
-         PRAGMA synchronous   = NORMAL;
-         PRAGMA foreign_keys  = ON;
-         PRAGMA auto_vacuum   = INCREMENTAL;
-         PRAGMA cache_size    = -32768;",
-    )
-    .context("failed to configure SQLite PRAGMAs")?;
+    conn.execute_batch(PRAGMA_SQL)
+        .context("failed to configure SQLite PRAGMAs")?;
     Ok(())
 }
 

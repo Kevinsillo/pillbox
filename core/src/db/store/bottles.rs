@@ -153,6 +153,16 @@ pub fn delete(conn: &mut Connection, id: &str) -> Result<bool> {
     Ok(count > 0)
 }
 
+/// Actualiza el `scope` de un bottle identificado por su `name`.
+pub fn set_scope_by_name(conn: &Connection, name: &str, scope: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE bottles SET scope = ?1 WHERE name = ?2",
+        params![scope, name],
+    )
+    .context("failed to update bottle scope by name")?;
+    Ok(())
+}
+
 /// Mapea una fila de SQLite al tipo [`Bottle`].
 fn row_to_bottle(row: &rusqlite::Row<'_>) -> rusqlite::Result<Bottle> {
     Ok(Bottle {

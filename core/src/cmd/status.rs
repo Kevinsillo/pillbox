@@ -75,19 +75,12 @@ pub fn run() -> Result<()> {
                 .ok()
                 .flatten()
                 .map(|b| {
-                    let open_rxs: Vec<String> = conn
-                        .prepare(
-                            "SELECT title FROM prescriptions
-                             WHERE bottle_id = ?1 AND ended_at IS NULL AND deleted_at IS NULL
-                             ORDER BY started_at DESC",
-                        )
-                        .and_then(|mut stmt| {
-                            let rows = stmt
-                                .query_map(rusqlite::params![b.id], |r| r.get::<_, String>(0))?
-                                .collect::<rusqlite::Result<Vec<_>>>()?;
-                            Ok(rows)
-                        })
-                        .unwrap_or_default();
+                    let open_rxs: Vec<String> =
+                        pillbox::db::store::prescriptions::list_open_by_bottle(&conn, &b.id)
+                            .unwrap_or_default()
+                            .into_iter()
+                            .map(|(_id, title)| title)
+                            .collect();
                     StatusBottle { open_rxs }
                 })
         });
