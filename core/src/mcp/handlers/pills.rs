@@ -251,7 +251,7 @@ pub fn bottle_context(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::search::bottle_context(conn, &req.bottle_id, req.limit) {
+    match store::context::bottle_context(conn, &req.bottle_id, req.limit) {
         Ok(ctx) => {
             let views = match store::id_resolver::resolve_id(conn, "bottles", &req.bottle_id) {
                 Ok(Some(bid)) => match store::counters::increment_views(conn, "bottles", &bid) {
@@ -310,7 +310,7 @@ pub fn prescription_context(conn: &mut Conn, input: Value) -> Response {
         Ok(v) => v,
         Err(r) => return r,
     };
-    match store::search::prescription_context(conn, &req.prescription_id, req.limit) {
+    match store::context::prescription_context(conn, &req.prescription_id, req.limit) {
         Ok(ctx) => {
             let views = if let Some(rx_id) = ctx.id.as_deref() {
                 match store::counters::increment_views(conn, "prescriptions", rx_id) {
