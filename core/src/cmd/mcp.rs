@@ -51,6 +51,15 @@ pub fn cmd_mcp_run() -> Result<()> {
     crate::mcp::run()
 }
 
+/// Muestra el estado de instalación del servidor MCP junto a su ayuda.
+pub fn cmd_mcp_status() -> Result<()> {
+    output::fmt::component_status_with_help(
+        &pillbox::config::mcp_path(),
+        &crate::help::render_help("mcp"),
+    );
+    Ok(())
+}
+
 /// Desinstala el servidor MCP eliminando su directorio y la entrada en `~/.claude.json`.
 pub fn cmd_mcp_uninstall() -> Result<()> {
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();

@@ -20,6 +20,15 @@ pub fn cmd_skill_install() -> Result<()> {
     Ok(())
 }
 
+/// Muestra el estado de instalación de la skill junto a su ayuda.
+pub fn cmd_skill_status() -> Result<()> {
+    output::fmt::component_status_with_help(
+        &pillbox::config::skill_path(),
+        &crate::help::render_help("skill"),
+    );
+    Ok(())
+}
+
 /// Desinstala la skill eliminando su directorio.
 pub fn cmd_skill_uninstall() -> Result<()> {
     let skill_dir = pillbox::config::skill_path()

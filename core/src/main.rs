@@ -3,261 +3,23 @@
 //! Parsea los argumentos de la CLI con `clap`, detecta el idioma, abre la DB
 //! resuelta y delega cada subcomando al módulo `cmd` correspondiente.
 
+mod cli;
 mod cmd;
+mod help;
 mod i18n;
 mod mcp;
 mod output;
 
 use anyhow::Result;
-use clap::{CommandFactory, Parser, Subcommand};
-use owo_colors::OwoColorize;
-use rust_i18n::t;
+use clap::Parser;
+
+use crate::cli::{
+    BottleCommand, CapsuleCommand, Cli, Command, LangCommand, McpCommand, MigrateCommand,
+    PillCommand, PrescriptionCommand, ServeCommand, SkillCommand,
+};
+use crate::help::{render_help, render_nested_help, render_root_help};
 
 rust_i18n::i18n!("locales", fallback = "en");
-
-// ─── CLI ──────────────────────────────────────────────────────────────────────
-
-#[derive(Parser)]
-#[command(
-    name = "pillbox",
-    version,
-    about = "Persistent knowledge memory for AI agents",
-    disable_help_subcommand = true,
-    disable_help_flag = true
-)]
-struct Cli {
-    /// Inicializa la DB global (~/.pillbox/pillbox.db). Llamado por install.sh.
-    #[arg(long, hide = true)]
-    init_global: bool,
-
-    /// Muestra esta ayuda.
-    #[arg(short, long)]
-    help: bool,
-
-    #[command(subcommand)]
-    command: Option<Command>,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    /// Estado global: DBs, bottle activo, servidor, MCP y skill.
-    Status,
-
-    /// Gestiona el servidor HTTP.
-    Serve {
-        #[command(subcommand)]
-        cmd: Option<ServeCommand>,
-    },
-
-    /// Operaciones sobre bottles.
-    Bottle {
-        #[command(subcommand)]
-        cmd: Option<BottleCommand>,
-    },
-
-    /// Operaciones sobre prescriptions del bottle actual.
-    Prescription {
-        #[command(subcommand)]
-        cmd: Option<PrescriptionCommand>,
-    },
-
-    /// Operaciones sobre pills.
-    Pill {
-        #[command(subcommand)]
-        cmd: Option<PillCommand>,
-    },
-
-    /// Operaciones sobre capsules.
-    Capsule {
-        #[command(subcommand)]
-        cmd: Option<CapsuleCommand>,
-    },
-
-    /// Gestiona el servidor MCP.
-    Mcp {
-        #[command(subcommand)]
-        cmd: Option<McpCommand>,
-    },
-
-    /// Gestiona la skill de Claude Code.
-    Skill {
-        #[command(subcommand)]
-        cmd: Option<SkillCommand>,
-    },
-
-    /// Cambia o muestra el idioma del CLI.
-    Lang {
-        #[command(subcommand)]
-        cmd: Option<LangCommand>,
-    },
-
-    /// Desinstala componentes de Pillbox.
-    Uninstall,
-
-    /// Muestra esta ayuda.
-    Help,
-}
-
-#[derive(Subcommand)]
-enum ServeCommand {
-    /// Ejecuta el servidor en primer plano (invocado por el gestor de servicios).
-    #[command(hide = true)]
-    Run {
-        #[arg(short, long, default_value_t = pillbox::config::DEFAULT_PORT)]
-        port: u16,
-    },
-    /// Instala el servidor HTTP como servicio del sistema.
-    Install {
-        #[arg(short, long, default_value_t = pillbox::config::DEFAULT_PORT)]
-        port: u16,
-    },
-    /// Desinstala el servicio del sistema.
-    Uninstall,
-    /// Arranca el servicio del sistema.
-    Start,
-    /// Detiene el servicio del sistema.
-    Stop,
-    /// Muestra el estado del servicio.
-    Status,
-}
-
-#[derive(Subcommand)]
-enum BottleCommand {
-    /// Inicializa un bottle en el directorio actual (wizard interactivo).
-    Init,
-    /// Estado del bottle del directorio actual.
-    Status,
-    /// Lista los bottles registrados en la DB global.
-    List {
-        #[arg(short, long, default_value = "20")]
-        limit: u32,
-    },
-    /// Migra el bottle entre DB local y global.
-    Migrate {
-        #[command(subcommand)]
-        subcommand: Option<MigrateCommand>,
-    },
-    /// Elimina un bottle del registro global (requiere confirmar el slug).
-    Delete {
-        /// Slug del bottle a eliminar.
-        slug: String,
-    },
-    /// Corrige la ruta de un bottle desvinculado apuntando a su nueva ubicación.
-    Repair {
-        /// Slug del bottle a reparar.
-        slug: String,
-    },
-    /// Vincula una DB local al registro global del usuario actual.
-    Vinculate {
-        #[arg(value_name = "DIRECTORY")]
-        directory: Option<std::path::PathBuf>,
-    },
-}
-
-#[derive(Subcommand)]
-enum MigrateCommand {
-    /// Mueve el bottle de este directorio a la DB global.
-    Global,
-    /// Elige un bottle de la DB global y muévelo aquí.
-    Local,
-}
-
-#[derive(Subcommand)]
-enum PrescriptionCommand {
-    /// Abre una nueva prescripción para el bottle actual.
-    Open {
-        /// Título de la tarea o funcionalidad.
-        title: String,
-    },
-    /// Lista las prescriptions del bottle actual (más recientes primero).
-    List {
-        #[arg(short, long, default_value = "10")]
-        limit: u32,
-        /// Límite de prescriptions archivadas mostradas (0 oculta la sección).
-        #[arg(long, default_value_t = pillbox::config::ARCHIVED_LIMIT_DEFAULT)]
-        archived_limit: u32,
-    },
-    /// Muestra el detalle de una prescription y sus pills.
-    Show {
-        /// ID (o prefijo) de la prescription.
-        id: String,
-        #[arg(short, long, default_value = "20")]
-        limit: u32,
-        /// Límite de pills archivadas mostradas (0 oculta la sección).
-        #[arg(long, default_value_t = pillbox::config::ARCHIVED_LIMIT_DEFAULT)]
-        archived_limit: u32,
-    },
-    /// Cierra una prescripción abierta del bottle actual.
-    Close {
-        /// ID (o prefijo) de la prescription a cerrar. Si se omite y solo hay
-        /// una abierta, se cierra esa; si hay varias, se exige especificarla.
-        id: Option<String>,
-    },
-    /// Reabre una prescription cerrada (limpia su `ended_at`).
-    Reopen {
-        /// ID (o prefijo ≥8 chars) de la prescription a reabrir.
-        id: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum PillCommand {
-    /// Muestra el detalle de una pill por su UUID.
-    Show {
-        /// UUID de la pill (visible en `prescription show`).
-        id: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum CapsuleCommand {
-    /// Lista las capsules globales (activas y archivadas).
-    List {
-        #[arg(short, long, default_value = "50")]
-        limit: u32,
-        /// Límite de capsules archivadas mostradas (0 oculta la sección).
-        #[arg(long, default_value_t = pillbox::config::ARCHIVED_LIMIT_DEFAULT)]
-        archived_limit: u32,
-    },
-    /// Muestra el detalle de una capsule por UUID.
-    Show {
-        /// UUID de la capsule.
-        id: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum McpCommand {
-    /// Instala el servidor MCP en ~/.pillbox/mcp/.
-    Install,
-    /// Desinstala el servidor MCP.
-    Uninstall,
-    /// Arranca el loop persistente MCP (NDJSON sobre stdin/stdout).
-    ///
-    /// Invocado por el wrapper TS (`pillboxExec`) como subproceso singleton.
-    /// No diseñado para uso interactivo.
-    #[command(hide = true)]
-    Run,
-}
-
-#[derive(Subcommand)]
-enum SkillCommand {
-    /// Instala la skill de Claude Code en ~/.claude/skills/pillbox/.
-    Install,
-    /// Desinstala la skill de Claude Code.
-    Uninstall,
-}
-
-#[derive(Subcommand)]
-enum LangCommand {
-    /// Cambia el idioma del CLI (es, en, de, it, pt, fr).
-    Set {
-        /// Código de idioma.
-        code: String,
-    },
-}
-
-// ─── Entry point ─────────────────────────────────────────────────────────────
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -353,12 +115,12 @@ async fn main() -> Result<()> {
             Some(McpCommand::Install) => cmd::mcp::cmd_mcp_install(),
             Some(McpCommand::Uninstall) => cmd::mcp::cmd_mcp_uninstall(),
             Some(McpCommand::Run) => cmd::mcp::cmd_mcp_run(),
-            None => cmd_mcp_status(),
+            None => cmd::mcp::cmd_mcp_status(),
         },
         Some(Command::Skill { cmd }) => match cmd {
             Some(SkillCommand::Install) => cmd::skill::cmd_skill_install(),
             Some(SkillCommand::Uninstall) => cmd::skill::cmd_skill_uninstall(),
-            None => cmd_skill_status(),
+            None => cmd::skill::cmd_skill_status(),
         },
         Some(Command::Lang { cmd }) => match cmd {
             Some(LangCommand::Set { code }) => cmd::lang::cmd_lang_set(code),
@@ -367,78 +129,6 @@ async fn main() -> Result<()> {
         Some(Command::Uninstall) => cmd::uninstall::run(),
         Some(Command::Help) => cmd_root_help(),
     }
-}
-
-// ─── Helpers de ayuda (necesitan Cli::command()) ─────────────────────────────
-
-/// Resuelve una clave i18n para la ayuda, usando `fallback` si la clave no está traducida.
-fn t_help(key: &str, fallback: Option<String>) -> String {
-    let translated = t!(key);
-    if translated != key {
-        translated.to_string()
-    } else {
-        fallback.unwrap_or_default()
-    }
-}
-
-/// Renderiza la ayuda de un subcomando `clap` con traducciones i18n y colores ANSI.
-/// - `display_name`: aparece en la línea "Uso: {display_name} [COMMAND]"
-/// - `sub_prefix`: prefijo para el lookup de subcomandos en i18n (`help.sub.{sub_prefix}.{sub}`)
-fn render_help_cmd(cmd: &mut clap::Command, display_name: &str, sub_prefix: &str) -> String {
-    let mut out = String::new();
-    let about_key = format!("help.about.{}", display_name);
-    let about = t_help(&about_key, cmd.get_about().map(|a| a.to_string()));
-    if !about.is_empty() {
-        out.push_str(&format!("{}\n\n", about.bold()));
-    }
-    out.push_str(&format!(
-        "{} {} {}\n",
-        t!("help.usage").bold(),
-        display_name,
-        "[COMMAND]".dimmed()
-    ));
-    let subcmds: Vec<_> = cmd.get_subcommands().filter(|s| !s.is_hide_set()).collect();
-    if !subcmds.is_empty() {
-        out.push_str(&format!("\n{}:\n", t!("help.commands").bold()));
-        let max = subcmds
-            .iter()
-            .map(|s| s.get_name().len())
-            .max()
-            .unwrap_or(0);
-        for s in &subcmds {
-            let sub_key = format!("help.sub.{}.{}", sub_prefix, s.get_name());
-            let about = t_help(&sub_key, s.get_about().map(|a| a.to_string()));
-            out.push_str(&format!(
-                "  {:<width$}  {}\n",
-                s.get_name().green(),
-                about,
-                width = max
-            ));
-        }
-    }
-    out
-}
-
-/// Renderiza la ayuda de un subcomando concreto de `pillbox`.
-fn render_help(subcmd: &str) -> String {
-    let mut cmd = Cli::command();
-    let sub = cmd.find_subcommand_mut(subcmd).unwrap();
-    render_help_cmd(sub, subcmd, subcmd)
-}
-
-/// Renderiza la ayuda de un subcomando anidado (ej. "bottle" → "migrate").
-/// display_name usa la ruta completa; sub_prefix usa solo el nombre del hijo para el lookup i18n.
-fn render_nested_help(parent: &str, child: &str) -> String {
-    let mut cmd = Cli::command();
-    let sub = cmd.find_subcommand_mut(parent).unwrap();
-    let nested = sub.find_subcommand_mut(child).unwrap();
-    render_help_cmd(nested, &format!("{} {}", parent, child), child)
-}
-
-/// Renderiza la ayuda raíz del binario `pillbox`.
-fn render_root_help() -> String {
-    let mut cmd = Cli::command();
-    render_help_cmd(&mut cmd, "pillbox", "pillbox")
 }
 
 /// Imprime el logo y la ayuda raíz en la salida estándar.
@@ -451,17 +141,5 @@ fn cmd_root_help() -> Result<()> {
 /// Imprime la ayuda de un subcomando directamente en stdout.
 fn cmd_sub_help(subcmd: &str) -> Result<()> {
     println!("\n{}\n", render_help(subcmd));
-    Ok(())
-}
-
-/// Muestra el estado de instalación del servidor MCP junto a su ayuda.
-fn cmd_mcp_status() -> Result<()> {
-    output::fmt::component_status_with_help(&pillbox::config::mcp_path(), &render_help("mcp"));
-    Ok(())
-}
-
-/// Muestra el estado de instalación de la skill junto a su ayuda.
-fn cmd_skill_status() -> Result<()> {
-    output::fmt::component_status_with_help(&pillbox::config::skill_path(), &render_help("skill"));
     Ok(())
 }
