@@ -135,6 +135,11 @@ pub fn bottle_init_start(dir: &str) {
     println!("\n{}\n", t!("bottle.init.start", dir = dir));
 }
 
+/// Mensaje de error: fallo al registrar el bottle en la DB global durante init.
+pub fn bottle_init_register_err(err: &str) {
+    eprintln!("{}", t!("bottle.init.register_err", err = err));
+}
+
 /// Confirma la creación del bottle mostrando su slug, nombre visible y ruta de la DB.
 pub fn bottle_init_created(name: &str, display_name: &str, db_path: &std::path::Path) {
     let db_str = db_path.display().to_string();
@@ -165,6 +170,33 @@ pub fn bottle_init_done() {
 /// Confirma que la DB local fue vinculada al registro global.
 pub fn bottle_vinculate_done(name: &str, path: &str) {
     print_b(&t!("bottle.vinculate.done", name = name, path = path));
+}
+
+/// Mensaje de error: la DB local indicada no existe al intentar vincularla.
+pub fn bottle_vinculate_db_not_found(path: &str) {
+    eprintln!(
+        "\n{}  {}\n",
+        "✗".red().bold(),
+        t!("bottle.vinculate.error_db_not_found", path = path)
+    );
+}
+
+/// Mensaje de error: la DB local indicada apunta a la DB global (vínculo circular).
+pub fn bottle_vinculate_circular() {
+    eprintln!(
+        "\n{}  {}\n",
+        "✗".red().bold(),
+        t!("bottle.vinculate.error_circular")
+    );
+}
+
+/// Mensaje de error: la DB local no contiene ningún bottle para vincular.
+pub fn bottle_vinculate_no_bottle(path: &str) {
+    eprintln!(
+        "\n{}  {}\n",
+        "✗".red().bold(),
+        t!("bottle.vinculate.error_no_bottle", path = path)
+    );
 }
 
 /// Informa que la DB local ya estaba vinculada al registro global.

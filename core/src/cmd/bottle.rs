@@ -192,7 +192,7 @@ pub fn cmd_bottle_init() -> Result<()> {
             Ok(_) => pb2.finish_with_message(t!("bottle.init.registered_ok").to_string()),
             Err(e) => {
                 pb2.finish_and_clear();
-                eprintln!("{}", t!("bottle.init.register_err", err = e));
+                output::bottle::bottle_init_register_err(&e.to_string());
             }
         }
     }
@@ -295,7 +295,6 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
 ///
 /// Es idempotente: si ya estaba vinculada, lo informa pero no falla.
 pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()> {
-    use owo_colors::OwoColorize;
     use pillbox::db::{
         connection,
         store::{bottles, registered_bottles},
@@ -306,14 +305,7 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
     let db_path = dir.join(".pillbox").join("pillbox.db");
 
     if !db_path.exists() {
-        eprintln!(
-            "\n{}  {}\n",
-            "✗".red().bold(),
-            t!(
-                "bottle.vinculate.error_db_not_found",
-                path = db_path.display()
-            )
-        );
+        output::bottle::bottle_vinculate_db_not_found(&db_path.display().to_string());
         std::process::exit(1);
     }
 
@@ -325,11 +317,7 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
         let global_canon = std::fs::canonicalize(&global_path)
             .with_context(|| format!("failed to canonicalize {}", global_path.display()))?;
         if db_path_canon == global_canon {
-            eprintln!(
-                "\n{}  {}\n",
-                "✗".red().bold(),
-                t!("bottle.vinculate.error_circular")
-            );
+            output::bottle::bottle_vinculate_circular();
             std::process::exit(1);
         }
     }
@@ -348,14 +336,7 @@ pub fn cmd_bottle_vinculate(directory: Option<std::path::PathBuf>) -> Result<()>
     {
         Some(b) => b,
         None => {
-            eprintln!(
-                "\n{}  {}\n",
-                "✗".red().bold(),
-                t!(
-                    "bottle.vinculate.error_no_bottle",
-                    path = db_path_canon.display()
-                )
-            );
+            output::bottle::bottle_vinculate_no_bottle(&db_path_canon.display().to_string());
             std::process::exit(1);
         }
     };
