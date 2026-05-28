@@ -204,7 +204,6 @@ pub fn cmd_bottle_init() -> Result<()> {
 /// Elimina el registro de un bottle de la DB global, previa confirmación del slug.
 pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
     use inquire::Text;
-    use owo_colors::OwoColorize;
     use pillbox::db::{cleanup, connection, store::registered_bottles, DbScope};
     use std::path::PathBuf;
 
@@ -220,53 +219,16 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
         .find(|r| r.name == slug);
 
     let Some(reg) = reg else {
-        eprintln!(
-            "\n{}  {}\n",
-            "✗".red().bold(),
-            t!("bottle.delete.not_found", slug = slug)
-        );
+        output::bottle::bottle_delete_not_found(slug);
         return Ok(());
     };
 
-    let name_label = t!("bottle.delete.col.name");
-    let slug_label = t!("bottle.delete.col.slug");
-    let path_label = t!("bottle.delete.col.path");
-    let key_width = [&name_label, &slug_label, &path_label]
-        .iter()
-        .map(|k| k.len())
-        .max()
-        .unwrap_or(0)
-        + 1;
-
-    println!("\n{}  {}", "⚑".yellow().bold(), t!("bottle.delete.header"));
-    println!(
-        "   {:<w$}│  {}",
-        name_label.dimmed(),
-        reg.display_name,
-        w = key_width
-    );
-    println!(
-        "   {:<w$}│  {}",
-        slug_label.dimmed(),
-        reg.name,
-        w = key_width
-    );
-    println!(
-        "   {:<w$}│  {}",
-        path_label.dimmed(),
-        reg.db_path.dimmed(),
-        w = key_width
-    );
-    println!();
+    output::bottle::bottle_delete_panel(&reg.display_name, &reg.name, &reg.db_path);
 
     let input = Text::new(t!("bottle.delete.confirm", slug = reg.name).as_ref()).prompt()?;
 
     if input.trim() != reg.name {
-        eprintln!(
-            "\n{}  {}\n",
-            "✗".red().bold(),
-            t!("bottle.delete.wrong_slug")
-        );
+        output::bottle::bottle_delete_wrong_slug();
         return Ok(());
     }
 
@@ -274,20 +236,13 @@ pub fn cmd_bottle_delete(slug: &str) -> Result<()> {
 
     cleanup::cleanup_if_last_bottle(&global_conn, &PathBuf::from(&reg.db_path))?;
 
-    println!("\n{}  {}", "✓".green().bold(), t!("bottle.delete.done"));
-    println!(
-        "   {:<w$}│  {}\n",
-        slug_label.dimmed(),
-        reg.name,
-        w = key_width
-    );
+    output::bottle::bottle_delete_done(&reg.name);
     Ok(())
 }
 
 /// Corrige la ruta de DB de un bottle desvinculado apuntando a su nueva ubicación.
 pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
     use inquire::Text;
-    use owo_colors::OwoColorize;
     use pillbox::db::{connection, store::registered_bottles, DbScope};
 
     let global_path = pillbox::config::global_db_path();
@@ -302,34 +257,16 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
         .find(|r| r.name == slug);
 
     let Some(reg) = reg else {
-        eprintln!(
-            "\n{}  {}\n",
-            "✗".red().bold(),
-            t!("bottle.repair.not_found", slug = slug)
-        );
+        output::bottle::bottle_repair_not_found(slug);
         return Ok(());
     };
 
     if std::path::Path::new(&reg.db_path).exists() {
-        eprintln!(
-            "\n{}  {}\n",
-            "✗".red().bold(),
-            t!("bottle.repair.already_linked", slug = slug)
-        );
+        output::bottle::bottle_repair_already_linked(slug);
         return Ok(());
     }
 
-    println!(
-        "\n  {} {}",
-        t!("bottle.repair.header"),
-        reg.display_name.bold()
-    );
-    println!(
-        "  {}    {}",
-        t!("bottle.repair.current_path"),
-        reg.db_path.dimmed()
-    );
-    println!();
+    output::bottle::bottle_repair_header(&reg.display_name, &reg.db_path);
 
     let new_path = Text::new(t!("bottle.repair.prompt").as_ref())
         .with_help_message(t!("bottle.repair.prompt_help").as_ref())
@@ -339,38 +276,13 @@ pub fn cmd_bottle_repair(slug: &str) -> Result<()> {
     let path = std::path::Path::new(&new_path);
 
     if !path.exists() || !path.is_file() {
-        eprintln!(
-            "\n{}  {}\n",
-            "✗".red().bold(),
-            t!("bottle.repair.invalid_path")
-        );
+        output::bottle::bottle_repair_invalid_path();
         return Ok(());
     }
 
     registered_bottles::update_db_path(&global_conn, reg.id, &new_path)?;
 
-    let slug_label = t!("bottle.repair.col.slug");
-    let path_label = t!("bottle.repair.col.path");
-    let key_width = [&slug_label, &path_label]
-        .iter()
-        .map(|k| k.len())
-        .max()
-        .unwrap_or(0)
-        + 1;
-
-    println!("\n{}  {}", "✓".green().bold(), t!("bottle.repair.done"));
-    println!(
-        "   {:<w$}│  {}",
-        slug_label.dimmed(),
-        reg.name,
-        w = key_width
-    );
-    println!(
-        "   {:<w$}│  {}\n",
-        path_label.dimmed(),
-        new_path,
-        w = key_width
-    );
+    output::bottle::bottle_repair_done(&reg.name, &new_path);
     Ok(())
 }
 
@@ -551,8 +463,8 @@ pub fn cmd_migrate_help(help: &str) -> Result<()> {
 pub fn cmd_migrate_global() -> Result<()> {
     use inquire::Confirm;
     use pillbox::db::{
-        connection, migrate,
-        store::{bottles, registered_bottles},
+        connection,
+        migrate::{self, MigrationDirection},
         DbScope,
     };
 
@@ -591,6 +503,7 @@ pub fn cmd_migrate_global() -> Result<()> {
         })?;
 
     let (prescriptions, pills) = migrate::count_bottle_contents(&src_conn, &bottle_name)?;
+    drop(src_conn);
 
     output::fmt::migrate_confirm_global(
         &bottle_name,
@@ -608,18 +521,12 @@ pub fn cmd_migrate_global() -> Result<()> {
         return Ok(());
     }
 
-    let mut dst_conn = connection::open(&global_path, DbScope::Global)?;
-    let result = migrate::migrate_bottle(&src_conn, &mut dst_conn, &bottle_name)?;
-    drop(src_conn);
-
-    bottles::set_scope_by_name(&dst_conn, &bottle_name, "global")?;
-    let global_path_str = global_path
-        .to_str()
-        .context("global DB path contains non-UTF-8 characters")?;
-    registered_bottles::update_db_path_by_name(&dst_conn, &bottle_name, global_path_str)?;
-
-    std::fs::remove_file(&local_path)
-        .with_context(|| "failed to remove local DB after migration")?;
+    let result = migrate::apply_migration(
+        MigrationDirection::ToGlobal,
+        &local_path,
+        &global_path,
+        &bottle_name,
+    )?;
 
     output::fmt::migrate_result_global(result.prescriptions, result.pills);
     Ok(())
@@ -632,8 +539,9 @@ pub fn cmd_migrate_global() -> Result<()> {
 pub fn cmd_migrate_local() -> Result<()> {
     use inquire::{Confirm, Select};
     use pillbox::db::{
-        connection, migrate,
-        store::{bottles, registered_bottles},
+        connection,
+        migrate::{self, MigrationDirection},
+        store::bottles,
         DbScope,
     };
 
@@ -677,6 +585,7 @@ pub fn cmd_migrate_local() -> Result<()> {
     let bottle_name = bottle_name.clone();
 
     let (prescriptions, pills) = migrate::count_bottle_contents(&global_conn, &bottle_name)?;
+    drop(global_conn);
 
     let will_create = !local_path.exists();
 
@@ -697,23 +606,12 @@ pub fn cmd_migrate_local() -> Result<()> {
         return Ok(());
     }
 
-    let mut dst_conn = connection::open(&local_path, DbScope::Local)?;
-    let result = migrate::migrate_bottle(&global_conn, &mut dst_conn, &bottle_name)?;
-
-    bottles::set_scope_by_name(&dst_conn, &bottle_name, "local")?;
-
-    drop(global_conn);
-
-    let mut global_conn_mut = connection::open(&global_path, DbScope::Global)?;
-    migrate::delete_bottle(&mut global_conn_mut, &bottle_name)?;
-
-    let local_path_abs = local_path
-        .canonicalize()
-        .context("failed to canonicalize local DB path after migration")?;
-    let local_path_str = local_path_abs
-        .to_str()
-        .context("local DB path contains non-UTF-8 characters")?;
-    registered_bottles::update_db_path_by_name(&global_conn_mut, &bottle_name, local_path_str)?;
+    let result = migrate::apply_migration(
+        MigrationDirection::ToLocal,
+        &local_path,
+        &global_path,
+        &bottle_name,
+    )?;
 
     output::fmt::migrate_result_local(result.prescriptions, result.pills);
     Ok(())

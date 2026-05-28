@@ -13,6 +13,79 @@
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection, TransactionBehavior};
 
+use crate::db::connection;
+use crate::db::store::{bottles, registered_bottles};
+use crate::db::DbScope;
+
+/// Dirección de una migración de bottle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MigrationDirection {
+    /// Local → Global: mueve el bottle de la DB local al registro global y
+    /// elimina la DB local del disco.
+    ToGlobal,
+    /// Global → Local: mueve el bottle de la DB global a una DB local recién
+    /// creada y borra las filas correspondientes del global.
+    ToLocal,
+}
+
+/// Ejecuta una migración completa de un bottle entre la DB local y la global.
+///
+/// Encapsula la secuencia post-confirmación: abre dst, ejecuta `migrate_bottle`,
+/// actualiza `bottles.scope`, refresca `registered_bottles.db_path` y limpia el
+/// origen (fichero o filas según la dirección). El caller debe ya haber pedido
+/// confirmación al usuario antes de invocar esta función.
+pub fn apply_migration(
+    direction: MigrationDirection,
+    local_path: &std::path::Path,
+    global_path: &std::path::Path,
+    bottle_name: &str,
+) -> Result<MigrateResult> {
+    match direction {
+        MigrationDirection::ToGlobal => {
+            let src_conn = connection::open(local_path, DbScope::Local)?;
+            let mut dst_conn = connection::open(global_path, DbScope::Global)?;
+            let result = migrate_bottle(&src_conn, &mut dst_conn, bottle_name)?;
+            drop(src_conn);
+
+            bottles::set_scope_by_name(&dst_conn, bottle_name, "global")?;
+            let global_path_str = global_path
+                .to_str()
+                .context("global DB path contains non-UTF-8 characters")?;
+            registered_bottles::update_db_path_by_name(&dst_conn, bottle_name, global_path_str)?;
+
+            std::fs::remove_file(local_path)
+                .with_context(|| "failed to remove local DB after migration")?;
+
+            Ok(result)
+        }
+        MigrationDirection::ToLocal => {
+            let global_conn = connection::open(global_path, DbScope::Global)?;
+            let mut dst_conn = connection::open(local_path, DbScope::Local)?;
+            let result = migrate_bottle(&global_conn, &mut dst_conn, bottle_name)?;
+            bottles::set_scope_by_name(&dst_conn, bottle_name, "local")?;
+
+            drop(global_conn);
+
+            let mut global_conn_mut = connection::open(global_path, DbScope::Global)?;
+            delete_bottle(&mut global_conn_mut, bottle_name)?;
+
+            let local_path_abs = local_path
+                .canonicalize()
+                .context("failed to canonicalize local DB path after migration")?;
+            let local_path_str = local_path_abs
+                .to_str()
+                .context("local DB path contains non-UTF-8 characters")?;
+            registered_bottles::update_db_path_by_name(
+                &global_conn_mut,
+                bottle_name,
+                local_path_str,
+            )?;
+
+            Ok(result)
+        }
+    }
+}
+
 /// Row fetched when copying prescriptions: (id, title, started_at, ended_at, deleted_at).
 type PrescriptionRow = (String, String, String, Option<String>, Option<String>);
 
