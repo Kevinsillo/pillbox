@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630"
+     font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+     shape-rendering="geometricPrecision" text-rendering="optimizeLegibility">
+  <defs>
+    <!--
+      Bloque de contenido centrado verticalmente en 630px:
+        Logo  top    y=144  (108px alto, scale 6×)
+        Logo  bottom y=252
+        Acento rojo  y=276  (gap 24px)
+        Título base  y=378  (gap 32px + cap-height ~70px de Inter 96px)
+        Tagline base y=440  (gap 20px + cap-height ~22px de Inter 26px)
+        URL    base  y=490  (gap 22px + cap-height ~12px de Inter 17px)
+        Bloque total ≈ 350px → centro y ≈ 144+175 = 319 ≈ 315
+    -->
+
+    <radialGradient id="bg-glow" cx="50%" cy="38%" r="52%">
+      <stop offset="0%"   stop-color="#1c0b08"/>
+      <stop offset="100%" stop-color="#0a0a0a"/>
+    </radialGradient>
+
+    <radialGradient id="logo-halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#e8412a" stop-opacity="0.13"/>
+      <stop offset="100%" stop-color="#e8412a" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="accent-line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#e8412a" stop-opacity="0"/>
+      <stop offset="30%"  stop-color="#e8412a" stop-opacity="1"/>
+      <stop offset="70%"  stop-color="#e8412a" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#e8412a" stop-opacity="0"/>
+    </linearGradient>
+
+    <clipPath id="pill-clip">
+      <rect x="35" y="33" width="10" height="14" rx="5"/>
+    </clipPath>
+  </defs>
+
+  <!-- Fondo -->
+  <rect width="1200" height="630" fill="url(#bg-glow)"/>
+
+  <!-- Halo centrado en el logo -->
+  <ellipse cx="600" cy="198" rx="230" ry="175" fill="url(#logo-halo)"/>
+
+  <!--
+    Logo 6× — translate(360, -42) scale(6)
+    punto (40,40) natural → pantalla (40×6+360, 40×6-42) = (600, 198)
+    top:    31×6-42 = 144
+    bottom: 49×6-42 = 252
+  -->
+  <g transform="translate(360,-42) scale(6)">
+    <path d="M32,31 L28,31 L28,49 L32,49"
+          fill="none" stroke="#f0f0f0" stroke-width="2"
+          stroke-linecap="square" stroke-linejoin="miter"/>
+    <path d="M48,31 L52,31 L52,49 L48,49"
+          fill="none" stroke="#f0f0f0" stroke-width="2"
+          stroke-linecap="square" stroke-linejoin="miter"/>
+    <g clip-path="url(#pill-clip)">
+      <rect x="35" y="33" width="10" height="7" fill="#f0f0f0"/>
+      <rect x="35" y="40" width="10" height="7" fill="#e8412a"/>
+    </g>
+  </g>
+
+  <!-- Acento rojo — 3px, 500px centrado, 24px bajo el logo -->
+  <rect x="350" y="276" width="500" height="3" fill="url(#accent-line)" rx="1.5"/>
+
+  <!-- Título -->
+  <text x="600" y="378"
+        font-size="96" font-weight="700" letter-spacing="-3"
+        fill="#f0f0f0" text-anchor="middle">Pillbox</text>
+
+  <!-- Tagline -->
+  <text x="600" y="440"
+        font-size="26" font-weight="400" letter-spacing="0.2"
+        fill="#888888" text-anchor="middle">The persistent memory layer for AI agents</text>
+
+  <!-- URL -->
+  <text x="600" y="490"
+        font-size="17" font-weight="400" letter-spacing="1.5"
+        fill="#3a3a3a" text-anchor="middle">github.com/Kevinsillo/pillbox</text>
+</svg>

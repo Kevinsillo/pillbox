@@ -226,8 +226,8 @@ mod tests {
     #[test]
     fn find_by_directory_ok() {
         let mut conn = open_in_memory(DbScope::Local).unwrap();
-        create(&mut conn, &test_bottle("proj", "/home/kevin/proj")).unwrap();
-        let found = find_by_directory(&conn, "/home/kevin/proj").unwrap();
+        create(&mut conn, &test_bottle("proj", "/tmp/test-proj")).unwrap();
+        let found = find_by_directory(&conn, "/tmp/test-proj").unwrap();
         assert!(found.is_some());
         assert_eq!(found.unwrap().name, "proj");
     }

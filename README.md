@@ -45,8 +45,16 @@ CLI and web interface fully localized in **6 languages**: English, Spanish, Fren
 
 ## Quick install
 
+**Linux / macOS**
+
 ```bash
-curl -fsSL https://get.pillbox.dev | bash
+curl -fsSL https://raw.githubusercontent.com/Kevinsillo/pillbox/main/install.sh | bash
+```
+
+**Windows** (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/Kevinsillo/pillbox/main/install.ps1 | iex
 ```
 
 This installs:
@@ -83,12 +91,9 @@ pillbox skill install             # Install the Pillbox skill
 pillbox bottle init               # Initialize a project
 ```
 
-Full reference → [pillbox.dev/reference/cli](https://kevinsillo.github.io/pillbox/reference/cli)
+Full reference → [kevinsillo.github.io/pillbox/reference/cli](https://kevinsillo.github.io/pillbox/reference/cli)
 
 ## Web interface
-
-<!-- screenshot: WebUI dashboard showing bottles, active prescription, and recent pills -->
-<!-- replace with: resources/screenshots/webui-dashboard.png -->
 
 ## Architecture
 
@@ -102,10 +107,6 @@ Pillbox is split across four repositories that work together as a single system:
 The MCP server communicates with the binary via `pillbox exec` — a JSON stdin/stdout dispatcher. All persistence lives in the Rust core; the MCP layer has no direct database dependency.
 
 The web interface is built with Vite and embedded into the binary at compile time via `rust-embed`. Served at `http://localhost:4242` with no external dependencies.
-
-## Roadmap
-
-<img src="resources/roadmap.svg" alt="Roadmap">
 
 ## License
 

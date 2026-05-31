@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.artifact }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact: pillbox-linux-x86_64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            artifact: pillbox-linux-aarch64
+            use_cross: true
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: pillbox-darwin-aarch64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: pillbox-darwin-x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: pillbox-windows-x86_64.exe
+            ext: .exe
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact: pillbox-windows-aarch64.exe
+            ext: .exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── WebUI ────────────────────────────────────────────────────────────────
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+          package_json_file: webui/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: webui/pnpm-lock.yaml
+
+      - name: Build WebUI
+        run: pnpm install && pnpm build
+        working-directory: webui
+
+      # ── Rust ─────────────────────────────────────────────────────────────────
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core -> core/target
+          key: ${{ matrix.target }}
+
+      - name: Install musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get install -y musl-tools
+
+      - name: Install cross
+        if: matrix.use_cross == true
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      # Native build (all platforms except Linux aarch64)
+      - name: Build
+        if: matrix.use_cross != true
+        run: cargo build --release --target ${{ matrix.target }}
+        working-directory: core
+
+      # Cross build runs from repo root so webui/dist is inside the Docker mount
+      - name: Build (cross)
+        if: matrix.use_cross == true
+        run: cross build --release --target ${{ matrix.target }} --manifest-path core/Cargo.toml
+
+      # ── Package ──────────────────────────────────────────────────────────────
+      - name: Rename binary (Unix)
+        if: matrix.ext != '.exe'
+        run: cp core/target/${{ matrix.target }}/release/pillbox ${{ matrix.artifact }}
+
+      - name: Rename binary (Windows)
+        if: matrix.ext == '.exe'
+        run: Copy-Item core/target/${{ matrix.target }}/release/pillbox.exe ${{ matrix.artifact }}
+        shell: pwsh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  # ── GitHub Release ────────────────────────────────────────────────────────────
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bin-*
+          merge-multiple: true
+          path: artifacts/
+
+      - name: Checksums
+        run: cd artifacts && sha256sum * > SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG.md
+          files: artifacts/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: true
