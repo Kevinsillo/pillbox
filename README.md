@@ -95,6 +95,12 @@ Full reference → [kevinsillo.github.io/pillbox/reference/cli](https://kevinsil
 
 ## Web interface
 
+<p align="center">
+  <img src="resources/screenshots/webui-dashboard.png" alt="Pillbox WebUI dashboard" width="900">
+</p>
+
+The web dashboard gives you a visual overview of any bottle: open prescriptions, recent pills with their compound tags, activity chart, and database size. Accessible at `http://localhost:4242` when the server is running.
+
 ## Architecture
 
 Pillbox is split across four repositories that work together as a single system:
