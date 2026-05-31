@@ -1,17 +1,13 @@
-<svg width="720" height="70" viewBox="0 0 720 70" xmlns="http://www.w3.org/2000/svg"
+<svg width="580" height="70" viewBox="0 0 580 70" xmlns="http://www.w3.org/2000/svg"
      font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif"
      shape-rendering="geometricPrecision" text-rendering="optimizeLegibility">
   <defs>
     <style>
-      .bg   { fill: #0a0a0a; }
       .t1   { fill: #f0f0f0; }
       .t2   { fill: #888888; }
-      .dim  { fill: #444444; }
       @media (prefers-color-scheme: light) {
-        .bg  { fill: #fafafa; }
         .t1  { fill: #18181b; }
         .t2  { fill: #71717a; }
-        .dim { fill: #a1a1aa; }
       }
     </style>
     <linearGradient id="star-fill" x1="0" y1="0" x2="0" y2="1">
@@ -19,8 +15,6 @@
       <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
   </defs>
-
-  <rect width="720" height="70" class="bg"/>
 
   <!-- Star -->
   <g transform="translate(18, 14) scale(1.75)">
@@ -31,7 +25,4 @@
   <!-- Text -->
   <text x="66" y="31" font-size="18" font-weight="600" class="t1">Star Pillbox on GitHub</text>
   <text x="66" y="51" font-size="13" class="t2">If you find it useful, it only takes a second and helps the project grow</text>
-
-  <!-- Arrow -->
-  <text x="704" y="42" font-size="20" text-anchor="middle" class="dim">›</text>
 </svg>

@@ -6,13 +6,19 @@
 
 ***The persistent memory layer for AI agents — structured, searchable, and built in Rust.***
 
-<a href="https://github.com/Kevinsillo/pillbox/stargazers">
-  <img src="resources/star-banner.svg" alt="Star Pillbox on GitHub" width="720">
-</a>
+[![Release](https://img.shields.io/github/v/release/Kevinsillo/pillbox?style=flat-square&color=e36209)](https://github.com/Kevinsillo/pillbox/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/Kevinsillo/pillbox/release.yml?style=flat-square)](https://github.com/Kevinsillo/pillbox/actions)
+[![License](https://img.shields.io/github/license/Kevinsillo/pillbox?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-blue?style=flat-square)](https://github.com/Kevinsillo/pillbox/releases/latest)
+[![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen?style=flat-square&logo=node.js)](https://nodejs.org)
 
 </div>
 
 Pillbox gives AI agents a structured, searchable memory that survives across sessions. Instead of relying on context windows and ad-hoc notes, the agent actively writes and retrieves knowledge as it works — decisions, bugs fixed, patterns discovered, personal conventions.
+
+<a href="https://github.com/Kevinsillo/pillbox/stargazers">
+  <img src="resources/star-banner.svg" alt="Star Pillbox on GitHub" width="720">
+</a>
 
 ## Why Pillbox?
 
@@ -22,6 +28,7 @@ Modern AI agents are stateless by default. Every session starts from scratch. Pi
 - **Capsules** — personal, cross-project knowledge. Your conventions, workflow preferences, environment context, and long-term goals.
 
 The agent writes knowledge proactively during work, and retrieves it at the start of new sessions. Over time, the agent builds a rich, searchable model of both the project and the person it's working with.
+
 ## How it works in practice
 
 You install Pillbox once. From that point, the agent handles everything.
