@@ -80,7 +80,7 @@ pub(super) fn extract_and_run(bytes: &[u8]) -> Result<()> {
 /// para que el usuario pueda interactuar con él.
 fn run_install_script(dir: &Path) -> Result<()> {
     #[cfg(unix)]
-    let status = std::process::Command::new("sh")
+    let status = std::process::Command::new("bash")
         .arg("install.sh")
         .current_dir(dir)
         .status()
