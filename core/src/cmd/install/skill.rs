@@ -1,22 +1,22 @@
-//! Instalación y desinstalación de la skill desde GitHub Releases.
+//! Instalación y desinstalación de skills desde GitHub.
 
 use anyhow::{Context, Result};
 
-use super::{github, manifest};
+use super::{extract_and_run, github, manifest};
 
 const REPO: &str = "kevinsillo/pillbox-skills";
 
-/// Instala la skill en `dest_dir` (directorio de skill del proveedor) desde la última
-/// release de GitHub usando el manifest.
-pub fn install(dest_dir: &std::path::Path) -> Result<String> {
-    let (version, mfst) = github::fetch_manifest(REPO).context("failed to fetch skill manifest")?;
-    let bytes = github::download_asset(REPO, &version, &mfst.asset)
-        .context("failed to download skill asset")?;
-    manifest::extract(&mfst, &bytes, dest_dir)?;
-    Ok(version)
+/// Descarga el repo de skills desde la rama `main` y ejecuta su script de instalación.
+///
+/// El script (`install.sh` / `install.ps1`) detecta los proveedores instalados,
+/// pregunta al usuario qué instalar y copia skills, agents y commands a sus rutas.
+pub fn install() -> Result<()> {
+    let bytes = github::download_repo_tarball(REPO)
+        .context("failed to download skills repository")?;
+    extract_and_run(&bytes)
 }
 
-/// Desinstala la skill eliminando su directorio.
+/// Desinstala la skill eliminando su directorio en el proveedor indicado.
 pub fn uninstall(dest_dir: &std::path::Path) -> Result<bool> {
     manifest::remove_dir(dest_dir)
 }

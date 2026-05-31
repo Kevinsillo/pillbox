@@ -1,31 +1,20 @@
-//! Instalación y desinstalación del servidor MCP desde GitHub Releases.
+//! Instalación y desinstalación del servidor MCP desde GitHub.
 
 use anyhow::{Context, Result};
 use pillbox::config::Provider;
 
-use super::{github, manifest};
+use super::{extract_and_run, github, manifest};
 
 const REPO: &str = "kevinsillo/pillbox-mcp";
 
-/// Instala el servidor MCP desde la última release de GitHub y registra su entrada
-/// en la config del proveedor indicado.
-pub fn install(provider: Provider, dest_dir: &std::path::Path) -> Result<String> {
-    let (version, mfst) = github::fetch_manifest(REPO).context("failed to fetch MCP manifest")?;
-    let bytes = github::download_asset(REPO, &version, &mfst.asset)
-        .context("failed to download MCP asset")?;
-
-    manifest::extract(&mfst, &bytes, dest_dir)?;
-
-    if let Some(entry) = manifest::mcp_entry(&mfst) {
-        manifest::register_mcp(
-            provider,
-            &provider.mcp_config_path(),
-            &entry.command,
-            &dest_dir.join(&entry.entry),
-        )?;
-    }
-
-    Ok(version)
+/// Descarga el repo MCP desde la rama `main` y ejecuta su script de instalación.
+///
+/// El script (`install.sh` / `install.ps1`) construye el bundle, lo copia a
+/// `~/.pillbox/mcp/` y registra la entrada MCP en los proveedores detectados.
+pub fn install() -> Result<()> {
+    let bytes = github::download_repo_tarball(REPO)
+        .context("failed to download MCP repository")?;
+    extract_and_run(&bytes)
 }
 
 /// Desinstala el servidor MCP eliminando su directorio y la entrada del proveedor.

@@ -112,13 +112,13 @@ async fn main() -> Result<()> {
             None => cmd_sub_help("prescription"),
         },
         Some(Command::Mcp { cmd }) => match cmd {
-            Some(McpCommand::Install { provider }) => cmd::mcp::cmd_mcp_install(provider),
+            Some(McpCommand::Install) => cmd::mcp::cmd_mcp_install(),
             Some(McpCommand::Uninstall { provider }) => cmd::mcp::cmd_mcp_uninstall(provider),
             Some(McpCommand::Run) => cmd::mcp::cmd_mcp_run(),
             None => cmd::mcp::cmd_mcp_status(),
         },
         Some(Command::Skill { cmd }) => match cmd {
-            Some(SkillCommand::Install { provider }) => cmd::skill::cmd_skill_install(provider),
+            Some(SkillCommand::Install) => cmd::skill::cmd_skill_install(),
             Some(SkillCommand::Uninstall { provider }) => cmd::skill::cmd_skill_uninstall(provider),
             None => cmd::skill::cmd_skill_status(),
         },

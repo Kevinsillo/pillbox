@@ -40,8 +40,7 @@ pub mod fmt {
     };
     pub use super::logo::print_logo;
     pub use super::mcp::{
-        mcp_installed, mcp_not_installed, mcp_uninstalled, skill_installed, skill_not_installed,
-        skill_uninstalled,
+        mcp_not_installed, mcp_uninstalled, skill_not_installed, skill_uninstalled,
     };
     pub use super::pill::pill_detail;
     pub use super::prescription::{

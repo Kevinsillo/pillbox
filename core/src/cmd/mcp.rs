@@ -8,11 +8,11 @@ use crate::output;
 
 use super::install;
 
-/// Descarga e instala el servidor MCP desde la última release de GitHub.
+/// Descarga el repo MCP desde GitHub y ejecuta su script de instalación.
 ///
-/// Requiere Node.js >= 18 en el PATH. El proveedor destino se resuelve vía
-/// `--provider`, detección o prompt (ver [`install::resolve_provider`]).
-pub fn cmd_mcp_install(provider: Option<String>) -> Result<()> {
+/// El script requiere Node.js >= 18, construye el bundle, lo instala y registra
+/// la entrada MCP en los proveedores detectados.
+pub fn cmd_mcp_install() -> Result<()> {
     let node_ok = std::process::Command::new("node")
         .arg("--version")
         .output()
@@ -33,15 +33,8 @@ pub fn cmd_mcp_install(provider: Option<String>) -> Result<()> {
         anyhow::bail!("{}", t!("mcp.node_required"));
     }
 
-    let provider = install::resolve_provider(provider.as_deref())?;
-    let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
-    let cfg = provider.mcp_config_path();
-
     println!("\n  {}", t!("mcp.downloading").dimmed());
-    let version = install::mcp::install(provider, &mcp_dir)?;
-
-    output::fmt::mcp_installed(&mcp_dir, &cfg, &version);
-    Ok(())
+    install::mcp::install()
 }
 
 /// Arranca el loop persistente NDJSON sobre stdin/stdout.

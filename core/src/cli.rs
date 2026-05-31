@@ -217,11 +217,7 @@ pub enum CapsuleCommand {
 #[derive(Subcommand)]
 pub enum McpCommand {
     /// Instala el servidor MCP en ~/.pillbox/mcp/.
-    Install {
-        /// Proveedor destino (claude | opencode). Si se omite, se detecta o se pregunta.
-        #[arg(long)]
-        provider: Option<String>,
-    },
+    Install,
     /// Desinstala el servidor MCP.
     Uninstall {
         /// Proveedor destino (claude | opencode). Si se omite, se detecta o se pregunta.
@@ -238,12 +234,8 @@ pub enum McpCommand {
 
 #[derive(Subcommand)]
 pub enum SkillCommand {
-    /// Instala la skill del agente IA en su directorio de skills.
-    Install {
-        /// Proveedor destino (claude | opencode). Si se omite, se detecta o se pregunta.
-        #[arg(long)]
-        provider: Option<String>,
-    },
+    /// Instala las skills del agente IA en los proveedores detectados.
+    Install,
     /// Desinstala la skill del agente IA.
     Uninstall {
         /// Proveedor destino (claude | opencode). Si se omite, se detecta o se pregunta.

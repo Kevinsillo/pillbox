@@ -77,6 +77,9 @@ rayon = "1"
 # Multiline strings con indentación limpia
 indoc = "2"
 
+# Directorios temporales (descarga e instalación de repos)
+tempfile = "3"
+
 # Detección de privilegios de Administrador (sólo Windows)
 [target.'cfg(windows)'.dependencies]
 is_elevated = "0.1"
@@ -89,4 +92,3 @@ panic         = "abort"
 strip         = true
 
 [dev-dependencies]
-tempfile = "3"

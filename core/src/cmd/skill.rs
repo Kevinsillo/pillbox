@@ -8,20 +8,12 @@ use crate::output;
 
 use super::install;
 
-/// Descarga e instala la skill desde la última release de GitHub.
+/// Descarga el repo de skills desde GitHub y ejecuta su script de instalación.
 ///
-/// El proveedor destino se resuelve vía `--provider`, detección o prompt
-/// (ver [`install::resolve_provider`]).
-pub fn cmd_skill_install(provider: Option<String>) -> Result<()> {
-    let provider = install::resolve_provider(provider.as_deref())?;
-    let skill_path = provider.skill_path();
-    let skill_dir = skill_path.parent().unwrap().to_path_buf();
-
+/// El script detecta los proveedores instalados e instala de forma interactiva.
+pub fn cmd_skill_install() -> Result<()> {
     println!("\n  {}", t!("skill.downloading").dimmed());
-    let version = install::skill::install(&skill_dir)?;
-
-    output::fmt::skill_installed(&skill_path, &version);
-    Ok(())
+    install::skill::install()
 }
 
 /// Muestra el estado de instalación de la skill junto a su ayuda.
