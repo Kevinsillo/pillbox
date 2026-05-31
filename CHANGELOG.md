@@ -1,3 +1,9 @@
+## [0.15.0] - 2026-05-31
+
+### 🚀 Features
+
+- *(update)* Añadir comando pillbox update para auto-actualización
+
 ## [0.14.3] - 2026-05-31
 
 ### 🐛 Bug Fixes
@@ -7,6 +13,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* Cross-compilar darwin-x86_64 desde runner macos-latest ARM
+- *(release)* V0.14.3
 
 ## [0.14.2] - 2026-05-31
 
