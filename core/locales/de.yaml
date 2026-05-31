@@ -300,6 +300,7 @@ help:
     skill: "Verwaltet die KI-Agent-Skill."
     lang: "Ändert oder zeigt die CLI-Sprache."
     uninstall: "Deinstalliert Pillbox-Komponenten."
+    update: "Nach einer neuen Version suchen und das Update installieren."
     "bottle migrate": "Migriert die Bottle zwischen lokaler und globaler DB."
   sub:
     pillbox:
@@ -312,6 +313,7 @@ help:
       skill: "Verwaltet die KI-Agent-Skill."
       lang: "Ändert oder zeigt die CLI-Sprache."
       uninstall: "Deinstalliert Pillbox-Komponenten."
+      update: "Nach einer neuen Version suchen und das Update installieren."
       help: "Zeigt diese Hilfe."
     serve:
       install: "Installiert den HTTP-Server als Systemdienst."
@@ -351,3 +353,19 @@ lang:
   set:
     ok: "Sprache geändert zu: %{lang}"
     invalid: "Nicht unterstützte Sprache: '%{lang}'. Verfügbar: %{available}"
+
+update:
+  checking: "Nach Updates suchen..."
+  up_to_date: "Pillbox ist bereits aktuell (%{version})"
+  available: "Update verfügbar"
+  confirm: "Jetzt aktualisieren?"
+  downloading: "%{version} wird heruntergeladen..."
+  updated: "Pillbox aktualisiert"
+  labels:
+    current: "aktuelle Version"
+    latest: "neue Version"
+    version: "Version"
+    path: "Pfad"
+  error:
+    no_binary: "Kein Binary für diese Plattform verfügbar (%{platform})."
+    replace: "Binary konnte nicht ersetzt werden: %{err}"

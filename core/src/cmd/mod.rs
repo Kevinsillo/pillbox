@@ -16,3 +16,4 @@ pub mod shared;
 pub mod skill;
 pub mod status;
 pub mod uninstall;
+pub mod update;

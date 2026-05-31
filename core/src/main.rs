@@ -127,6 +127,7 @@ async fn main() -> Result<()> {
             None => cmd::lang::cmd_lang_show(&render_help("lang")),
         },
         Some(Command::Uninstall) => cmd::uninstall::run(),
+        Some(Command::Update) => cmd::update::run(),
         Some(Command::Help) => cmd_root_help(),
     }
 }

@@ -300,6 +300,7 @@ help:
     skill: "Manage the AI agent skill."
     lang: "Change or show the CLI language."
     uninstall: "Uninstall Pillbox components."
+    update: "Check for a new version and install the update."
     "bottle migrate": "Migrate bottle between local and global DB."
   sub:
     pillbox:
@@ -312,6 +313,7 @@ help:
       skill: "Manage the AI agent skill."
       lang: "Change or show the CLI language."
       uninstall: "Uninstall Pillbox components."
+      update: "Check for a new version and install the update."
       help: "Show this help."
     serve:
       install: "Install the HTTP server as a system service."
@@ -351,3 +353,19 @@ lang:
   set:
     ok: "Language changed to: %{lang}"
     invalid: "Unsupported language: '%{lang}'. Available: %{available}"
+
+update:
+  checking: "Checking for updates..."
+  up_to_date: "Pillbox is already up to date (%{version})"
+  available: "Update available"
+  confirm: "Update now?"
+  downloading: "Downloading %{version}..."
+  updated: "Pillbox updated"
+  labels:
+    current: "current version"
+    latest: "new version"
+    version: "version"
+    path: "path"
+  error:
+    no_binary: "No binary available for this platform (%{platform})."
+    replace: "Could not replace the binary: %{err}"

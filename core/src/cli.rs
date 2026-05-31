@@ -82,6 +82,9 @@ pub enum Command {
     /// Desinstala componentes de Pillbox.
     Uninstall,
 
+    /// Comprueba si hay una versión nueva e instala la actualización.
+    Update,
+
     /// Muestra esta ayuda.
     Help,
 }

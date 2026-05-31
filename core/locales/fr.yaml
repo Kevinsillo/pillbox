@@ -300,6 +300,7 @@ help:
     skill: "Gère la skill de l'agent IA."
     lang: "Change ou affiche la langue du CLI."
     uninstall: "Désinstalle les composants de Pillbox."
+    update: "Vérifier une nouvelle version et installer la mise à jour."
     "bottle migrate": "Migre la bottle entre DB locale et globale."
   sub:
     pillbox:
@@ -312,6 +313,7 @@ help:
       skill: "Gère la skill de l'agent IA."
       lang: "Change ou affiche la langue du CLI."
       uninstall: "Désinstalle les composants de Pillbox."
+      update: "Vérifier une nouvelle version et installer la mise à jour."
       help: "Affiche cette aide."
     serve:
       install: "Installe le serveur HTTP en tant que service système."
@@ -351,3 +353,19 @@ lang:
   set:
     ok: "Langue changée en : %{lang}"
     invalid: "Langue non prise en charge : '%{lang}'. Disponibles : %{available}"
+
+update:
+  checking: "Vérification des mises à jour..."
+  up_to_date: "Pillbox est déjà à jour (%{version})"
+  available: "Mise à jour disponible"
+  confirm: "Mettre à jour maintenant ?"
+  downloading: "Téléchargement de %{version}..."
+  updated: "Pillbox mis à jour"
+  labels:
+    current: "version actuelle"
+    latest: "nouvelle version"
+    version: "version"
+    path: "chemin"
+  error:
+    no_binary: "Aucun binaire disponible pour cette plateforme (%{platform})."
+    replace: "Impossible de remplacer le binaire : %{err}"

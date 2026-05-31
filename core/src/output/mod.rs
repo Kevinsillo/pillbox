@@ -10,6 +10,7 @@ pub(crate) mod pill;
 pub(crate) mod prescription;
 pub(crate) mod status;
 pub(crate) mod table;
+pub(crate) mod update;
 
 /// Trunca una cadena Unicode a un máximo de caracteres, añadiendo `…` si se recorta.
 pub(crate) fn truncate(s: &str, max: usize) -> String {
@@ -51,4 +52,5 @@ pub mod fmt {
         component_status_with_help, db_not_found, help_with_status, serve_started, serve_status,
         serve_stopped, status, StatusBottle, StatusDb, StatusDbResult,
     };
+    pub use super::update::{update_available, update_done, update_up_to_date};
 }
