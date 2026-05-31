@@ -63,7 +63,7 @@ This installs:
 - The Pillbox skill for your AI coding assistant
 - The global database at `~/.pillbox/pillbox.db`
 
-See [pillbox-docs](https://github.com/Kevinsillo/pillbox-docs) for manual installation and platform-specific options.
+See the [installation guide](https://kevinsillo.github.io/pillbox-docs/getting-started/installation/) for manual installation and platform-specific options.
 ## Quick start
 
 **1. Initialize a project**
@@ -91,7 +91,7 @@ pillbox skill install             # Install the Pillbox skill
 pillbox bottle init               # Initialize a project
 ```
 
-Full reference → [kevinsillo.github.io/pillbox/reference/cli](https://kevinsillo.github.io/pillbox/reference/cli)
+Full reference → [kevinsillo.github.io/pillbox-docs/reference/cli/](https://kevinsillo.github.io/pillbox-docs/reference/cli/)
 
 ## Web interface
 
