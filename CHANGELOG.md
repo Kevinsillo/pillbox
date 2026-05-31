@@ -1,8 +1,19 @@
+## [0.15.2] - 2026-05-31
+
+### 🐛 Bug Fixes
+
+- *(update)* Importar CommandExt para creation_flags en Windows
+
+### 📚 Documentation
+
+- *(readme)* Actualizar enlaces de documentación a GitHub Pages
+
 ## [0.15.1] - 2026-05-31
 
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* Añadir checkout en job finalize para gh release download
+- *(release)* V0.15.1
 
 ## [0.15.0] - 2026-05-31
 
