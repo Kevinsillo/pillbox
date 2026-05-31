@@ -265,11 +265,17 @@ skill:
   error:
     download: "Error al descargar la skill desde %{url}"
 
+provider:
+  select: "¿Qué agente de IA?"
+  none_detected: "No se detectó ningún agente de IA compatible. Instala Claude Code u OpenCode primero."
+  non_tty: "Sin terminal interactiva. Pasa --provider claude o --provider opencode."
+  invalid: "Proveedor desconocido '%{value}'. Usa 'claude' u 'opencode'."
+
 uninstall:
   items:
     serve: "Servicio del sistema (pillbox-daemon)"
     mcp: "Servidor MCP (~/.pillbox/mcp/)"
-    skill: "Skill de Claude Code (~/.claude/skills/pillbox/)"
+    skill: "Skill del agente de IA (pillbox)"
     db: "Base de datos global (~/.pillbox/pillbox.db)"
     config: "Configuración (~/.pillbox/lang, ~/.pillbox/serve.port)"
     bin: "Binario (%{path})"
@@ -287,7 +293,7 @@ help:
     pills: "Operaciones sobre pills del bottle actual."
     prescription: "Operaciones sobre prescriptions del bottle actual."
     mcp: "Gestiona el servidor MCP."
-    skill: "Gestiona la skill de Claude Code."
+    skill: "Gestiona la skill del agente de IA."
     lang: "Cambia o muestra el idioma del CLI."
     uninstall: "Desinstala componentes de Pillbox."
     "bottle migrate": "Migra el bottle entre DB local y global."
@@ -299,7 +305,7 @@ help:
       pills: "Operaciones sobre pills del bottle actual."
       prescription: "Operaciones sobre prescriptions del bottle actual."
       mcp: "Gestiona el servidor MCP."
-      skill: "Gestiona la skill de Claude Code."
+      skill: "Gestiona la skill del agente de IA."
       lang: "Cambia o muestra el idioma del CLI."
       uninstall: "Desinstala componentes de Pillbox."
       help: "Muestra esta ayuda."
@@ -331,8 +337,8 @@ help:
       install: "Instala el servidor MCP."
       uninstall: "Desinstala el servidor MCP."
     skill:
-      install: "Instala la skill de Claude Code."
-      uninstall: "Desinstala la skill de Claude Code."
+      install: "Instala la skill del agente de IA."
+      uninstall: "Desinstala la skill del agente de IA."
     lang:
       set: "Cambia el idioma del CLI."
 

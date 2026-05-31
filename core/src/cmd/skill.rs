@@ -8,9 +8,13 @@ use crate::output;
 
 use super::install;
 
-/// Descarga e instala la skill de Claude Code desde la última release de GitHub.
-pub fn cmd_skill_install() -> Result<()> {
-    let skill_path = pillbox::config::skill_path();
+/// Descarga e instala la skill desde la última release de GitHub.
+///
+/// El proveedor destino se resuelve vía `--provider`, detección o prompt
+/// (ver [`install::resolve_provider`]).
+pub fn cmd_skill_install(provider: Option<String>) -> Result<()> {
+    let provider = install::resolve_provider(provider.as_deref())?;
+    let skill_path = provider.skill_path();
     let skill_dir = skill_path.parent().unwrap().to_path_buf();
 
     println!("\n  {}", t!("skill.downloading").dimmed());
@@ -29,12 +33,10 @@ pub fn cmd_skill_status() -> Result<()> {
     Ok(())
 }
 
-/// Desinstala la skill eliminando su directorio.
-pub fn cmd_skill_uninstall() -> Result<()> {
-    let skill_dir = pillbox::config::skill_path()
-        .parent()
-        .unwrap()
-        .to_path_buf();
+/// Desinstala la skill eliminando su directorio para el proveedor indicado.
+pub fn cmd_skill_uninstall(provider: Option<String>) -> Result<()> {
+    let provider = install::resolve_provider(provider.as_deref())?;
+    let skill_dir = provider.skill_path().parent().unwrap().to_path_buf();
 
     let removed = install::skill::uninstall(&skill_dir)?;
     if removed {

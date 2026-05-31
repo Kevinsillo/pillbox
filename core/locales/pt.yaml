@@ -265,11 +265,17 @@ skill:
   error:
     download: "Erro ao baixar a skill de %{url}"
 
+provider:
+  select: "Qual agente de IA?"
+  none_detected: "Nenhum agente de IA suportado detectado. Instale o Claude Code ou o OpenCode primeiro."
+  non_tty: "Sem terminal interativo. Passe --provider claude ou --provider opencode."
+  invalid: "Provedor desconhecido '%{value}'. Use 'claude' ou 'opencode'."
+
 uninstall:
   items:
     serve: "Serviço de sistema (pillbox-daemon)"
     mcp: "Servidor MCP (~/.pillbox/mcp/)"
-    skill: "Skill do Claude Code (~/.claude/skills/pillbox/)"
+    skill: "Skill do agente de IA (pillbox)"
     db: "Base de dados global (~/.pillbox/pillbox.db)"
     config: "Configuração (~/.pillbox/lang, ~/.pillbox/serve.port)"
     bin: "Binário (%{path})"
@@ -287,7 +293,7 @@ help:
     pills: "Operações sobre pills da bottle ativa."
     prescription: "Operações sobre prescriptions da bottle ativa."
     mcp: "Gerencia o servidor MCP."
-    skill: "Gerencia a skill do Claude Code."
+    skill: "Gerencia a skill do agente de IA."
     lang: "Altera ou mostra o idioma do CLI."
     uninstall: "Desinstala componentes do Pillbox."
     "bottle migrate": "Migra a bottle entre DB local e global."
@@ -299,7 +305,7 @@ help:
       pills: "Operações sobre pills da bottle ativa."
       prescription: "Operações sobre prescriptions da bottle ativa."
       mcp: "Gerencia o servidor MCP."
-      skill: "Gerencia a skill do Claude Code."
+      skill: "Gerencia a skill do agente de IA."
       lang: "Altera ou mostra o idioma do CLI."
       uninstall: "Desinstala componentes do Pillbox."
       help: "Mostra esta ajuda."
@@ -331,8 +337,8 @@ help:
       install: "Instala o servidor MCP."
       uninstall: "Desinstala o servidor MCP."
     skill:
-      install: "Instala a skill do Claude Code."
-      uninstall: "Desinstala a skill do Claude Code."
+      install: "Instala a skill do agente de IA."
+      uninstall: "Desinstala a skill do agente de IA."
     lang:
       set: "Altera o idioma do CLI."
 

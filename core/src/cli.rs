@@ -67,7 +67,7 @@ pub enum Command {
         cmd: Option<McpCommand>,
     },
 
-    /// Gestiona la skill de Claude Code.
+    /// Gestiona la skill del agente IA.
     Skill {
         #[command(subcommand)]
         cmd: Option<SkillCommand>,
@@ -217,9 +217,17 @@ pub enum CapsuleCommand {
 #[derive(Subcommand)]
 pub enum McpCommand {
     /// Instala el servidor MCP en ~/.pillbox/mcp/.
-    Install,
+    Install {
+        /// Proveedor destino (claude | opencode). Si se omite, se detecta o se pregunta.
+        #[arg(long)]
+        provider: Option<String>,
+    },
     /// Desinstala el servidor MCP.
-    Uninstall,
+    Uninstall {
+        /// Proveedor destino (claude | opencode). Si se omite, se detecta o se pregunta.
+        #[arg(long)]
+        provider: Option<String>,
+    },
     /// Arranca el loop persistente MCP (NDJSON sobre stdin/stdout).
     ///
     /// Invocado por el wrapper TS (`pillboxExec`) como subproceso singleton.
@@ -230,10 +238,18 @@ pub enum McpCommand {
 
 #[derive(Subcommand)]
 pub enum SkillCommand {
-    /// Instala la skill de Claude Code en ~/.claude/skills/pillbox/.
-    Install,
-    /// Desinstala la skill de Claude Code.
-    Uninstall,
+    /// Instala la skill del agente IA en su directorio de skills.
+    Install {
+        /// Proveedor destino (claude | opencode). Si se omite, se detecta o se pregunta.
+        #[arg(long)]
+        provider: Option<String>,
+    },
+    /// Desinstala la skill del agente IA.
+    Uninstall {
+        /// Proveedor destino (claude | opencode). Si se omite, se detecta o se pregunta.
+        #[arg(long)]
+        provider: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

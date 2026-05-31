@@ -115,6 +115,118 @@ pub fn claude_config_path() -> PathBuf {
         .join(".claude.json")
 }
 
+/// Ruta del fichero de configuración de OpenCode: `~/.config/opencode/opencode.json`
+pub fn opencode_config_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("failed to resolve home directory")
+        .join(".config")
+        .join("opencode")
+        .join("opencode.json")
+}
+
+/// Ruta de la skill de OpenCode: `~/.config/opencode/skill/pillbox/SKILL.md`
+///
+/// OpenCode usa el directorio singular `skill`, a diferencia del `skills` de Claude Code.
+pub fn opencode_skill_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("failed to resolve home directory")
+        .join(".config")
+        .join("opencode")
+        .join("skill")
+        .join(env!("CARGO_PKG_NAME"))
+        .join("SKILL.md")
+}
+
+/// Proveedor de asistente IA soportado por Pillbox.
+///
+/// Abstrae las diferencias de instalación entre Claude Code y OpenCode: ruta del
+/// fichero de configuración MCP, ruta de la skill y clave del registro MCP. El resto
+/// del código resuelve un `Provider` (vía flag `--provider`, detección o prompt) y
+/// consulta estos métodos, manteniendo la ruta de Claude intacta por defecto.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Provider {
+    Claude,
+    OpenCode,
+}
+
+impl Provider {
+    /// Todos los proveedores soportados, en orden de presentación.
+    pub const ALL: [Provider; 2] = [Provider::Claude, Provider::OpenCode];
+
+    /// Identificador estable usado por el flag `--provider` (minúsculas).
+    pub fn id(self) -> &'static str {
+        match self {
+            Provider::Claude => "claude",
+            Provider::OpenCode => "opencode",
+        }
+    }
+
+    /// Nombre legible para mensajes y prompts.
+    pub fn label(self) -> &'static str {
+        match self {
+            Provider::Claude => "Claude Code",
+            Provider::OpenCode => "OpenCode",
+        }
+    }
+
+    /// Parsea el valor del flag `--provider` (case-insensitive). `None` si no se reconoce.
+    pub fn parse(value: &str) -> Option<Provider> {
+        match value.to_lowercase().as_str() {
+            "claude" | "claude-code" => Some(Provider::Claude),
+            "opencode" => Some(Provider::OpenCode),
+            _ => None,
+        }
+    }
+
+    /// Directorio cuya existencia indica que el proveedor está instalado.
+    ///
+    /// Coincide con la detección de `skills/install.sh` (única fuente de verdad):
+    /// `~/.claude` para Claude Code, `~/.config/opencode` para OpenCode.
+    fn detect_dir(self) -> PathBuf {
+        let home = dirs::home_dir().expect("failed to resolve home directory");
+        match self {
+            Provider::Claude => home.join(".claude"),
+            Provider::OpenCode => home.join(".config").join("opencode"),
+        }
+    }
+
+    /// `true` si el directorio de configuración del proveedor existe.
+    pub fn is_installed(self) -> bool {
+        self.detect_dir().is_dir()
+    }
+
+    /// Proveedores detectados como instalados, en el orden de [`Provider::ALL`].
+    pub fn detect() -> Vec<Provider> {
+        Self::ALL.into_iter().filter(|p| p.is_installed()).collect()
+    }
+
+    /// Ruta del fichero de configuración MCP del proveedor.
+    pub fn mcp_config_path(self) -> PathBuf {
+        match self {
+            Provider::Claude => claude_config_path(),
+            Provider::OpenCode => opencode_config_path(),
+        }
+    }
+
+    /// Ruta del fichero `SKILL.md` instalado para el proveedor.
+    pub fn skill_path(self) -> PathBuf {
+        match self {
+            Provider::Claude => skill_path(),
+            Provider::OpenCode => opencode_skill_path(),
+        }
+    }
+
+    /// Clave con punto bajo la que vive la entrada MCP de Pillbox en la config del proveedor.
+    ///
+    /// Claude Code anida bajo `mcpServers`; OpenCode bajo `mcp`.
+    pub fn mcp_key(self) -> &'static str {
+        match self {
+            Provider::Claude => "mcpServers.pillbox",
+            Provider::OpenCode => "mcp.pillbox",
+        }
+    }
+}
+
 /// Ruta donde el servicio de sistema persiste el puerto activo: `~/.pillbox/serve.port`
 pub fn serve_port_path() -> PathBuf {
     dirs::home_dir()
@@ -164,5 +276,49 @@ mod tests {
     fn serve_port_path_ends_with_serve_port() {
         let path = serve_port_path();
         assert!(path.ends_with(".pillbox/serve.port"));
+    }
+
+    #[test]
+    fn opencode_config_path_points_to_opencode_json() {
+        let path = opencode_config_path();
+        assert!(path.ends_with("opencode.json"));
+        assert!(path.to_string_lossy().contains("opencode"));
+    }
+
+    #[test]
+    fn opencode_skill_path_uses_singular_skill_dir() {
+        let segments: Vec<String> = opencode_skill_path()
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        assert!(segments.iter().any(|s| s == "opencode"));
+        // OpenCode usa el directorio singular `skill`, nunca el plural `skills`.
+        assert!(segments.iter().any(|s| s == "skill"));
+        assert!(!segments.iter().any(|s| s == "skills"));
+        assert!(segments.iter().any(|s| s == "pillbox"));
+        assert!(opencode_skill_path().ends_with("SKILL.md"));
+    }
+
+    #[test]
+    fn provider_parse_is_case_insensitive() {
+        assert_eq!(Provider::parse("claude"), Some(Provider::Claude));
+        assert_eq!(Provider::parse("Claude"), Some(Provider::Claude));
+        assert_eq!(Provider::parse("claude-code"), Some(Provider::Claude));
+        assert_eq!(Provider::parse("opencode"), Some(Provider::OpenCode));
+        assert_eq!(Provider::parse("OpenCode"), Some(Provider::OpenCode));
+        assert_eq!(Provider::parse("vscode"), None);
+        assert_eq!(Provider::parse(""), None);
+    }
+
+    #[test]
+    fn provider_paths_and_keys_per_variant() {
+        assert_eq!(Provider::Claude.mcp_config_path(), claude_config_path());
+        assert_eq!(Provider::OpenCode.mcp_config_path(), opencode_config_path());
+        assert_eq!(Provider::Claude.skill_path(), skill_path());
+        assert_eq!(Provider::OpenCode.skill_path(), opencode_skill_path());
+        assert_eq!(Provider::Claude.mcp_key(), "mcpServers.pillbox");
+        assert_eq!(Provider::OpenCode.mcp_key(), "mcp.pillbox");
+        assert_eq!(Provider::Claude.id(), "claude");
+        assert_eq!(Provider::OpenCode.id(), "opencode");
     }
 }

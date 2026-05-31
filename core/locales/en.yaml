@@ -265,11 +265,17 @@ skill:
   error:
     download: "Error downloading skill from %{url}"
 
+provider:
+  select: "Which AI agent?"
+  none_detected: "No supported AI agent detected. Install Claude Code or OpenCode first."
+  non_tty: "No interactive terminal. Pass --provider claude or --provider opencode."
+  invalid: "Unknown provider '%{value}'. Use 'claude' or 'opencode'."
+
 uninstall:
   items:
     serve: "System service (pillbox-daemon)"
     mcp: "MCP server (~/.pillbox/mcp/)"
-    skill: "Claude Code skill (~/.claude/skills/pillbox/)"
+    skill: "AI agent skill (pillbox)"
     db: "Global database (~/.pillbox/pillbox.db)"
     config: "Configuration (~/.pillbox/lang, ~/.pillbox/serve.port)"
     bin: "Binary (%{path})"
@@ -287,7 +293,7 @@ help:
     pills: "Pill operations on the active bottle."
     prescription: "Prescription operations on the active bottle."
     mcp: "Manage the MCP server."
-    skill: "Manage the Claude Code skill."
+    skill: "Manage the AI agent skill."
     lang: "Change or show the CLI language."
     uninstall: "Uninstall Pillbox components."
     "bottle migrate": "Migrate bottle between local and global DB."
@@ -299,7 +305,7 @@ help:
       pills: "Pill operations on the active bottle."
       prescription: "Prescription operations on the active bottle."
       mcp: "Manage the MCP server."
-      skill: "Manage the Claude Code skill."
+      skill: "Manage the AI agent skill."
       lang: "Change or show the CLI language."
       uninstall: "Uninstall Pillbox components."
       help: "Show this help."
@@ -331,8 +337,8 @@ help:
       install: "Install the MCP server."
       uninstall: "Uninstall the MCP server."
     skill:
-      install: "Install the Claude Code skill."
-      uninstall: "Uninstall the Claude Code skill."
+      install: "Install the AI agent skill."
+      uninstall: "Uninstall the AI agent skill."
     lang:
       set: "Change the CLI language."
 

@@ -10,8 +10,9 @@ use super::install;
 
 /// Descarga e instala el servidor MCP desde la última release de GitHub.
 ///
-/// Requiere Node.js >= 18 en el PATH.
-pub fn cmd_mcp_install() -> Result<()> {
+/// Requiere Node.js >= 18 en el PATH. El proveedor destino se resuelve vía
+/// `--provider`, detección o prompt (ver [`install::resolve_provider`]).
+pub fn cmd_mcp_install(provider: Option<String>) -> Result<()> {
     let node_ok = std::process::Command::new("node")
         .arg("--version")
         .output()
@@ -32,13 +33,14 @@ pub fn cmd_mcp_install() -> Result<()> {
         anyhow::bail!("{}", t!("mcp.node_required"));
     }
 
+    let provider = install::resolve_provider(provider.as_deref())?;
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
-    let claude_cfg = pillbox::config::claude_config_path();
+    let cfg = provider.mcp_config_path();
 
     println!("\n  {}", t!("mcp.downloading").dimmed());
-    let version = install::mcp::install(&mcp_dir, &claude_cfg)?;
+    let version = install::mcp::install(provider, &mcp_dir)?;
 
-    output::fmt::mcp_installed(&mcp_dir, &claude_cfg, &version);
+    output::fmt::mcp_installed(&mcp_dir, &cfg, &version);
     Ok(())
 }
 
@@ -60,12 +62,12 @@ pub fn cmd_mcp_status() -> Result<()> {
     Ok(())
 }
 
-/// Desinstala el servidor MCP eliminando su directorio y la entrada en `~/.claude.json`.
-pub fn cmd_mcp_uninstall() -> Result<()> {
+/// Desinstala el servidor MCP eliminando su directorio y la entrada del proveedor.
+pub fn cmd_mcp_uninstall(provider: Option<String>) -> Result<()> {
+    let provider = install::resolve_provider(provider.as_deref())?;
     let mcp_dir = pillbox::config::mcp_path().parent().unwrap().to_path_buf();
-    let claude_cfg = pillbox::config::claude_config_path();
 
-    let removed = install::mcp::uninstall(&mcp_dir, &claude_cfg)?;
+    let removed = install::mcp::uninstall(provider, &mcp_dir)?;
     if removed {
         output::fmt::mcp_uninstalled();
     } else {

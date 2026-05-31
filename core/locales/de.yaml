@@ -265,11 +265,17 @@ skill:
   error:
     download: "Fehler beim Herunterladen der Skill von %{url}"
 
+provider:
+  select: "Welcher KI-Agent?"
+  none_detected: "Kein unterstützter KI-Agent erkannt. Installiere zuerst Claude Code oder OpenCode."
+  non_tty: "Kein interaktives Terminal. Übergib --provider claude oder --provider opencode."
+  invalid: "Unbekannter Anbieter '%{value}'. Verwende 'claude' oder 'opencode'."
+
 uninstall:
   items:
     serve: "Systemdienst (pillbox-daemon)"
     mcp: "MCP-Server (~/.pillbox/mcp/)"
-    skill: "Claude Code Skill (~/.claude/skills/pillbox/)"
+    skill: "KI-Agent-Skill (pillbox)"
     db: "Globale Datenbank (~/.pillbox/pillbox.db)"
     config: "Konfiguration (~/.pillbox/lang, ~/.pillbox/serve.port)"
     bin: "Binärdatei (%{path})"
@@ -287,7 +293,7 @@ help:
     pills: "Pill-Operationen der aktiven Bottle."
     prescription: "Prescription-Operationen der aktiven Bottle."
     mcp: "Verwaltet den MCP-Server."
-    skill: "Verwaltet die Claude Code Skill."
+    skill: "Verwaltet die KI-Agent-Skill."
     lang: "Ändert oder zeigt die CLI-Sprache."
     uninstall: "Deinstalliert Pillbox-Komponenten."
     "bottle migrate": "Migriert die Bottle zwischen lokaler und globaler DB."
@@ -299,7 +305,7 @@ help:
       pills: "Pill-Operationen der aktiven Bottle."
       prescription: "Prescription-Operationen der aktiven Bottle."
       mcp: "Verwaltet den MCP-Server."
-      skill: "Verwaltet die Claude Code Skill."
+      skill: "Verwaltet die KI-Agent-Skill."
       lang: "Ändert oder zeigt die CLI-Sprache."
       uninstall: "Deinstalliert Pillbox-Komponenten."
       help: "Zeigt diese Hilfe."
@@ -331,8 +337,8 @@ help:
       install: "Installiert den MCP-Server."
       uninstall: "Deinstalliert den MCP-Server."
     skill:
-      install: "Installiert die Claude Code Skill."
-      uninstall: "Deinstalliert die Claude Code Skill."
+      install: "Installiert die KI-Agent-Skill."
+      uninstall: "Deinstalliert die KI-Agent-Skill."
     lang:
       set: "Ändert die CLI-Sprache."
 

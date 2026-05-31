@@ -265,11 +265,17 @@ skill:
   error:
     download: "Errore durante il download della skill da %{url}"
 
+provider:
+  select: "Quale agente IA?"
+  none_detected: "Nessun agente IA supportato rilevato. Installa prima Claude Code o OpenCode."
+  non_tty: "Nessun terminale interattivo. Passa --provider claude o --provider opencode."
+  invalid: "Provider sconosciuto '%{value}'. Usa 'claude' o 'opencode'."
+
 uninstall:
   items:
     serve: "Servizio di sistema (pillbox-daemon)"
     mcp: "Server MCP (~/.pillbox/mcp/)"
-    skill: "Skill di Claude Code (~/.claude/skills/pillbox/)"
+    skill: "Skill dell'agente IA (pillbox)"
     db: "Database globale (~/.pillbox/pillbox.db)"
     config: "Configurazione (~/.pillbox/lang, ~/.pillbox/serve.port)"
     bin: "Binario (%{path})"
@@ -287,7 +293,7 @@ help:
     pills: "Operazioni sulle pills della bottle attiva."
     prescription: "Operazioni sulle prescriptions della bottle attiva."
     mcp: "Gestisce il server MCP."
-    skill: "Gestisce la skill di Claude Code."
+    skill: "Gestisce la skill dell'agente IA."
     lang: "Cambia o mostra la lingua del CLI."
     uninstall: "Disinstalla componenti di Pillbox."
     "bottle migrate": "Migra la bottle tra DB locale e globale."
@@ -299,7 +305,7 @@ help:
       pills: "Operazioni sulle pills della bottle attiva."
       prescription: "Operazioni sulle prescriptions della bottle attiva."
       mcp: "Gestisce il server MCP."
-      skill: "Gestisce la skill di Claude Code."
+      skill: "Gestisce la skill dell'agente IA."
       lang: "Cambia o mostra la lingua del CLI."
       uninstall: "Disinstalla componenti di Pillbox."
       help: "Mostra questo aiuto."
@@ -331,8 +337,8 @@ help:
       install: "Installa il server MCP."
       uninstall: "Disinstalla il server MCP."
     skill:
-      install: "Installa la skill di Claude Code."
-      uninstall: "Disinstalla la skill di Claude Code."
+      install: "Installa la skill dell'agente IA."
+      uninstall: "Disinstalla la skill dell'agente IA."
     lang:
       set: "Cambia la lingua del CLI."
 

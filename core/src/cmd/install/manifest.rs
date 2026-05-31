@@ -1,10 +1,18 @@
 //! Ejecución del manifest `pillbox.json` para instalar/desinstalar componentes.
 //!
 //! El manifest describe cómo instalar el asset descargado (tarball o fichero único)
-//! y acciones opcionales de post-instalación (registrar en `~/.claude.json`).
+//! y, opcionalmente, una entrada MCP neutral (comando + entry point) que el caller
+//! registra en la config del proveedor elegido.
+//!
+//! Separación de responsabilidades:
+//! - [`extract`] vuelca el asset en `dest_dir`. Es **genérico** (sin proveedor) y su
+//!   contrato con el manifest remoto es byte-idéntico al histórico.
+//! - [`register_mcp`] / [`unregister_mcp`] escriben/limpian la entrada MCP en la config
+//!   de un [`Provider`] concreto, usando el esquema propio de cada uno.
 
 use anyhow::{Context, Result};
 use flate2::read::GzDecoder;
+use pillbox::config::Provider;
 use serde::Deserialize;
 use std::path::Path;
 use tar::Archive;
@@ -35,13 +43,21 @@ pub enum InstallType {
 
 #[derive(Deserialize)]
 pub struct PostInstall {
-    /// Registrar una entrada en ~/.claude.json bajo mcpServers
-    pub claude_json: Option<ClaudeJsonEntry>,
+    /// Entrada MCP a registrar tras instalar.
+    ///
+    /// El nombre histórico `claude_json` se conserva por compatibilidad con el manifest
+    /// remoto; su contenido es **neutral** (comando + entry point) y sirve para cualquier
+    /// proveedor — el esquema concreto lo aplica [`register_mcp`].
+    pub claude_json: Option<McpRegistration>,
 }
 
 #[derive(Deserialize)]
-pub struct ClaudeJsonEntry {
-    /// Clave bajo mcpServers (ej: "pillbox")
+pub struct McpRegistration {
+    /// Clave bajo la que vivía la entrada en el esquema histórico (ej: "pillbox").
+    ///
+    /// Hoy la clave efectiva la decide [`Provider::mcp_key`]; este campo se conserva
+    /// por compatibilidad con el manifest remoto pero ya no se consulta.
+    #[allow(dead_code)]
     pub key: String,
     /// Ejecutable (ej: "node")
     pub command: String,
@@ -49,19 +65,16 @@ pub struct ClaudeJsonEntry {
     pub entry: String,
 }
 
-// ─── Instalación ──────────────────────────────────────────────────────────────
+// ─── Extracción (genérica, sin proveedor) ──────────────────────────────────────
 
-/// Ejecuta el manifest sobre los bytes descargados.
+/// Vuelca los bytes descargados en `dest_dir` según el tipo de instalación del manifest.
 ///
-/// - `bytes`      — contenido del asset descargado
-/// - `dest_dir`   — directorio de destino de la instalación
-/// - `claude_cfg` — ruta a ~/.claude.json (solo necesario si el manifest tiene post_install.claude_json)
-pub fn install(
-    manifest: &Manifest,
-    bytes: &[u8],
-    dest_dir: &Path,
-    claude_cfg: Option<&Path>,
-) -> Result<()> {
+/// No toca ninguna config de proveedor: el registro MCP es responsabilidad de
+/// [`register_mcp`]. Contrato byte-idéntico al histórico (no recibe `Provider`).
+///
+/// - `bytes`    — contenido del asset descargado
+/// - `dest_dir` — directorio de destino de la instalación
+pub fn extract(manifest: &Manifest, bytes: &[u8], dest_dir: &Path) -> Result<()> {
     std::fs::create_dir_all(dest_dir)
         .with_context(|| format!("failed to create {}", dest_dir.display()))?;
 
@@ -81,86 +94,252 @@ pub fn install(
         }
     }
 
-    if let Some(post) = &manifest.post_install {
-        if let Some(entry) = &post.claude_json {
-            let cfg =
-                claude_cfg.context("manifest requires claude_json but no path was provided")?;
-            write_claude_json(cfg, &entry.key, &entry.command, dest_dir.join(&entry.entry))?;
-        }
-    }
-
     Ok(())
 }
 
-/// Escribe o actualiza una entrada en `~/.claude.json` bajo la clave indicada.
-///
-/// La clave puede ser una ruta anidada con punto como separador (ej: `"mcpServers.pillbox"`).
-fn write_claude_json(
-    claude_cfg: &Path,
-    key: &str,
-    command: &str,
-    entry_path: std::path::PathBuf,
-) -> Result<()> {
-    let mut root: serde_json::Value = if claude_cfg.exists() {
-        let raw = std::fs::read_to_string(claude_cfg).context("failed to read ~/.claude.json")?;
-        serde_json::from_str(&raw).unwrap_or(serde_json::json!({}))
-    } else {
-        serde_json::json!({})
-    };
+/// Devuelve la entrada MCP neutral declarada por el manifest, si existe.
+pub fn mcp_entry(manifest: &Manifest) -> Option<&McpRegistration> {
+    manifest
+        .post_install
+        .as_ref()
+        .and_then(|p| p.claude_json.as_ref())
+}
 
-    // Navegar/crear la ruta de claves (ej: "mcpServers.pillbox")
+// ─── Registro MCP por proveedor ────────────────────────────────────────────────
+
+/// Registra (o actualiza) la entrada MCP de Pillbox en la config del proveedor.
+///
+/// Esquema por proveedor:
+/// - Claude Code: `~/.claude.json` → `mcpServers.pillbox = {command, args:[entry]}`
+/// - OpenCode:    `~/.config/opencode/opencode.json` → `mcp.pillbox = {type:"local", command:[cmd, entry], enabled:true}`
+///
+/// Idempotente: una reinstalación deja exactamente una entrada, actualizada y sin
+/// duplicar; el resto de claves del fichero se preservan.
+pub fn register_mcp(
+    provider: Provider,
+    cfg_path: &Path,
+    command: &str,
+    entry_path: &Path,
+) -> Result<()> {
+    let entry = entry_value(provider, command, entry_path);
+    set_config_key(cfg_path, provider.mcp_key(), entry)
+}
+
+/// Elimina la entrada MCP de Pillbox de la config del proveedor.
+///
+/// Solo borra la clave de Pillbox (`mcpServers.pillbox` o `mcp.pillbox`); el resto del
+/// fichero queda intacto. No falla si el fichero o la clave no existen.
+pub fn unregister_mcp(provider: Provider, cfg_path: &Path) -> Result<()> {
+    remove_config_key(cfg_path, provider.mcp_key())
+}
+
+/// Construye el valor JSON de la entrada MCP según el esquema del proveedor.
+fn entry_value(provider: Provider, command: &str, entry_path: &Path) -> serde_json::Value {
+    let entry = entry_path.to_string_lossy();
+    match provider {
+        Provider::Claude => serde_json::json!({
+            "command": command,
+            "args": [entry],
+        }),
+        Provider::OpenCode => serde_json::json!({
+            "type": "local",
+            "command": [command, entry],
+            "enabled": true,
+        }),
+    }
+}
+
+// ─── Helpers de escritura JSON con clave punteada ──────────────────────────────
+
+/// Lee `cfg_path` como JSON (objeto vacío si no existe o es inválido), asigna `value`
+/// bajo la `key` punteada (ej. `"mcpServers.pillbox"`) y reescribe el fichero.
+fn set_config_key(cfg_path: &Path, key: &str, value: serde_json::Value) -> Result<()> {
+    let mut root = read_json_root(cfg_path)?;
+
     let parts: Vec<&str> = key.splitn(2, '.').collect();
     match parts.as_slice() {
         [parent, child] => {
-            root[parent][child] = serde_json::json!({
-                "command": command,
-                "args": [entry_path.to_string_lossy()]
-            });
+            root[parent][child] = value;
         }
         [single] => {
-            root[single] = serde_json::json!({
-                "command": command,
-                "args": [entry_path.to_string_lossy()]
-            });
+            root[single] = value;
         }
-        _ => anyhow::bail!("invalid claude_json key: {}", key),
+        _ => anyhow::bail!("invalid config key: {}", key),
     }
 
-    std::fs::write(claude_cfg, serde_json::to_string_pretty(&root)? + "\n")
-        .context("failed to write ~/.claude.json")?;
+    write_json_root(cfg_path, &root)
+}
 
+/// Elimina la `key` punteada del JSON de `cfg_path` y reescribe. No-op si no existe.
+fn remove_config_key(cfg_path: &Path, key: &str) -> Result<()> {
+    if !cfg_path.exists() {
+        return Ok(());
+    }
+    let mut root = read_json_root(cfg_path)?;
+
+    let parts: Vec<&str> = key.splitn(2, '.').collect();
+    match parts.as_slice() {
+        [parent, child] => {
+            if let Some(obj) = root[parent].as_object_mut() {
+                obj.remove(*child);
+            }
+        }
+        [single] => {
+            if let Some(obj) = root.as_object_mut() {
+                obj.remove(*single);
+            }
+        }
+        _ => anyhow::bail!("invalid config key: {}", key),
+    }
+
+    write_json_root(cfg_path, &root)
+}
+
+/// Lee la raíz JSON del fichero de config; objeto vacío si no existe o no parsea.
+fn read_json_root(cfg_path: &Path) -> Result<serde_json::Value> {
+    if cfg_path.exists() {
+        let raw = std::fs::read_to_string(cfg_path)
+            .with_context(|| format!("failed to read {}", cfg_path.display()))?;
+        Ok(serde_json::from_str(&raw).unwrap_or_else(|_| serde_json::json!({})))
+    } else {
+        Ok(serde_json::json!({}))
+    }
+}
+
+/// Reescribe la raíz JSON pretty-printed (con newline final), creando el directorio padre.
+fn write_json_root(cfg_path: &Path, root: &serde_json::Value) -> Result<()> {
+    if let Some(parent) = cfg_path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    std::fs::write(cfg_path, serde_json::to_string_pretty(root)? + "\n")
+        .with_context(|| format!("failed to write {}", cfg_path.display()))?;
     Ok(())
 }
 
-// ─── Desinstalación ───────────────────────────────────────────────────────────
+// ─── Desinstalación de directorio ──────────────────────────────────────────────
 
-/// Elimina dest_dir y opcionalmente limpia una clave de ~/.claude.json.
-///
-/// Devuelve `false` si dest_dir no existía (ya estaba desinstalado).
-pub fn uninstall(dest_dir: &Path, claude_cfg_key: Option<(&str, &Path)>) -> Result<bool> {
+/// Elimina `dest_dir` recursivamente. Devuelve `false` si no existía (ya desinstalado).
+pub fn remove_dir(dest_dir: &Path) -> Result<bool> {
     if !dest_dir.exists() {
         return Ok(false);
     }
-
     std::fs::remove_dir_all(dest_dir)
         .with_context(|| format!("failed to remove {}", dest_dir.display()))?;
+    Ok(true)
+}
 
-    if let Some((key, claude_cfg)) = claude_cfg_key {
-        if claude_cfg.exists() {
-            let raw =
-                std::fs::read_to_string(claude_cfg).context("failed to read ~/.claude.json")?;
-            let mut root: serde_json::Value =
-                serde_json::from_str(&raw).unwrap_or(serde_json::json!({}));
-            let parts: Vec<&str> = key.splitn(2, '.').collect();
-            if let [parent, child] = parts.as_slice() {
-                if let Some(obj) = root[parent].as_object_mut() {
-                    obj.remove(*child);
-                }
-            }
-            std::fs::write(claude_cfg, serde_json::to_string_pretty(&root)? + "\n")
-                .context("failed to update ~/.claude.json")?;
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn read(path: &Path) -> serde_json::Value {
+        let raw = std::fs::read_to_string(path).unwrap();
+        serde_json::from_str(&raw).unwrap()
     }
 
-    Ok(true)
+    #[test]
+    fn register_mcp_claude_writes_mcp_servers_schema() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join(".claude.json");
+        register_mcp(
+            Provider::Claude,
+            &cfg,
+            "node",
+            Path::new("/home/u/.pillbox/mcp/index.js"),
+        )
+        .unwrap();
+
+        let root = read(&cfg);
+        let entry = &root["mcpServers"]["pillbox"];
+        assert_eq!(entry["command"], "node");
+        assert_eq!(entry["args"][0], "/home/u/.pillbox/mcp/index.js");
+        // El esquema de Claude NO usa los campos de OpenCode.
+        assert!(entry.get("type").is_none());
+        assert!(entry.get("enabled").is_none());
+    }
+
+    #[test]
+    fn register_mcp_opencode_writes_local_command_array_schema() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join("opencode.json");
+        register_mcp(
+            Provider::OpenCode,
+            &cfg,
+            "node",
+            Path::new("/home/u/.pillbox/mcp/index.js"),
+        )
+        .unwrap();
+
+        let root = read(&cfg);
+        let entry = &root["mcp"]["pillbox"];
+        assert_eq!(entry["type"], "local");
+        assert_eq!(entry["enabled"], true);
+        assert_eq!(entry["command"][0], "node");
+        assert_eq!(entry["command"][1], "/home/u/.pillbox/mcp/index.js");
+        // El esquema de OpenCode NO usa los campos de Claude.
+        assert!(entry.get("args").is_none());
+    }
+
+    #[test]
+    fn register_mcp_is_idempotent_single_entry() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join(".claude.json");
+        register_mcp(Provider::Claude, &cfg, "node", Path::new("/old/index.js")).unwrap();
+        register_mcp(Provider::Claude, &cfg, "node", Path::new("/new/index.js")).unwrap();
+
+        let root = read(&cfg);
+        let servers = root["mcpServers"].as_object().unwrap();
+        // Exactamente una entrada, actualizada al último valor.
+        assert_eq!(servers.len(), 1);
+        assert_eq!(root["mcpServers"]["pillbox"]["args"][0], "/new/index.js");
+    }
+
+    #[test]
+    fn register_mcp_preserves_other_keys() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join(".claude.json");
+        std::fs::write(
+            &cfg,
+            r#"{"theme":"dark","mcpServers":{"other":{"command":"foo"}}}"#,
+        )
+        .unwrap();
+
+        register_mcp(Provider::Claude, &cfg, "node", Path::new("/x/index.js")).unwrap();
+
+        let root = read(&cfg);
+        // Claves ajenas intactas.
+        assert_eq!(root["theme"], "dark");
+        assert_eq!(root["mcpServers"]["other"]["command"], "foo");
+        // Pillbox añadida sin pisar lo demás.
+        assert_eq!(root["mcpServers"]["pillbox"]["command"], "node");
+    }
+
+    #[test]
+    fn unregister_mcp_removes_only_pillbox_key() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join("opencode.json");
+        std::fs::write(
+            &cfg,
+            r#"{"mcp":{"pillbox":{"type":"local"},"keep":{"type":"local"}}}"#,
+        )
+        .unwrap();
+
+        unregister_mcp(Provider::OpenCode, &cfg).unwrap();
+
+        let root = read(&cfg);
+        let mcp = root["mcp"].as_object().unwrap();
+        assert!(mcp.get("pillbox").is_none());
+        // Otras entradas MCP se conservan.
+        assert!(mcp.get("keep").is_some());
+    }
+
+    #[test]
+    fn unregister_mcp_no_file_is_noop() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join("missing.json");
+        // No debe fallar ni crear el fichero.
+        unregister_mcp(Provider::Claude, &cfg).unwrap();
+        assert!(!cfg.exists());
+    }
 }
