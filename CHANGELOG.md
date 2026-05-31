@@ -1,3 +1,70 @@
+## [0.14.0] - 2026-05-31
+
+### 🚀 Features
+
+- *(serve)* Pool r2d2 con spawn_blocking en handlers HTTP y LRU cap en bottle_pools
+- *(mcp)* Pillbox mcp run loop NDJSON persistente con cwd-per-request
+- *(search)* OR entre términos con fallback fuzzy automático
+- *(mcp)* Contar pill_revise y capsule_revise como visitas
+- *(webui)* Añadir tabs rendered/raw en vista de pill
+- *(webui)* Copiar markdown desde la vista de detalle de pill
+- *(prescription)* Permitir varias prescriptions abiertas simultáneamente
+- *(core)* Eliminar BD local al borrar el último bottle
+- *(dashboard)* Añadir widget de prescriptions abiertas
+- *(serve)* Añadir soporte Windows
+- Soportar OpenCode como segundo proveedor MCP/skill en el core
+- *(uninstall)* Soporte de desinstalación en Windows e i18n de mensajes serve
+- Preparar repositorio para apertura pública
+
+### 🐛 Bug Fixes
+
+- *(mcp)* Pill_search y pill_compounds resuelven bottle_id corto
+- *(archivados)* Restaurar visibilidad de archivados en listados paginados
+- *(db)* Migraciones idempotentes para arranque multi-proceso
+- *(db)* Writes en bottles store y migrate usan transacción IMMEDIATE
+
+### 💼 Other
+
+- *(bottle_detail)* Añadir claves created_at y last_seen_at
+
+### 🚜 Refactor
+
+- *(db)* Separar esquema local y global con DbScope
+- *(webui)* Alinear CapsuleCard al diseño de PrescriptionCard
+- *(core)* Tracing a stderr, cwd explícito en resolve_db_path, eliminar Command::Exec
+- *(serve)* Mover mod server a lib y exponer run_with_listener
+- *(core)* Eliminar código muerto y variante de error sin uso
+- *(core)* Unificar PRAGMA y extraer SQL inline a store
+- *(webui)* Extraer helpers compartidos y poblar compounds dinámicamente
+- *(output)* Split fmt.rs into responsibility modules
+- *(db)* Split search.rs context API into context.rs
+- *(cli)* Extract Clap enums to cli.rs and help engine to help.rs
+- *(cmd/bottle)* Unify migration via db/migrate.rs and route delete/repair through output
+- *(webui)* Extraer useBottleSelector y useBugReporter de MainLayout
+- *(webui)* Extraer useSearch y componente SearchResultCard
+- *(webui)* Mover edición de capsules a vista CapsuleEditView
+- *(cmd/bottle)* Enrutar eprintln de init y vinculate por output::bottle
+
+### 📚 Documentation
+
+- *(readme)* Añadir gif de demo del CLI
+- Añadir captura del dashboard WebUI al README
+- Reemplazar localhost:4242 por pillbox.local:4242 en README
+
+### 🎨 Styling
+
+- *(mcp)* Aplicar cargo fmt a pills.rs
+
+### 🧪 Testing
+
+- *(mcp)* Hacer el prompt de integración agnóstico al proyecto
+
+### ⚙️ Miscellaneous Tasks
+
+- *(install)* Traducir mensajes de los instaladores a inglés
+- *(webui)* Eliminar Pinia sin uso y componentes muertos
+- Corregir lints de clippy 1.94 en tests de integración
+
 ## [0.13.0] - 2026-05-17
 
 ### 🚀 Features
@@ -15,6 +82,10 @@
 ### 🎨 Styling
 
 - *(webui)* Quitar transition-colors en componentes y vistas
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.13.0
 
 ## [0.12.0] - 2026-05-16
 
