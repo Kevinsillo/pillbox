@@ -91,6 +91,8 @@ fn replace_binary(exe_path: &std::path::Path, bytes: &[u8]) -> Result<()> {
 
     #[cfg(windows)]
     {
+        use std::os::windows::process::CommandExt;
+
         let new_path = exe_path.with_extension("new");
         std::fs::write(&new_path, bytes)
             .with_context(|| format!("failed to write {}", new_path.display()))?;
