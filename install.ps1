@@ -9,8 +9,8 @@ param(
 # Pillbox — Windows installation script (PowerShell)
 #
 # Usage:
-#   irm https://get.pillbox.dev/install.ps1 | iex
-#   & ([scriptblock]::Create((irm https://get.pillbox.dev/install.ps1))) -Version 0.6.0
+#   irm https://raw.githubusercontent.com/Kevinsillo/pillbox/main/install.ps1 | iex
+#   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Kevinsillo/pillbox/main/install.ps1))) -Version 0.15.3
 #   .\install.ps1 -Version 0.6.0
 #   .\install.ps1 -InstallDir 'C:\Tools\pillbox'
 #

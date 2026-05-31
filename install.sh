@@ -5,9 +5,9 @@ set -euo pipefail
 # Pillbox — installation script
 #
 # Usage:
-#   curl -fsSL https://get.pillbox.dev | bash
-#   curl -fsSL https://get.pillbox.dev | bash -s -- --version 0.6.0
-#   curl -fsSL https://get.pillbox.dev | bash -s -- --install-dir /usr/local/bin
+#   curl -fsSL https://raw.githubusercontent.com/Kevinsillo/pillbox/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Kevinsillo/pillbox/main/install.sh | bash -s -- --version 0.15.3
+#   curl -fsSL https://raw.githubusercontent.com/Kevinsillo/pillbox/main/install.sh | bash -s -- --install-dir /usr/local/bin
 #
 # Optional environment variables:
 #   PILLBOX_VERSION — version to install (default: latest)
