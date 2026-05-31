@@ -1,3 +1,13 @@
+## [0.14.2] - 2026-05-31
+
+### 🚜 Refactor
+
+- *(install)* Descargar repos y delegar en scripts de instalación
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Optar por Node.js 24 en actions
+
 ## [0.14.1] - 2026-05-31
 
 ### ⚡ Performance
@@ -7,6 +17,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* Usar git-cliff --latest para notas de la versión actual
+- *(release)* V0.14.1
 
 ## [0.14.0] - 2026-05-31
 
