@@ -99,7 +99,7 @@ Full reference → [kevinsillo.github.io/pillbox/reference/cli](https://kevinsil
   <img src="resources/screenshots/webui-dashboard.png" alt="Pillbox WebUI dashboard" width="900">
 </p>
 
-The web dashboard gives you a visual overview of any bottle: open prescriptions, recent pills with their compound tags, activity chart, and database size. Accessible at `http://localhost:4242` when the server is running.
+The web dashboard gives you a visual overview of any bottle: open prescriptions, recent pills with their compound tags, activity chart, and database size. Accessible at `http://pillbox.local:4242` when the server is running.
 
 ## Architecture
 
@@ -112,7 +112,7 @@ Pillbox is split across four repositories that work together as a single system:
 
 The MCP server communicates with the binary via `pillbox exec` — a JSON stdin/stdout dispatcher. All persistence lives in the Rust core; the MCP layer has no direct database dependency.
 
-The web interface is built with Vite and embedded into the binary at compile time via `rust-embed`. Served at `http://localhost:4242` with no external dependencies.
+The web interface is built with Vite and embedded into the binary at compile time via `rust-embed`. Served at `http://pillbox.local:4242` with no external dependencies.
 
 ## License
 
