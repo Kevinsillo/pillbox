@@ -1,3 +1,13 @@
+## [0.14.3] - 2026-05-31
+
+### 🐛 Bug Fixes
+
+- *(install)* Invocar install.sh con bash en lugar de sh
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Cross-compilar darwin-x86_64 desde runner macos-latest ARM
+
 ## [0.14.2] - 2026-05-31
 
 ### 🚜 Refactor
@@ -7,6 +17,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(release)* Optar por Node.js 24 en actions
+- *(release)* V0.14.2
 
 ## [0.14.1] - 2026-05-31
 
