@@ -7,7 +7,6 @@ import App from '@/App.vue'
 import router from '@/router'
 import { i18n } from '@/core/infrastructure/i18n'
 // Estilos globales
-import 'element-plus/dist/index.css'
 import '@/styles/element-plus.css'
 import '@/styles/style.css'
 
