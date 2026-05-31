@@ -1,8 +1,18 @@
+## [0.15.1] - 2026-05-31
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Añadir checkout en job finalize para gh release download
+
 ## [0.15.0] - 2026-05-31
 
 ### 🚀 Features
 
 - *(update)* Añadir comando pillbox update para auto-actualización
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.15.0
 
 ## [0.14.3] - 2026-05-31
 
