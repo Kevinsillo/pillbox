@@ -1,3 +1,13 @@
+## [0.15.3] - 2026-05-31
+
+### 🐛 Bug Fixes
+
+- *(serve)* Mostrar hint manual para /etc/hosts en Linux/macOS
+
+### 📚 Documentation
+
+- *(readme)* Añadir badges y simplificar star banner
+
 ## [0.15.2] - 2026-05-31
 
 ### 🐛 Bug Fixes
@@ -7,6 +17,10 @@
 ### 📚 Documentation
 
 - *(readme)* Actualizar enlaces de documentación a GitHub Pages
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.15.2
 
 ## [0.15.1] - 2026-05-31
 
