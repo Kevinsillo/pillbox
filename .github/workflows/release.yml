@@ -9,8 +9,23 @@ permissions:
   contents: write
 
 jobs:
+
+  # ── Crea la release vacía inmediatamente ─────────────────────────────────────
+  create-release:
+    name: Create release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+  # ── Compila y sube cada binario en cuanto está listo ─────────────────────────
   build:
     name: ${{ matrix.artifact }}
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -78,18 +93,16 @@ jobs:
         with:
           tool: cross
 
-      # Native build (all platforms except Linux aarch64)
       - name: Build
         if: matrix.use_cross != true
         run: cargo build --release --target ${{ matrix.target }}
         working-directory: core
 
-      # Cross build runs from repo root so webui/dist is inside the Docker mount
       - name: Build (cross)
         if: matrix.use_cross == true
         run: cross build --release --target ${{ matrix.target }} --manifest-path core/Cargo.toml
 
-      # ── Package ──────────────────────────────────────────────────────────────
+      # ── Subir binario a la release en cuanto está listo ──────────────────────
       - name: Rename binary (Unix)
         if: matrix.ext != '.exe'
         run: cp core/target/${{ matrix.target }}/release/pillbox ${{ matrix.artifact }}
@@ -99,34 +112,24 @@ jobs:
         run: Copy-Item core/target/${{ matrix.target }}/release/pillbox.exe ${{ matrix.artifact }}
         shell: pwsh
 
-      - uses: actions/upload-artifact@v4
+      - uses: softprops/action-gh-release@v2
         with:
-          name: bin-${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
-          if-no-files-found: error
+          files: ${{ matrix.artifact }}
 
-  # ── GitHub Release ────────────────────────────────────────────────────────────
-  release:
-    name: Publish release
+  # ── Genera SHA256SUMS cuando todos los binarios están subidos ────────────────
+  finalize:
+    name: Finalize release
     needs: build
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Download release assets
+        run: gh release download ${{ github.ref_name }} --dir artifacts/
+        env:
+          GH_TOKEN: ${{ github.token }}
 
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: bin-*
-          merge-multiple: true
-          path: artifacts/
-
-      - name: Checksums
+      - name: Generate SHA256SUMS
         run: cd artifacts && sha256sum * > SHA256SUMS.txt
 
       - uses: softprops/action-gh-release@v2
         with:
-          body_path: CHANGELOG.md
-          files: artifacts/*
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          fail_on_unmatched_files: true
+          files: artifacts/SHA256SUMS.txt
