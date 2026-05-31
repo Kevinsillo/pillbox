@@ -151,11 +151,9 @@ fn hosts_path() -> PathBuf {
 }
 
 /// Añade idempotentemente la entrada `127.0.0.1 pillbox.local # pillbox-serve`
-/// al fichero `hosts`. Si la línea ya existe (detectada por el marcador), no
-/// hace nada.
-///
-/// Devuelve error si no tiene permisos de escritura — el caller debe tratarlo
-/// como **no fatal** (instalación continúa, sólo se pierde el alias DNS).
+/// al fichero `hosts`. Solo se llama en Windows (proceso ya elevado para SCM).
+/// En Linux/macOS se muestra un hint manual en su lugar.
+#[cfg(target_os = "windows")]
 fn write_hosts_entry() -> std::io::Result<()> {
     let path = hosts_path();
     let current = fs::read_to_string(&path).unwrap_or_default();
@@ -310,12 +308,23 @@ pub fn cmd_serve_install(port: u16) -> Result<()> {
         tracing::warn!("failed to write serve.port: {}", e);
     }
 
+    // On Windows the process is already elevated (required for SCM), so write
+    // the hosts entry automatically. On Linux/macOS the service is a user-unit
+    // and needs no privileges — show a copyable hint instead.
+    #[cfg(target_os = "windows")]
     if let Err(e) = write_hosts_entry() {
         tracing::warn!("hosts write failed: {}", e);
         eprintln!("{} {}", "!".yellow().bold(), t!("serve.error.hosts_write"));
     }
 
     println!("\n{} {}\n", "✓".green().bold(), t!("serve.install.success"));
+
+    #[cfg(not(target_os = "windows"))]
+    println!(
+        "  {}\n  sudo sh -c 'echo \"127.0.0.1\\tpillbox.local\\t# pillbox-serve\" >> /etc/hosts'\n",
+        t!("serve.install.hosts_hint")
+    );
+
     Ok(())
 }
 

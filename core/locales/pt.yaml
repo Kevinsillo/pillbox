@@ -107,6 +107,7 @@ serve:
     port: "Porta"
   install:
     success: "Serviço instalado. Execute 'pillbox serve start' para iniciá-lo."
+    hosts_hint: "Para adicionar o alias de host opcional 'pillbox.local', execute:"
   uninstall:
     success: "Serviço desinstalado."
   start:
