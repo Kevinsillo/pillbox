@@ -113,6 +113,9 @@ serve:
     success: "Service démarré"
   stop:
     success: "Service arrêté"
+  run:
+    listening: "pillbox serve à l'écoute sur %{url}"
+    stopped: "pillbox serve arrêté"
   error:
     no_db: "aucun DB Pillbox trouvé"
     not_installed: "Le service n'est pas installé. Exécutez d'abord 'pillbox serve install'."
@@ -282,6 +285,7 @@ uninstall:
   prompt: "Supprimer tous les composants listés ? Cette action est irréversible."
   done: "Pillbox désinstallé."
   bin_error: "Impossible de supprimer le binaire automatiquement. Supprimez-le manuellement : rm %{path}"
+  bin_scheduled: "Le binaire et son entrée PATH seront supprimés une fois Pillbox fermé."
 
 help:
   usage: "Utilisation :"

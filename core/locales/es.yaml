@@ -113,6 +113,9 @@ serve:
     success: "Servicio iniciado"
   stop:
     success: "Servicio detenido"
+  run:
+    listening: "pillbox serve escuchando en %{url}"
+    stopped: "pillbox serve detenido"
   error:
     no_db: "no se encontró ninguna DB de Pillbox"
     not_installed: "El servicio no está instalado. Ejecuta 'pillbox serve install' primero."
@@ -282,6 +285,7 @@ uninstall:
   prompt: "¿Eliminar todos los componentes listados? Esta acción no se puede deshacer."
   done: "Pillbox desinstalado."
   bin_error: "No se pudo eliminar el binario automáticamente. Elimínalo manualmente: rm %{path}"
+  bin_scheduled: "El binario y su entrada de PATH se eliminarán cuando Pillbox termine."
 
 help:
   usage: "Uso:"

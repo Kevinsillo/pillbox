@@ -113,6 +113,9 @@ serve:
     success: "Service started"
   stop:
     success: "Service stopped"
+  run:
+    listening: "pillbox serve listening at %{url}"
+    stopped: "pillbox serve stopped"
   error:
     no_db: "no Pillbox DB found"
     not_installed: "Service is not installed. Run 'pillbox serve install' first."
@@ -282,6 +285,7 @@ uninstall:
   prompt: "Remove all listed components? This action cannot be undone."
   done: "Pillbox uninstalled."
   bin_error: "Could not remove the binary automatically. Remove it manually: rm %{path}"
+  bin_scheduled: "The binary and its PATH entry will be removed once Pillbox exits."
 
 help:
   usage: "Usage:"

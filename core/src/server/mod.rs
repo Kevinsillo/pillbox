@@ -22,6 +22,7 @@ use axum::{
 use lru::LruCache;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use rust_i18n::t;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::db::{
@@ -202,7 +203,8 @@ pub async fn run(port: u16, db_path: PathBuf, global_db_path: PathBuf) -> Result
     let state = AppState::build(db_path, global_db_path)?;
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    println!("pillbox serve en http://localhost:{}", port);
+    let url = format!("http://localhost:{}", port);
+    println!("\n{}", t!("serve.run.listening", url = url));
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     run_with_listener(listener, state).await
@@ -236,5 +238,5 @@ async fn shutdown_signal() {
         _ = terminate => {},
     }
 
-    println!("\npillbox serve detenido.");
+    println!("\n{}", t!("serve.run.stopped"));
 }
