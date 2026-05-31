@@ -1,3 +1,13 @@
+## [0.14.1] - 2026-05-31
+
+### ⚡ Performance
+
+- Reducir tamaño del binario y CSS
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Usar git-cliff --latest para notas de la versión actual
+
 ## [0.14.0] - 2026-05-31
 
 ### 🚀 Features
@@ -22,6 +32,7 @@
 - *(archivados)* Restaurar visibilidad de archivados en listados paginados
 - *(db)* Migraciones idempotentes para arranque multi-proceso
 - *(db)* Writes en bottles store y migrate usan transacción IMMEDIATE
+- *(deps)* Cambiar reqwest a rustls-tls para compilación musl
 
 ### 💼 Other
 
@@ -64,6 +75,9 @@
 - *(install)* Traducir mensajes de los instaladores a inglés
 - *(webui)* Eliminar Pinia sin uso y componentes muertos
 - Corregir lints de clippy 1.94 en tests de integración
+- *(release)* V0.14.0
+- *(release)* Usar Node.js 22 requerido por pnpm 11
+- *(release)* Publicar binarios de forma asíncrona según terminan
 
 ## [0.13.0] - 2026-05-17
 
