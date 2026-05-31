@@ -202,7 +202,7 @@ async fn http_delete_last_bottle_removes_local_db_and_evicts_pool() {
     // que el LRU contiene la entrada antes del DELETE.
     let client = reqwest::Client::new();
     let _ = client
-        .get(&format!("{}/api/bottles/{}", server.base_url, bottle_id))
+        .get(format!("{}/api/bottles/{}", server.base_url, bottle_id))
         .send()
         .await
         .expect("get bottle");
@@ -217,7 +217,7 @@ async fn http_delete_last_bottle_removes_local_db_and_evicts_pool() {
     assert!(server.local_db.exists(), "precondition: local db exists");
 
     let resp = client
-        .delete(&format!("{}/api/bottles/{}", server.base_url, bottle_id))
+        .delete(format!("{}/api/bottles/{}", server.base_url, bottle_id))
         .send()
         .await
         .expect("send DELETE");
@@ -255,14 +255,14 @@ async fn http_delete_is_idempotent_returns_404_second_time() {
 
     let client = reqwest::Client::new();
     let r1 = client
-        .delete(&format!("{}/api/bottles/{}", server.base_url, bottle_id))
+        .delete(format!("{}/api/bottles/{}", server.base_url, bottle_id))
         .send()
         .await
         .unwrap();
     assert_eq!(r1.status(), reqwest::StatusCode::OK, "primer DELETE OK");
 
     let r2 = client
-        .delete(&format!("{}/api/bottles/{}", server.base_url, bottle_id))
+        .delete(format!("{}/api/bottles/{}", server.base_url, bottle_id))
         .send()
         .await
         .unwrap();

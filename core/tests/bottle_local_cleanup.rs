@@ -23,7 +23,7 @@
 //!   `ErrorKind::NotFound` de `remove_if_exists`. La rama es compartida por
 //!   CLI y HTTP — basta cubrirla en un único test del helper.
 
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Mutex;
 
 use pillbox::db::{cleanup, connection, store::registered_bottles, DbScope};
@@ -35,7 +35,7 @@ static HOME_LOCK: Mutex<()> = Mutex::new(());
 
 /// Helper: crea una DB local (con su schema) en `path`, registra un bottle
 /// apuntando a ese path en la DB global, y devuelve el id interno del registro.
-fn seed_registered_bottle(global_db: &PathBuf, local_db: &PathBuf) -> i64 {
+fn seed_registered_bottle(global_db: &Path, local_db: &Path) -> i64 {
     // Materializar la DB local (open() ejecuta migrate y crea el fichero).
     {
         let _ = connection::open(local_db, DbScope::Local).expect("open local");
