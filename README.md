@@ -70,7 +70,7 @@ This installs:
 - The Pillbox skill for your AI coding assistant
 - The global database at `~/.pillbox/pillbox.db`
 
-See the [installation guide](https://kevinsillo.github.io/pillbox-docs/getting-started/installation/) for manual installation and platform-specific options.
+See the [installation guide](https://kevinsillo.github.io/pillbox-docs/getting-started/installation/manual/) for manual installation and platform-specific options.
 ## Quick start
 
 **1. Initialize a project**
