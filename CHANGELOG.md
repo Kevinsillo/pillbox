@@ -1,3 +1,11 @@
+## [0.15.4] - 2026-09-08
+
+### 🐛 Bug Fixes
+
+- *(install)* Reemplazar URL inexistente get.pillbox.dev por raw GitHub
+- *(readme)* Corregir enlace roto a la guía de instalación manual
+- *(webui)* Usar html.dark en vez de .dark para overrides de Element Plus
+
 ## [0.15.3] - 2026-05-31
 
 ### 🐛 Bug Fixes
@@ -7,6 +15,10 @@
 ### 📚 Documentation
 
 - *(readme)* Añadir badges y simplificar star banner
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.15.3
 
 ## [0.15.2] - 2026-05-31
 
