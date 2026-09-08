@@ -13,88 +13,93 @@
   --el-color-primary-dark-2: #3f3f46;
 
   /* Backgrounds */
-  --el-bg-color-page:    #fafafa;
-  --el-bg-color:         #ffffff;
+  --el-bg-color-page: #fafafa;
+  --el-bg-color: #ffffff;
   --el-bg-color-overlay: #ffffff;
 
   /* Text */
-  --el-text-color-primary:     #18181b;
-  --el-text-color-regular:     #52525b;
-  --el-text-color-secondary:   #71717a;
+  --el-text-color-primary: #18181b;
+  --el-text-color-regular: #52525b;
+  --el-text-color-secondary: #71717a;
   --el-text-color-placeholder: #a1a1aa;
-  --el-text-color-disabled:    #d4d4d8;
+  --el-text-color-disabled: #d4d4d8;
 
   /* Borders */
-  --el-border-color:             #e4e4e7;
-  --el-border-color-light:       #e4e4e7;
-  --el-border-color-lighter:     #f4f4f5;
+  --el-border-color: #e4e4e7;
+  --el-border-color-light: #e4e4e7;
+  --el-border-color-lighter: #f4f4f5;
   --el-border-color-extra-light: #fafafa;
-  --el-border-color-dark:        #d4d4d8;
-  --el-border-color-darker:      #a1a1aa;
+  --el-border-color-dark: #d4d4d8;
+  --el-border-color-darker: #a1a1aa;
 
   /* Fill */
-  --el-fill-color:             #f4f4f5;
-  --el-fill-color-light:       #fafafa;
-  --el-fill-color-lighter:     #ffffff;
+  --el-fill-color: #f4f4f5;
+  --el-fill-color-light: #fafafa;
+  --el-fill-color-lighter: #ffffff;
   --el-fill-color-extra-light: #ffffff;
-  --el-fill-color-dark:        #e4e4e7;
-  --el-fill-color-darker:      #d4d4d8;
-  --el-fill-color-blank:       #ffffff;
+  --el-fill-color-dark: #e4e4e7;
+  --el-fill-color-darker: #d4d4d8;
+  --el-fill-color-blank: #ffffff;
 
   /* Shadows */
-  --el-box-shadow:         0 4px 12px rgba(0, 0, 0, 0.10);
-  --el-box-shadow-light:   0 2px 8px  rgba(0, 0, 0, 0.08);
-  --el-box-shadow-lighter: 0 1px 4px  rgba(0, 0, 0, 0.06);
-  --el-box-shadow-dark:    0 6px 16px rgba(0, 0, 0, 0.15);
+  --el-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+  --el-box-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --el-box-shadow-lighter: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --el-box-shadow-dark: 0 6px 16px rgba(0, 0, 0, 0.15);
 
   /* Mask/overlay */
-  --el-mask-color:             rgba(0, 0, 0, 0.5);
+  --el-mask-color: rgba(0, 0, 0, 0.5);
   --el-mask-color-extra-light: rgba(0, 0, 0, 0.2);
 
   /* Disabled */
-  --el-disabled-bg-color:     #f4f4f5;
-  --el-disabled-text-color:   #a1a1aa;
+  --el-disabled-bg-color: #f4f4f5;
+  --el-disabled-text-color: #a1a1aa;
   --el-disabled-border-color: #e4e4e7;
 
   /* Font */
   --el-font-size-base: 13px;
 
   /* Semantic colors — light */
-  --el-color-error:         #ef4444;
+  --el-color-error: #ef4444;
   --el-color-error-light-3: #f87171;
   --el-color-error-light-5: #fca5a5;
   --el-color-error-light-7: #fee2e2;
   --el-color-error-light-8: #fef2f2;
   --el-color-error-light-9: #fff5f5;
-  --el-color-error-dark-2:  #dc2626;
+  --el-color-error-dark-2: #dc2626;
 
-  --el-color-warning:         #f59e0b;
+  --el-color-warning: #f59e0b;
   --el-color-warning-light-3: #fbbf24;
   --el-color-warning-light-5: #fde68a;
   --el-color-warning-light-7: #fef3c7;
   --el-color-warning-light-8: #fffbeb;
   --el-color-warning-light-9: #fffdf5;
-  --el-color-warning-dark-2:  #d97706;
+  --el-color-warning-dark-2: #d97706;
 
-  --el-color-info:         #71717a;
+  --el-color-info: #71717a;
   --el-color-info-light-3: #a1a1aa;
   --el-color-info-light-5: #d4d4d8;
   --el-color-info-light-7: #f4f4f5;
   --el-color-info-light-8: #fafafa;
   --el-color-info-light-9: #ffffff;
-  --el-color-info-dark-2:  #52525b;
+  --el-color-info-dark-2: #52525b;
 
-  --el-color-success:         #16a34a;
+  --el-color-success: #16a34a;
   --el-color-success-light-3: #22c55e;
   --el-color-success-light-5: #86efac;
   --el-color-success-light-7: #dcfce7;
   --el-color-success-light-8: #f0fdf4;
   --el-color-success-light-9: #f7fef9;
-  --el-color-success-dark-2:  #15803d;
+  --el-color-success-dark-2: #15803d;
 }
 
-/* Dark mode */
-.dark {
+/*
+Dark mode
+html.dark (not .dark) so specificity beats Element Plus's own :root
+defaults regardless of CSS bundling order — see
+https://element-plus.org/en-US/guide/dark-mode.html
+*/
+html.dark {
   /* Primary — subtle zinc */
   --el-color-primary: #a1a1aa;
   --el-color-primary-light-3: #71717a;
@@ -105,82 +110,82 @@
   --el-color-primary-dark-2: #d4d4d8;
 
   /* Backgrounds */
-  --el-bg-color-page:    #111113;
-  --el-bg-color:         #18181b;
+  --el-bg-color-page: #111113;
+  --el-bg-color: #18181b;
   --el-bg-color-overlay: #1c1c1f;
 
   /* Text */
-  --el-text-color-primary:     #e4e4e7;
-  --el-text-color-regular:     #a1a1aa;
-  --el-text-color-secondary:   #71717a;
+  --el-text-color-primary: #e4e4e7;
+  --el-text-color-regular: #a1a1aa;
+  --el-text-color-secondary: #71717a;
   --el-text-color-placeholder: #52525b;
-  --el-text-color-disabled:    #3f3f46;
+  --el-text-color-disabled: #3f3f46;
 
   /* Borders */
-  --el-border-color:             #27272a;
-  --el-border-color-light:       #27272a;
-  --el-border-color-lighter:     #1f1f22;
+  --el-border-color: #27272a;
+  --el-border-color-light: #27272a;
+  --el-border-color-lighter: #1f1f22;
   --el-border-color-extra-light: #1a1a1d;
-  --el-border-color-dark:        #3f3f46;
-  --el-border-color-darker:      #52525b;
+  --el-border-color-dark: #3f3f46;
+  --el-border-color-darker: #52525b;
 
   /* Fill */
-  --el-fill-color:             #27272a;
-  --el-fill-color-light:       #1f1f22;
-  --el-fill-color-lighter:     #18181b;
+  --el-fill-color: #27272a;
+  --el-fill-color-light: #1f1f22;
+  --el-fill-color-lighter: #18181b;
   --el-fill-color-extra-light: #111113;
-  --el-fill-color-dark:        #3f3f46;
-  --el-fill-color-darker:      #52525b;
-  --el-fill-color-blank:       #18181b;
+  --el-fill-color-dark: #3f3f46;
+  --el-fill-color-darker: #52525b;
+  --el-fill-color-blank: #18181b;
 
   /* Shadows */
-  --el-box-shadow:         0 4px 12px rgba(0, 0, 0, 0.5);
-  --el-box-shadow-light:   0 2px 8px  rgba(0, 0, 0, 0.4);
-  --el-box-shadow-lighter: 0 1px 4px  rgba(0, 0, 0, 0.3);
-  --el-box-shadow-dark:    0 6px 16px rgba(0, 0, 0, 0.6);
+  --el-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --el-box-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --el-box-shadow-lighter: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --el-box-shadow-dark: 0 6px 16px rgba(0, 0, 0, 0.6);
 
   /* Mask/overlay */
-  --el-mask-color:             rgba(0, 0, 0, 0.7);
+  --el-mask-color: rgba(0, 0, 0, 0.7);
   --el-mask-color-extra-light: rgba(0, 0, 0, 0.3);
 
   /* Disabled */
-  --el-disabled-bg-color:     #18181b;
-  --el-disabled-text-color:   #3f3f46;
+  --el-disabled-bg-color: #18181b;
+  --el-disabled-text-color: #3f3f46;
   --el-disabled-border-color: #27272a;
 
   /* Font */
   --el-font-size-base: 13px;
 
   /* Semantic colors — dark */
-  --el-color-error:         #f87171;
+  --el-color-error: #f87171;
   --el-color-error-light-3: #ef4444;
   --el-color-error-light-5: #7f1d1d;
   --el-color-error-light-7: #450a0a;
   --el-color-error-light-8: #3b0808;
   --el-color-error-light-9: #1f0a0a;
-  --el-color-error-dark-2:  #fca5a5;
+  --el-color-error-dark-2: #fca5a5;
 
-  --el-color-warning:         #fbbf24;
+  --el-color-warning: #fbbf24;
   --el-color-warning-light-3: #d97706;
   --el-color-warning-light-5: #78350f;
   --el-color-warning-light-7: #451a03;
   --el-color-warning-light-8: #3a1500;
   --el-color-warning-light-9: #1c0f00;
-  --el-color-warning-dark-2:  #fcd34d;
+  --el-color-warning-dark-2: #fcd34d;
 
-  --el-color-info:         #a1a1aa;
+  --el-color-info: #a1a1aa;
   --el-color-info-light-3: #71717a;
   --el-color-info-light-5: #52525b;
   --el-color-info-light-7: #3f3f46;
   --el-color-info-light-8: #27272a;
   --el-color-info-light-9: #1c1c1f;
-  --el-color-info-dark-2:  #d4d4d8;
+  --el-color-info-dark-2: #d4d4d8;
 
-  --el-color-success:         #4ade80;
+  --el-color-success: #4ade80;
   --el-color-success-light-3: #22c55e;
   --el-color-success-light-5: #14532d;
   --el-color-success-light-7: #052e16;
   --el-color-success-light-8: #031f0f;
   --el-color-success-light-9: #011208;
-  --el-color-success-dark-2:  #86efac;
+  --el-color-success-dark-2: #86efac;
 }
