@@ -375,3 +375,8 @@ update:
   error:
     no_binary: "No binary available for this platform (%{platform})."
     replace: "Could not replace the binary: %{err}"
+  restart:
+    failed: "The web service could not be restarted: %{err}. Run 'pillbox serve restart' manually."
+    deferred: "The web service will restart once Pillbox exits. If it does not, run 'pillbox serve restart' from an elevated (Administrator) terminal."
+  warn:
+    exe_mismatch: "The web service runs %{service}, not the updated binary %{current}. Restarting it will not load the new version."

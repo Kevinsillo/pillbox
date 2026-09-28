@@ -53,5 +53,9 @@ pub mod fmt {
         serve_status, serve_status_with_help, serve_stopped, status, ServeState, StatusBottle,
         StatusDb, StatusDbResult,
     };
+    #[cfg(windows)]
+    pub use super::update::update_restart_deferred;
     pub use super::update::{update_available, update_done, update_up_to_date};
+    #[cfg(unix)]
+    pub use super::update::{update_exe_mismatch, update_restart_failed};
 }

@@ -1,4 +1,4 @@
-//! Helpers transversales de layout (patrones A/B de confirmación).
+//! Helpers transversales de layout (patrones A/B de confirmación y avisos).
 
 use owo_colors::OwoColorize;
 
@@ -15,4 +15,9 @@ pub(crate) fn print_a(action: &str, details: &[(&str, &str)]) {
 /// Pattern B — simple one-line confirmation.
 pub(crate) fn print_b(action: &str) {
     println!("\n{} {}\n", "✓".green().bold(), action);
+}
+
+/// Warning — non-fatal notice to stderr with a yellow `⚑`.
+pub(crate) fn print_warn(msg: &str) {
+    eprintln!("\n{} {}\n", "⚑".yellow().bold(), msg);
 }

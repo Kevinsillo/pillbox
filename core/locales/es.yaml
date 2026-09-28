@@ -375,3 +375,8 @@ update:
   error:
     no_binary: "No hay binario disponible para esta plataforma (%{platform})."
     replace: "No se pudo reemplazar el binario: %{err}"
+  restart:
+    failed: "No se pudo reiniciar el servicio web: %{err}. Ejecuta 'pillbox serve restart' manualmente."
+    deferred: "El servicio web se reiniciará cuando Pillbox termine. Si no ocurre, ejecuta 'pillbox serve restart' desde un terminal con permisos elevados (Administrador)."
+  warn:
+    exe_mismatch: "El servicio web ejecuta %{service}, no el binario actualizado %{current}. Reiniciarlo no cargará la nueva versión."

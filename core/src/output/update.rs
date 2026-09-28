@@ -1,6 +1,6 @@
 //! Mensajes de salida para el comando `pillbox update`.
 
-use super::layout::{print_a, print_b};
+use super::layout::{print_a, print_b, print_warn};
 use super::table;
 use owo_colors::OwoColorize;
 use rust_i18n::t;
@@ -34,4 +34,26 @@ pub fn update_done(version: &str, path: &str) {
             (t!("update.labels.path").as_ref(), path),
         ],
     );
+}
+
+/// Avisa de que el servicio web no pudo reiniciarse tras la actualización.
+#[cfg_attr(windows, allow(dead_code))]
+pub fn update_restart_failed(err: &str) {
+    print_warn(&t!("update.restart.failed", err = err));
+}
+
+/// Informa de que el servicio web se reiniciará cuando Pillbox termine (Windows).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn update_restart_deferred() {
+    println!("\n{}\n", t!("update.restart.deferred").dimmed());
+}
+
+/// Avisa de que el servicio instalado ejecuta un binario distinto del actualizado.
+#[cfg_attr(windows, allow(dead_code))]
+pub fn update_exe_mismatch(service: &str, current: &str) {
+    print_warn(&t!(
+        "update.warn.exe_mismatch",
+        service = service,
+        current = current
+    ));
 }

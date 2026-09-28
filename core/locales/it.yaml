@@ -375,3 +375,8 @@ update:
   error:
     no_binary: "Nessun binario disponibile per questa piattaforma (%{platform})."
     replace: "Impossibile sostituire il binario: %{err}"
+  restart:
+    failed: "Impossibile riavviare il servizio web: %{err}. Esegui 'pillbox serve restart' manualmente."
+    deferred: "Il servizio web verrà riavviato alla chiusura di Pillbox. In caso contrario, esegui 'pillbox serve restart' da un terminale con privilegi elevati (Amministratore)."
+  warn:
+    exe_mismatch: "Il servizio web esegue %{service}, non il binario aggiornato %{current}. Riavviarlo non caricherà la nuova versione."

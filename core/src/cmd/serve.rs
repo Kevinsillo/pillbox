@@ -9,7 +9,7 @@
 
 use std::ffi::OsString;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -75,27 +75,9 @@ fn build_service_manager() -> Result<Box<dyn ServiceManager>> {
 /// - macOS: existe `~/Library/LaunchAgents/pillbox-daemon.plist`.
 /// - Windows: `sc query pillbox-daemon` retorna éxito.
 pub(crate) fn is_installed() -> bool {
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
-        dirs::home_dir()
-            .map(|h| {
-                h.join(".config")
-                    .join("systemd")
-                    .join("user")
-                    .join(format!("{}.service", SERVICE_LABEL))
-            })
-            .map(|p| p.exists())
-            .unwrap_or(false)
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        dirs::home_dir()
-            .map(|h| {
-                h.join("Library")
-                    .join("LaunchAgents")
-                    .join(format!("{}.plist", SERVICE_LABEL))
-            })
+        service_definition_path()
             .map(|p| p.exists())
             .unwrap_or(false)
     }
@@ -115,6 +97,50 @@ pub(crate) fn is_installed() -> bool {
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         false
+    }
+}
+
+/// Ruta del fichero de definición del servicio de usuario.
+///
+/// - Linux: `~/.config/systemd/user/pillbox-daemon.service`.
+/// - macOS: `~/Library/LaunchAgents/pillbox-daemon.plist`.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn service_definition_path() -> Option<PathBuf> {
+    let home = dirs::home_dir()?;
+    #[cfg(target_os = "linux")]
+    let path = home
+        .join(".config")
+        .join("systemd")
+        .join("user")
+        .join(format!("{}.service", SERVICE_LABEL));
+    #[cfg(target_os = "macos")]
+    let path = home
+        .join("Library")
+        .join("LaunchAgents")
+        .join(format!("{}.plist", SERVICE_LABEL));
+    Some(path)
+}
+
+/// Binario que ejecuta el servicio instalado, leído de su definición
+/// (unit de systemd o plist de launchd). `None` si no está instalado, no se
+/// puede leer o la plataforma no lo soporta (Windows).
+#[cfg_attr(windows, allow(dead_code))]
+pub(crate) fn installed_service_exe() -> Option<PathBuf> {
+    #[cfg(target_os = "linux")]
+    {
+        let text = fs::read_to_string(service_definition_path()?).ok()?;
+        parse_exec_start(&text)
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let text = fs::read_to_string(service_definition_path()?).ok()?;
+        parse_plist_program(&text)
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        None
     }
 }
 
@@ -529,8 +555,6 @@ pub(crate) fn wait_until(
 }
 
 /// Decisión de reinicio del servicio web tras una actualización.
-// Consumido por `pillbox update` (siguiente cambio).
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RestartPlan {
     Restart,
@@ -538,13 +562,58 @@ pub(crate) enum RestartPlan {
 }
 
 /// Solo se reinicia si el servicio está instalado **y** escuchando.
-#[allow(dead_code)]
 pub(crate) fn restart_plan(installed: bool, listening: bool) -> RestartPlan {
     if installed && listening {
         RestartPlan::Restart
     } else {
         RestartPlan::Skip
     }
+}
+
+/// Extrae el ejecutable (primer token) de la línea `ExecStart=` de una unit
+/// de systemd. Admite el token entre comillas dobles.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn parse_exec_start(unit: &str) -> Option<PathBuf> {
+    let cmd = unit
+        .lines()
+        .find_map(|l| l.trim().strip_prefix("ExecStart="))?
+        .trim();
+    let token = match cmd.strip_prefix('"') {
+        Some(rest) => rest.split('"').next()?,
+        None => cmd.split_whitespace().next()?,
+    };
+    (!token.is_empty()).then(|| PathBuf::from(token))
+}
+
+/// Extrae el programa (primer `<string>` del array `ProgramArguments`) de un
+/// plist de launchd. Parseo por subcadenas: suficiente para el plist que
+/// genera `service-manager`.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub(crate) fn parse_plist_program(plist: &str) -> Option<PathBuf> {
+    let after_key = &plist[plist.find("<key>ProgramArguments</key>")?..];
+    let after_array = &after_key[after_key.find("<array>")?..];
+    let start = after_array.find("<string>")? + "<string>".len();
+    let end = start + after_array[start..].find("</string>")?;
+    let raw = after_array[start..end].trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let value = raw
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&amp;", "&");
+    Some(PathBuf::from(value))
+}
+
+/// Compara el binario del servicio instalado con el actual. `None` si no se
+/// conoce el del servicio; canonicaliza ambas rutas cuando es posible.
+#[cfg_attr(windows, allow(dead_code))]
+pub(crate) fn exe_matches(installed: Option<&Path>, current: &Path) -> Option<bool> {
+    let installed = installed?;
+    let canon = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    Some(canon(installed) == canon(current))
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -690,5 +759,78 @@ mod tests {
         assert_eq!(restart_plan(true, false), RestartPlan::Skip);
         assert_eq!(restart_plan(false, true), RestartPlan::Skip);
         assert_eq!(restart_plan(false, false), RestartPlan::Skip);
+    }
+
+    #[test]
+    fn parse_exec_start_takes_first_token() {
+        let unit = "[Unit]\nDescription=pillbox-daemon\n\n[Service]\nExecStart=/home/u/.local/bin/pillbox serve run --port 4242\nRestart=on-failure\n";
+        assert_eq!(
+            parse_exec_start(unit),
+            Some(PathBuf::from("/home/u/.local/bin/pillbox"))
+        );
+    }
+
+    #[test]
+    fn parse_exec_start_handles_quoted_path() {
+        let unit = "[Service]\nExecStart=\"/opt/my apps/pillbox\" serve run\n";
+        assert_eq!(
+            parse_exec_start(unit),
+            Some(PathBuf::from("/opt/my apps/pillbox"))
+        );
+    }
+
+    #[test]
+    fn parse_exec_start_missing_returns_none() {
+        assert_eq!(parse_exec_start("[Service]\nRestart=always\n"), None);
+        assert_eq!(parse_exec_start("[Service]\nExecStart=\n"), None);
+    }
+
+    #[test]
+    fn parse_plist_program_takes_first_string_of_program_arguments() {
+        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>pillbox-daemon</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/u/.local/bin/pill&amp;box</string>
+		<string>serve</string>
+		<string>run</string>
+	</array>
+</dict>
+</plist>"#;
+        assert_eq!(
+            parse_plist_program(plist),
+            Some(PathBuf::from("/Users/u/.local/bin/pill&box"))
+        );
+    }
+
+    #[test]
+    fn parse_plist_program_missing_returns_none() {
+        let plist = "<dict><key>Label</key><string>pillbox-daemon</string></dict>";
+        assert_eq!(parse_plist_program(plist), None);
+    }
+
+    #[test]
+    fn exe_matches_compares_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a");
+        let b = dir.path().join("b");
+        std::fs::write(&a, "").unwrap();
+        std::fs::write(&b, "").unwrap();
+        let a_indirect = dir.path().join(".").join("a");
+
+        assert_eq!(exe_matches(None, &a), None);
+        assert_eq!(exe_matches(Some(&a), &a), Some(true));
+        assert_eq!(exe_matches(Some(&a_indirect), &a), Some(true));
+        assert_eq!(exe_matches(Some(&b), &a), Some(false));
+        assert_eq!(
+            exe_matches(
+                Some(Path::new("/nonexistent/x")),
+                Path::new("/nonexistent/y")
+            ),
+            Some(false)
+        );
     }
 }

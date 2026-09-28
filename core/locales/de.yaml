@@ -375,3 +375,8 @@ update:
   error:
     no_binary: "Kein Binary für diese Plattform verfügbar (%{platform})."
     replace: "Binary konnte nicht ersetzt werden: %{err}"
+  restart:
+    failed: "Der Webdienst konnte nicht neu gestartet werden: %{err}. Führe 'pillbox serve restart' manuell aus."
+    deferred: "Der Webdienst wird neu gestartet, sobald Pillbox beendet ist. Falls nicht, führe 'pillbox serve restart' in einem Terminal mit erhöhten Rechten (Administrator) aus."
+  warn:
+    exe_mismatch: "Der Webdienst führt %{service} aus, nicht das aktualisierte Binary %{current}. Ein Neustart lädt die neue Version nicht."
