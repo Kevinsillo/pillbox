@@ -50,7 +50,8 @@ pub mod fmt {
     };
     pub use super::status::{
         component_status_with_help, db_not_found, help_with_status, serve_started, serve_status,
-        serve_stopped, status, StatusBottle, StatusDb, StatusDbResult,
+        serve_status_with_help, serve_stopped, status, ServeState, StatusBottle, StatusDb,
+        StatusDbResult,
     };
     pub use super::update::{update_available, update_done, update_up_to_date};
 }

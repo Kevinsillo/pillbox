@@ -232,6 +232,22 @@ fn write_serve_port(port: u16) -> std::io::Result<()> {
     fs::write(&path, port.to_string())
 }
 
+/// Puerto efectivo del servicio: el persistido en `serve.port` o `DEFAULT_PORT`.
+pub(crate) fn current_port() -> u16 {
+    read_serve_port().unwrap_or(DEFAULT_PORT)
+}
+
+/// URL canónica del servicio: `pillbox.local` si la entrada de `hosts` existe,
+/// `localhost` en caso contrario, con el puerto efectivo.
+pub(crate) fn serve_url() -> String {
+    let host = if hosts_entry_present() {
+        HOSTS_HOSTNAME
+    } else {
+        "localhost"
+    };
+    format!("http://{}:{}", host, current_port())
+}
+
 // ─── Subcomandos ──────────────────────────────────────────────────────────────
 
 /// Ejecuta el servidor HTTP en primer plano en el puerto dado.
@@ -372,14 +388,7 @@ pub fn cmd_serve_start() -> Result<()> {
             label: service_label(),
         })
         .map_err(|e| anyhow::anyhow!("failed to start service: {}", e))?;
-    let port = read_serve_port().unwrap_or(DEFAULT_PORT);
-    let host = if hosts_entry_present() {
-        HOSTS_HOSTNAME
-    } else {
-        "localhost"
-    };
-    let url = format!("http://{}:{}", host, port);
-    crate::output::fmt::serve_started(&url);
+    crate::output::fmt::serve_started(&serve_url());
     Ok(())
 }
 
@@ -404,33 +413,32 @@ pub fn cmd_serve_status() -> Result<()> {
         anyhow::bail!("{}", t!("serve.error.not_installed"));
     }
 
-    let port = read_serve_port().unwrap_or(DEFAULT_PORT);
-    let host = if hosts_entry_present() {
-        HOSTS_HOSTNAME
-    } else {
-        "localhost"
-    };
-    let running = server_listening(port);
-    let url = if running {
-        Some(format!("http://{}:{}", host, port))
-    } else {
-        None
-    };
+    let running = server_listening(current_port());
+    let url = if running { Some(serve_url()) } else { None };
     crate::output::fmt::serve_status(running, url.as_deref());
     Ok(())
 }
 
 /// Comando por defecto cuando se invoca `pillbox serve` sin subcomando.
 ///
-/// Si el servicio está instalado, muestra el estado; si no, indica al
-/// usuario que ejecute `pillbox serve install`.
+/// Muestra la línea de estado del servicio (no instalado / parado / en marcha
+/// con su URL) seguida de la ayuda con los subcomandos disponibles. Siempre
+/// termina con éxito: es una consulta informativa.
 pub fn cmd_serve_info() -> Result<()> {
-    if is_installed() {
-        cmd_serve_status()
+    use crate::output::fmt::ServeState;
+    let state = if !is_installed() {
+        ServeState::NotInstalled
+    } else if server_listening(current_port()) {
+        ServeState::Running
     } else {
-        println!("\n{}\n", t!("serve.error.not_installed").dimmed());
-        Ok(())
-    }
+        ServeState::Stopped
+    };
+    crate::output::fmt::serve_status_with_help(
+        state,
+        &serve_url(),
+        &crate::help::render_help("serve"),
+    );
+    Ok(())
 }
 
 // ─── Helpers públicos ─────────────────────────────────────────────────────────

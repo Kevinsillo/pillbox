@@ -176,3 +176,25 @@ pub fn serve_status(running: bool, url: Option<&str>) {
     }
     println!("\n{}\n", table::dict(rows));
 }
+
+/// Estado del servicio web para la línea de estado de `pillbox serve` sin subcomando.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServeState {
+    NotInstalled,
+    Running,
+    Stopped,
+}
+
+/// Muestra el estado del servicio web junto con la ayuda de `pillbox serve`.
+///
+/// Misma apariencia que `pillbox mcp`/`pillbox skill` sin subcomando: la línea
+/// de estado se inserta tras el about. La URL solo se muestra si está en marcha.
+pub fn serve_status_with_help(state: ServeState, url: &str, help: &str) {
+    let status = match state {
+        ServeState::Running => format!("{} {}  {}", "●".green(), t!("serve.running"), url.cyan()),
+        ServeState::Stopped => format!("{} {}", "●".red(), t!("serve.stopped")),
+        ServeState::NotInstalled => format!("{} {}", "●".red(), t!("status.component.missing")),
+    };
+    let line = format!("{}: {}", t!("status.component.estado").bold(), status);
+    help_with_status(&line, help);
+}
