@@ -114,6 +114,8 @@ serve:
     success: "Servizio avviato"
   stop:
     success: "Servizio fermato"
+  restart:
+    success: "Servizio riavviato"
   run:
     listening: "pillbox serve in ascolto su %{url}"
     stopped: "pillbox serve fermato"
@@ -123,6 +125,8 @@ serve:
     hosts_write: "Impossibile scrivere nel file hosts (permesso negato). Accedi tramite http://localhost invece."
     already_installed: "Il servizio è già installato. Esegui prima 'pillbox serve uninstall'."
     requires_admin: "Questa azione richiede privilegi di Amministratore. Riesegui da un terminale con privilegi elevati."
+    stop_timeout: "Il servizio non ha liberato la porta entro 10 secondi; non è stato riavviato."
+    start_timeout: "Il servizio non ha iniziato ad ascoltare entro 10 secondi."
 
 db:
   not_found: "Nessuna Pillbox trovata. Esegui lo script di installazione."
@@ -321,6 +325,7 @@ help:
       uninstall: "Disinstalla il servizio di sistema."
       start: "Avvia il servizio di sistema."
       stop: "Ferma il servizio di sistema."
+      restart: "Riavvia il servizio di sistema."
       status: "Mostra lo stato del servizio."
     bottle:
       init: "Inizializza una bottle nella directory corrente (wizard interattivo)."

@@ -10,6 +10,7 @@
 use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use indoc::formatdoc;
@@ -33,6 +34,12 @@ const HOSTS_MARKER: &str = "# pillbox-serve";
 
 /// Hostname reservado al que apunta la entrada en `hosts` (siempre 127.0.0.1).
 const HOSTS_HOSTNAME: &str = "pillbox.local";
+
+/// Plazo máximo para que el puerto se libere o vuelva a escuchar al reiniciar.
+const WAIT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Intervalo entre sondeos del puerto durante el reinicio.
+const WAIT_INTERVAL: Duration = Duration::from_millis(100);
 
 // ─── Helpers de servicio ──────────────────────────────────────────────────────
 
@@ -377,17 +384,32 @@ pub fn cmd_serve_uninstall() -> Result<()> {
     Ok(())
 }
 
-/// Arranca el servicio (delega en el gestor de servicios).
-pub fn cmd_serve_start() -> Result<()> {
-    if !is_installed() {
-        anyhow::bail!("{}", t!("serve.error.not_installed"));
-    }
+/// Arranca el servicio vía el gestor de servicios, sin imprimir nada.
+fn service_start() -> Result<()> {
     let manager = build_service_manager()?;
     manager
         .start(ServiceStartCtx {
             label: service_label(),
         })
-        .map_err(|e| anyhow::anyhow!("failed to start service: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("failed to start service: {}", e))
+}
+
+/// Detiene el servicio vía el gestor de servicios, sin imprimir nada.
+fn service_stop() -> Result<()> {
+    let manager = build_service_manager()?;
+    manager
+        .stop(ServiceStopCtx {
+            label: service_label(),
+        })
+        .map_err(|e| anyhow::anyhow!("failed to stop service: {}", e))
+}
+
+/// Arranca el servicio (delega en el gestor de servicios).
+pub fn cmd_serve_start() -> Result<()> {
+    if !is_installed() {
+        anyhow::bail!("{}", t!("serve.error.not_installed"));
+    }
+    service_start()?;
     crate::output::fmt::serve_started(&serve_url());
     Ok(())
 }
@@ -397,13 +419,42 @@ pub fn cmd_serve_stop() -> Result<()> {
     if !is_installed() {
         anyhow::bail!("{}", t!("serve.error.not_installed"));
     }
-    let manager = build_service_manager()?;
-    manager
-        .stop(ServiceStopCtx {
-            label: service_label(),
-        })
-        .map_err(|e| anyhow::anyhow!("failed to stop service: {}", e))?;
+    service_stop()?;
     crate::output::fmt::serve_stopped();
+    Ok(())
+}
+
+/// Reinicia el servicio y confirma con la URL una vez vuelve a escuchar.
+///
+/// Si estaba parado, simplemente lo arranca (con la misma confirmación).
+pub fn cmd_serve_restart() -> Result<()> {
+    if !is_installed() {
+        anyhow::bail!("{}", t!("serve.error.not_installed"));
+    }
+    restart_service()?;
+    crate::output::fmt::serve_restarted(&serve_url());
+    Ok(())
+}
+
+/// Núcleo silencioso del reinicio, reutilizado por `pillbox update`.
+///
+/// - En marcha: stop → espera a que el puerto quede libre (error
+///   `stop_timeout` sin intentar arrancar) → start → espera a que escuche.
+/// - Parado: start → espera a que escuche.
+///
+/// Error `start_timeout` si tras arrancar no escucha dentro del plazo.
+pub(crate) fn restart_service() -> Result<()> {
+    let port = current_port();
+    if server_listening(port) {
+        service_stop()?;
+        if !wait_until(|| !server_listening(port), WAIT_TIMEOUT, WAIT_INTERVAL) {
+            anyhow::bail!("{}", t!("serve.error.stop_timeout"));
+        }
+    }
+    service_start()?;
+    if !wait_until(|| server_listening(port), WAIT_TIMEOUT, WAIT_INTERVAL) {
+        anyhow::bail!("{}", t!("serve.error.start_timeout"));
+    }
     Ok(())
 }
 
@@ -413,7 +464,7 @@ pub fn cmd_serve_status() -> Result<()> {
         anyhow::bail!("{}", t!("serve.error.not_installed"));
     }
 
-    let running = server_listening(current_port());
+    let running = is_running();
     let url = if running { Some(serve_url()) } else { None };
     crate::output::fmt::serve_status(running, url.as_deref());
     Ok(())
@@ -428,7 +479,7 @@ pub fn cmd_serve_info() -> Result<()> {
     use crate::output::fmt::ServeState;
     let state = if !is_installed() {
         ServeState::NotInstalled
-    } else if server_listening(current_port()) {
+    } else if is_running() {
         ServeState::Running
     } else {
         ServeState::Stopped
@@ -446,12 +497,54 @@ pub fn cmd_serve_info() -> Result<()> {
 /// Verifica si hay algo escuchando en `localhost:{port}` con un timeout de 200 ms.
 pub fn server_listening(port: u16) -> bool {
     use std::net::TcpStream;
-    use std::time::Duration;
     TcpStream::connect_timeout(
         &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
         Duration::from_millis(200),
     )
     .is_ok()
+}
+
+/// Indica si el servicio está escuchando en su puerto efectivo.
+pub(crate) fn is_running() -> bool {
+    server_listening(current_port())
+}
+
+/// Sondea `pred` cada `interval` hasta que devuelva `true` o venza `timeout`.
+/// Devuelve `true` si la condición se cumplió dentro del plazo.
+pub(crate) fn wait_until(
+    mut pred: impl FnMut() -> bool,
+    timeout: Duration,
+    interval: Duration,
+) -> bool {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if pred() {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(interval);
+    }
+}
+
+/// Decisión de reinicio del servicio web tras una actualización.
+// Consumido por `pillbox update` (siguiente cambio).
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RestartPlan {
+    Restart,
+    Skip,
+}
+
+/// Solo se reinicia si el servicio está instalado **y** escuchando.
+#[allow(dead_code)]
+pub(crate) fn restart_plan(installed: bool, listening: bool) -> RestartPlan {
+    if installed && listening {
+        RestartPlan::Restart
+    } else {
+        RestartPlan::Skip
+    }
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -547,5 +640,55 @@ mod tests {
         assert!(content.contains("127.0.0.1\tlocalhost"));
         assert!(content.contains("::1\tlocalhost"));
         assert!(content.contains("10.0.0.5\tmyserver"));
+    }
+
+    #[test]
+    fn wait_until_returns_true_immediately_when_pred_holds() {
+        let mut calls = 0;
+        let ok = wait_until(
+            || {
+                calls += 1;
+                true
+            },
+            Duration::from_millis(50),
+            Duration::from_millis(1),
+        );
+        assert!(ok);
+        assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn wait_until_returns_true_when_pred_becomes_true() {
+        let mut calls = 0;
+        let ok = wait_until(
+            || {
+                calls += 1;
+                calls >= 3
+            },
+            Duration::from_secs(1),
+            Duration::from_millis(1),
+        );
+        assert!(ok);
+        assert_eq!(calls, 3);
+    }
+
+    #[test]
+    fn wait_until_returns_false_on_timeout() {
+        let start = Instant::now();
+        let ok = wait_until(
+            || false,
+            Duration::from_millis(30),
+            Duration::from_millis(5),
+        );
+        assert!(!ok);
+        assert!(start.elapsed() >= Duration::from_millis(30));
+    }
+
+    #[test]
+    fn restart_plan_only_restarts_when_installed_and_listening() {
+        assert_eq!(restart_plan(true, true), RestartPlan::Restart);
+        assert_eq!(restart_plan(true, false), RestartPlan::Skip);
+        assert_eq!(restart_plan(false, true), RestartPlan::Skip);
+        assert_eq!(restart_plan(false, false), RestartPlan::Skip);
     }
 }

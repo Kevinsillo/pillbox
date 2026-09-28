@@ -153,6 +153,14 @@ pub fn serve_started(url: &str) {
     );
 }
 
+/// Confirma en pantalla que el servicio se ha reiniciado y vuelve a escuchar (Pattern A).
+pub fn serve_restarted(url: &str) {
+    super::layout::print_a(
+        &t!("serve.restart.success"),
+        &[(t!("serve.labels.url").as_ref(), &url.cyan().to_string())],
+    );
+}
+
 /// Confirma en pantalla que el servicio se ha detenido (Pattern B).
 pub fn serve_stopped() {
     super::layout::print_b(&t!("serve.stop.success"));

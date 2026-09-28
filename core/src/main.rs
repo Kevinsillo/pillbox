@@ -59,6 +59,7 @@ async fn main() -> Result<()> {
             Some(ServeCommand::Uninstall) => cmd::serve::cmd_serve_uninstall(),
             Some(ServeCommand::Start) => cmd::serve::cmd_serve_start(),
             Some(ServeCommand::Stop) => cmd::serve::cmd_serve_stop(),
+            Some(ServeCommand::Restart) => cmd::serve::cmd_serve_restart(),
             Some(ServeCommand::Status) => cmd::serve::cmd_serve_status(),
             None => cmd::serve::cmd_serve_info(),
         },

@@ -108,6 +108,8 @@ pub enum ServeCommand {
     Start,
     /// Detiene el servicio del sistema.
     Stop,
+    /// Reinicia el servicio del sistema.
+    Restart,
     /// Muestra el estado del servicio.
     Status,
 }

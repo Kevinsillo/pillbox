@@ -114,6 +114,8 @@ serve:
     success: "Dienst gestartet"
   stop:
     success: "Dienst gestoppt"
+  restart:
+    success: "Dienst neu gestartet"
   run:
     listening: "pillbox serve lauscht auf %{url}"
     stopped: "pillbox serve gestoppt"
@@ -123,6 +125,8 @@ serve:
     hosts_write: "Hosts-Datei konnte nicht geschrieben werden (Berechtigung verweigert). Greife stattdessen über http://localhost zu."
     already_installed: "Der Dienst ist bereits installiert. Führe zuerst 'pillbox serve uninstall' aus."
     requires_admin: "Diese Aktion erfordert Administratorrechte. Führe sie erneut in einem Terminal mit erhöhten Rechten aus."
+    stop_timeout: "Der Dienst hat seinen Port nicht innerhalb von 10 Sekunden freigegeben; er wurde nicht erneut gestartet."
+    start_timeout: "Der Dienst hat nicht innerhalb von 10 Sekunden begonnen zu lauschen."
 
 db:
   not_found: "Keine Pillbox gefunden. Führe das Installationsskript aus."
@@ -321,6 +325,7 @@ help:
       uninstall: "Deinstalliert den Systemdienst."
       start: "Startet den Systemdienst."
       stop: "Stoppt den Systemdienst."
+      restart: "Startet den Systemdienst neu."
       status: "Zeigt den Dienststatus an."
     bottle:
       init: "Initialisiert eine Bottle im aktuellen Verzeichnis (interaktiver Assistent)."
