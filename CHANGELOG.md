@@ -1,3 +1,11 @@
+## [0.17.0] - 2026-09-28
+
+### 🚀 Features
+
+- *(serve)* Mostrar subcomandos disponibles al invocar pillbox serve
+- *(serve)* Añadir subcomando restart
+- *(update)* Reiniciar el servicio web tras actualizar si estaba en marcha
+
 ## [0.16.0] - 2026-09-28
 
 ### 🚀 Features
@@ -7,6 +15,10 @@
 ### 🎨 Styling
 
 - Aplicar cargo fmt en install y update
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.16.0
 
 ## [0.15.4] - 2026-09-08
 
