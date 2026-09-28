@@ -19,6 +19,7 @@ export interface Bottle {
     linked: boolean
     reg_id?: number
     views: number
+    last_activity_at: string | null
 }
 
 export interface Prescription {

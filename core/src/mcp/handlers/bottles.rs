@@ -101,6 +101,7 @@ pub fn list(_conn: &mut Conn, _input: Value) -> Response {
                 linked: false,
                 reg_id: Some(reg.id),
                 views: 0,
+                last_activity_at: None,
             });
             continue;
         }
@@ -125,7 +126,7 @@ pub fn list(_conn: &mut Conn, _input: Value) -> Response {
         }
     }
 
-    bottles.sort_by(|a, b| a.name.cmp(&b.name));
+    pillbox::domain::bottle::sort_by_activity(&mut bottles);
     Response::ok(bottles)
 }
 

@@ -4,6 +4,7 @@ import { useBottleSelector } from "@/composables/useBottleSelector"
 import { useBugReporter } from "@/composables/useBugReporter"
 import { useLocale } from "@/composables/useLocale"
 import { useTheme } from "@/composables/useTheme"
+import { formatDateDMY } from "@/core/utils/date"
 import { ElDropdown, ElDropdownItem, ElDropdownMenu, ElOption, ElSelect } from "element-plus"
 import { computed } from "vue"
 import { useI18n } from "vue-i18n"
@@ -121,7 +122,12 @@ const currentFlag = computed(() => availableLocales.value.find(l => l.code === c
                         size="small"
                         @change="switchBottle"
                     >
-                        <el-option v-for="b in linkedBottles" :key="b.id" :value="b.id" :label="b.display_name" />
+                        <el-option v-for="b in linkedBottles" :key="b.id" :value="b.id" :label="b.display_name">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="truncate min-w-0">{{ b.display_name }}</span>
+                                <span v-if="formatDateDMY(b.last_activity_at)" class="shrink-0 text-xs text-zinc-500">{{ formatDateDMY(b.last_activity_at) }}</span>
+                            </div>
+                        </el-option>
                     </el-select>
                 </div>
 

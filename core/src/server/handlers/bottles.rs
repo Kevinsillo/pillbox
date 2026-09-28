@@ -97,6 +97,7 @@ pub async fn bottle_list(
                     linked: false,
                     reg_id: Some(reg.id),
                     views: 0,
+                    last_activity_at: None,
                 });
                 continue;
             }
@@ -127,7 +128,7 @@ pub async fn bottle_list(
             }
         }
 
-        all_bottles.sort_by(|a, b| a.display_name.cmp(&b.display_name));
+        crate::domain::bottle::sort_by_activity(&mut all_bottles);
         let total = all_bottles.len() as u64;
         let offset = pagination.offset() as usize;
         let limit = pagination.limit() as usize;

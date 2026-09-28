@@ -13,6 +13,22 @@ use crate::{
     error::PillboxError,
 };
 
+/// Columnas que leen todos los SELECT de bottles, en el orden que espera
+/// [`row_to_bottle`].
+///
+/// `last_activity_at` se deriva en SQL (sin columna nueva ni N+1): máximo
+/// `updated_at` de las pills no borradas del bottle, con fallback a
+/// `created_at` si no hay prescriptions, no hay pills o todas están borradas.
+const BOTTLE_COLUMNS: &str = "id, name, display_name, directory, scope, created_at, last_seen_at,
+    views,
+    COALESCE(
+        (SELECT MAX(p.updated_at)
+           FROM pills p
+           JOIN prescriptions rx ON p.prescription_id = rx.id
+          WHERE rx.bottle_id = bottles.id AND p.deleted_at IS NULL),
+        bottles.created_at
+    ) AS last_activity_at";
+
 /// Crea un bottle nuevo en la DB.
 pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
     let id = Uuid::now_v7().to_string();
@@ -46,9 +62,7 @@ pub fn create(conn: &mut Connection, input: &NewBottle) -> Result<Bottle> {
 
     let bottle = tx
         .query_row(
-            "SELECT id, name, display_name, directory, scope, created_at, last_seen_at,
-                views
-         FROM bottles WHERE id = ?1",
+            &format!("SELECT {BOTTLE_COLUMNS} FROM bottles WHERE id = ?1"),
             params![id],
             row_to_bottle,
         )
@@ -64,12 +78,10 @@ pub fn list(conn: &Connection, pagination: &PaginationParams) -> Result<Paginate
     let limit = pagination.limit() as i64;
     let offset = pagination.offset() as i64;
 
-    let mut stmt = conn.prepare(
-        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at,
-                views
-         FROM bottles ORDER BY created_at DESC
-         LIMIT ?1 OFFSET ?2",
-    )?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {BOTTLE_COLUMNS} FROM bottles ORDER BY created_at DESC
+         LIMIT ?1 OFFSET ?2"
+    ))?;
 
     let items = stmt
         .query_map(params![limit, offset], row_to_bottle)?
@@ -91,9 +103,7 @@ pub fn find_by_id(conn: &Connection, id: &str) -> Result<Option<Bottle>> {
         return Ok(None);
     };
     match conn.query_row(
-        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at,
-                views
-         FROM bottles WHERE id = ?1",
+        &format!("SELECT {BOTTLE_COLUMNS} FROM bottles WHERE id = ?1"),
         params![resolved_id],
         row_to_bottle,
     ) {
@@ -106,9 +116,7 @@ pub fn find_by_id(conn: &Connection, id: &str) -> Result<Option<Bottle>> {
 /// Busca un bottle por el directorio del proyecto.
 pub fn find_by_directory(conn: &Connection, directory: &str) -> Result<Option<Bottle>> {
     match conn.query_row(
-        "SELECT id, name, display_name, directory, scope, created_at, last_seen_at,
-                views
-         FROM bottles WHERE directory = ?1",
+        &format!("SELECT {BOTTLE_COLUMNS} FROM bottles WHERE directory = ?1"),
         params![directory],
         row_to_bottle,
     ) {
@@ -176,6 +184,7 @@ fn row_to_bottle(row: &rusqlite::Row<'_>) -> rusqlite::Result<Bottle> {
         linked: true,
         reg_id: None,
         views: row.get(7)?,
+        last_activity_at: row.get(8)?,
     })
 }
 
@@ -356,6 +365,136 @@ mod tests {
         assert_eq!(p10.items.len(), 0);
         assert_eq!(p10.total, 25);
         assert_eq!(p10.page, 10);
+    }
+
+    /// Inserta una prescription sin pills para el bottle dado.
+    fn insert_rx(conn: &Connection, rx_id: &str, bottle_id: &str) {
+        conn.execute(
+            "INSERT INTO prescriptions (id, bottle_id, title) VALUES (?1, ?2, 'rx')",
+            params![rx_id, bottle_id],
+        )
+        .unwrap();
+    }
+
+    /// Inserta una pill con `updated_at` y `deleted_at` explícitos.
+    fn insert_pill(
+        conn: &Connection,
+        pill_id: &str,
+        rx_id: &str,
+        updated_at: &str,
+        deleted_at: Option<&str>,
+    ) {
+        conn.execute(
+            "INSERT INTO pills (id, compound, title, content, prescription_id,
+                                created_at, updated_at, deleted_at)
+             VALUES (?1, 'decision', 't', 'c', ?2, ?3, ?3, ?4)",
+            params![pill_id, rx_id, updated_at, deleted_at],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn last_activity_without_pills_falls_back_to_created_at() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let b = create(&mut conn, &test_bottle("act-empty", "/tmp/act-empty")).unwrap();
+        assert_eq!(b.last_activity_at.as_deref(), Some(b.created_at.as_str()));
+
+        let found = find_by_id(&conn, &b.id).unwrap().unwrap();
+        assert_eq!(
+            found.last_activity_at.as_deref(),
+            Some(b.created_at.as_str())
+        );
+    }
+
+    #[test]
+    fn last_activity_with_empty_prescriptions_falls_back_to_created_at() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let b = create(&mut conn, &test_bottle("act-rx", "/tmp/act-rx")).unwrap();
+        insert_rx(&conn, "rx-1", &b.id);
+        let found = find_by_directory(&conn, "/tmp/act-rx").unwrap().unwrap();
+        assert_eq!(
+            found.last_activity_at.as_deref(),
+            Some(b.created_at.as_str())
+        );
+    }
+
+    #[test]
+    fn last_activity_is_max_pill_updated_at() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let b = create(&mut conn, &test_bottle("act-max", "/tmp/act-max")).unwrap();
+        insert_rx(&conn, "rx-a", &b.id);
+        insert_rx(&conn, "rx-b", &b.id);
+        insert_pill(&conn, "p-1", "rx-a", "2099-01-01 10:00:00", None);
+        insert_pill(&conn, "p-2", "rx-b", "2099-03-01 10:00:00", None);
+        insert_pill(&conn, "p-3", "rx-a", "2099-02-01 10:00:00", None);
+
+        let page = list(&conn, &PaginationParams::default()).unwrap();
+        assert_eq!(
+            page.items[0].last_activity_at.as_deref(),
+            Some("2099-03-01 10:00:00")
+        );
+    }
+
+    #[test]
+    fn last_activity_ignores_soft_deleted_pills() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let b = create(&mut conn, &test_bottle("act-del", "/tmp/act-del")).unwrap();
+        insert_rx(&conn, "rx-d", &b.id);
+        insert_pill(
+            &conn,
+            "p-del",
+            "rx-d",
+            "2099-05-01 10:00:00",
+            Some("2099-05-01 10:00:00"),
+        );
+        let found = find_by_id(&conn, &b.id).unwrap().unwrap();
+        assert_eq!(
+            found.last_activity_at.as_deref(),
+            Some(b.created_at.as_str())
+        );
+
+        insert_pill(&conn, "p-live", "rx-d", "2099-01-01 10:00:00", None);
+        let found = find_by_id(&conn, &b.id).unwrap().unwrap();
+        assert_eq!(
+            found.last_activity_at.as_deref(),
+            Some("2099-01-01 10:00:00")
+        );
+    }
+
+    #[test]
+    fn last_activity_reflects_edited_pill() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let b = create(&mut conn, &test_bottle("act-edit", "/tmp/act-edit")).unwrap();
+        insert_rx(&conn, "rx-e", &b.id);
+        insert_pill(&conn, "p-old", "rx-e", "2099-01-01 10:00:00", None);
+        insert_pill(&conn, "p-new", "rx-e", "2099-02-01 10:00:00", None);
+
+        // Editar la pill más antigua la convierte en la más reciente.
+        conn.execute(
+            "UPDATE pills SET updated_at = '2099-06-01 10:00:00' WHERE id = 'p-old'",
+            [],
+        )
+        .unwrap();
+        let found = find_by_id(&conn, &b.id).unwrap().unwrap();
+        assert_eq!(
+            found.last_activity_at.as_deref(),
+            Some("2099-06-01 10:00:00")
+        );
+    }
+
+    #[test]
+    fn last_activity_is_scoped_per_bottle() {
+        let mut conn = open_in_memory(DbScope::Local).unwrap();
+        let a = create(&mut conn, &test_bottle("act-a", "/tmp/act-a")).unwrap();
+        let b = create(&mut conn, &test_bottle("act-b", "/tmp/act-b")).unwrap();
+        insert_rx(&conn, "rx-sa", &a.id);
+        insert_pill(&conn, "p-sa", "rx-sa", "2099-01-01 10:00:00", None);
+
+        let found_b = find_by_id(&conn, &b.id).unwrap().unwrap();
+        assert_eq!(
+            found_b.last_activity_at.as_deref(),
+            Some(b.created_at.as_str())
+        );
     }
 
     #[test]

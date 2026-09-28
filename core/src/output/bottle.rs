@@ -15,6 +15,8 @@ pub struct BottleListRow {
     pub linked: bool,
     pub is_active: bool,
     pub views: i64,
+    /// Clave de orden (ver `cmp_by_activity`); no se renderiza.
+    pub last_activity_at: Option<String>,
 }
 
 /// Muestra la lista de bottles registrados con su estado de enlace.

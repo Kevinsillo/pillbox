@@ -42,6 +42,7 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
                 linked: false,
                 is_active: false,
                 views: 0,
+                last_activity_at: None,
             });
             continue;
         }
@@ -71,11 +72,21 @@ pub fn cmd_bottle_list(limit: u32) -> Result<()> {
                 linked: true,
                 is_active,
                 views: bottle.views,
+                last_activity_at: bottle.last_activity_at,
             });
         }
     }
 
-    rows.sort_by(|a, b| a.name.cmp(&b.name));
+    // Mismo orden que HTTP/MCP; antes del truncate para que `limit` se quede
+    // con los bottles más activos.
+    rows.sort_by(|a, b| {
+        pillbox::domain::bottle::cmp_by_activity(
+            a.last_activity_at.as_deref(),
+            &a.name,
+            b.last_activity_at.as_deref(),
+            &b.name,
+        )
+    });
     let total = rows.len() as u32;
     rows.truncate(limit as usize);
     output::fmt::bottles_registered_list(&rows, total);
