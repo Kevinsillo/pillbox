@@ -1,3 +1,13 @@
+## [0.16.0] - 2026-09-28
+
+### 🚀 Features
+
+- *(bottles)* Ordenar proyectos por última actividad y mostrar fecha en el selector
+
+### 🎨 Styling
+
+- Aplicar cargo fmt en install y update
+
 ## [0.15.4] - 2026-09-08
 
 ### 🐛 Bug Fixes
@@ -5,6 +15,10 @@
 - *(install)* Reemplazar URL inexistente get.pillbox.dev por raw GitHub
 - *(readme)* Corregir enlace roto a la guía de instalación manual
 - *(webui)* Usar html.dark en vez de .dark para overrides de Element Plus
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.15.4
 
 ## [0.15.3] - 2026-05-31
 
