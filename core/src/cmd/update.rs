@@ -4,8 +4,8 @@ use anyhow::{Context, Result};
 use owo_colors::OwoColorize;
 use rust_i18n::t;
 
-use crate::output;
 use super::install::github;
+use crate::output;
 
 const REPO: &str = "Kevinsillo/pillbox";
 
@@ -55,7 +55,10 @@ pub fn run() -> Result<()> {
         anyhow::anyhow!(t!("update.error.no_binary", platform = platform))
     })?;
 
-    println!("\n  {}", t!("update.downloading", version = &latest_tag).dimmed());
+    println!(
+        "\n  {}",
+        t!("update.downloading", version = &latest_tag).dimmed()
+    );
 
     let bytes = github::download_release_asset(REPO, &latest_tag, artifact)
         .context("failed to download update")?;
@@ -63,10 +66,7 @@ pub fn run() -> Result<()> {
     let exe_path = std::env::current_exe().context("failed to locate current binary")?;
     replace_binary(&exe_path, &bytes)?;
 
-    output::fmt::update_done(
-        &format!("v{}", latest),
-        &exe_path.display().to_string(),
-    );
+    output::fmt::update_done(&format!("v{}", latest), &exe_path.display().to_string());
 
     Ok(())
 }

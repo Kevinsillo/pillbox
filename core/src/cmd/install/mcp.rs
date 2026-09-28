@@ -12,8 +12,7 @@ const REPO: &str = "kevinsillo/pillbox-mcp";
 /// El script (`install.sh` / `install.ps1`) construye el bundle, lo copia a
 /// `~/.pillbox/mcp/` y registra la entrada MCP en los proveedores detectados.
 pub fn install() -> Result<()> {
-    let bytes = github::download_repo_tarball(REPO)
-        .context("failed to download MCP repository")?;
+    let bytes = github::download_repo_tarball(REPO).context("failed to download MCP repository")?;
     extract_and_run(&bytes)
 }
 

@@ -11,8 +11,8 @@ const REPO: &str = "kevinsillo/pillbox-skills";
 /// El script (`install.sh` / `install.ps1`) detecta los proveedores instalados,
 /// pregunta al usuario qué instalar y copia skills, agents y commands a sus rutas.
 pub fn install() -> Result<()> {
-    let bytes = github::download_repo_tarball(REPO)
-        .context("failed to download skills repository")?;
+    let bytes =
+        github::download_repo_tarball(REPO).context("failed to download skills repository")?;
     extract_and_run(&bytes)
 }
 
