@@ -1,3 +1,9 @@
+## [0.18.0] - 2026-10-09
+
+### 🐛 Bug Fixes
+
+- *(skill)* Usar rutas plurales de OpenCode
+
 ## [0.17.0] - 2026-09-28
 
 ### 🚀 Features
@@ -5,6 +11,10 @@
 - *(serve)* Mostrar subcomandos disponibles al invocar pillbox serve
 - *(serve)* Añadir subcomando restart
 - *(update)* Reiniciar el servicio web tras actualizar si estaba en marcha
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.17.0
 
 ## [0.16.0] - 2026-09-28
 
