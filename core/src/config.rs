@@ -124,15 +124,15 @@ pub fn opencode_config_path() -> PathBuf {
         .join("opencode.json")
 }
 
-/// Ruta de la skill de OpenCode: `~/.config/opencode/skill/pillbox/SKILL.md`
+/// Ruta de la skill de OpenCode: `~/.config/opencode/skills/pillbox/SKILL.md`
 ///
-/// OpenCode usa el directorio singular `skill`, a diferencia del `skills` de Claude Code.
+/// OpenCode usa el directorio plural `skills`, igual que Claude Code.
 pub fn opencode_skill_path() -> PathBuf {
     dirs::home_dir()
         .expect("failed to resolve home directory")
         .join(".config")
         .join("opencode")
-        .join("skill")
+        .join("skills")
         .join(env!("CARGO_PKG_NAME"))
         .join("SKILL.md")
 }
@@ -286,15 +286,15 @@ mod tests {
     }
 
     #[test]
-    fn opencode_skill_path_uses_singular_skill_dir() {
+    fn opencode_skill_path_uses_plural_skills_dir() {
         let segments: Vec<String> = opencode_skill_path()
             .components()
             .map(|c| c.as_os_str().to_string_lossy().into_owned())
             .collect();
         assert!(segments.iter().any(|s| s == "opencode"));
-        // OpenCode usa el directorio singular `skill`, nunca el plural `skills`.
-        assert!(segments.iter().any(|s| s == "skill"));
-        assert!(!segments.iter().any(|s| s == "skills"));
+        // OpenCode usa el directorio plural `skills`, nunca el singular `skill`.
+        assert!(segments.iter().any(|s| s == "skills"));
+        assert!(!segments.iter().any(|s| s == "skill"));
         assert!(segments.iter().any(|s| s == "pillbox"));
         assert!(opencode_skill_path().ends_with("SKILL.md"));
     }
